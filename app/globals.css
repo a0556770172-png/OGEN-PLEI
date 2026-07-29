@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  background-color: #0a0b10;
+  color: #eef0f6;
+}
+
+* {
+  scrollbar-color: #3a3f55 #0a0b10;
+}
+
+::selection {
+  background: rgba(124, 92, 255, 0.4);
+}
+
+.glass {
+  background: rgba(18, 20, 28, 0.6);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.text-gradient {
+  background: linear-gradient(90deg, #a78bff, #7c5cff 40%, #00d9c0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-bold text-white shadow-glow transition-all duration-300 hover:bg-primary-light hover:shadow-[0_0_55px_rgba(124,92,255,0.45)] active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+}
+
+.btn-ghost {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-5 py-2.5 font-semibold text-gray-200 transition-all duration-300 hover:border-primary/60 hover:text-white active:scale-95;
+}
+
+.input-field {
+  @apply w-full rounded-xl border border-border bg-surface2 px-4 py-3 text-gray-100 placeholder:text-gray-500 outline-none transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/30;
+}
+
+/* דפדפנים כופים כיווניות LTR פנימית על שדות מסוג email/tel/number/url גם בתוך אתר RTL.
+   זה גורם לטקסט ולסמן להתחיל בצד הלא נכון ביחס לאייקון. הכלל הבא מתקן זאת לכל שדות הטופס באתר. */
+input, textarea, select {
+  direction: rtl;
+  text-align: right;
+}
+
+.card {
+  @apply rounded-2xl border border-border bg-surface shadow-card transition-all duration-300;
+}
+
+.shimmer-border {
+  background: linear-gradient(90deg, transparent, rgba(124,92,255,0.5), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2.5s linear infinite;
+}
+
+.rich-content h1, .rich-content h2, .rich-content h3 { font-weight: 700; margin: 0.6em 0 0.3em; }
+.rich-content p { margin: 0.5em 0; line-height: 1.8; }
+.rich-content ul { list-style: disc; padding-inline-start: 1.4em; }
+.rich-content ol { list-style: decimal; padding-inline-start: 1.4em; }
+.rich-content a { color: #a78bff; text-decoration: underline; }
+.rich-content b, .rich-content strong { font-weight: 700; }
