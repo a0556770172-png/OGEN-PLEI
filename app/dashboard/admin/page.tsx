@@ -8,6 +8,7 @@ import {
   getPendingSuggestionsCount,
   getTicketsNeedingReplyCount
 } from "@/lib/admin-data";
+import { getSiteSettingsServer } from "@/lib/settings";
 import AdminDashboardClient from "@/components/AdminDashboardClient";
 
 export const dynamic = "force-dynamic";
@@ -17,13 +18,14 @@ export default async function AdminDashboard() {
   if (!user || !profile) redirect("/login");
   if (profile.role !== "admin") redirect("/");
 
-  const [apps, allApps, profiles, proRequests, suggestionsPendingCount, ticketsNeedingReplyCount] = await Promise.all([
+  const [apps, allApps, profiles, proRequests, suggestionsPendingCount, ticketsNeedingReplyCount, siteSettings] = await Promise.all([
     getReviewQueueApps(),
     getAllAppsForAdmin(),
     getAllProfiles(),
     getPendingProRequests(),
     getPendingSuggestionsCount(),
-    getTicketsNeedingReplyCount()
+    getTicketsNeedingReplyCount(),
+    getSiteSettingsServer()
   ]);
 
   return (
@@ -39,6 +41,7 @@ export default async function AdminDashboard() {
         proRequests={proRequests}
         suggestionsPendingCount={suggestionsPendingCount}
         ticketsNeedingReplyCount={ticketsNeedingReplyCount}
+        requireEmailVerification={siteSettings.require_email_verification}
       />
     </div>
   );

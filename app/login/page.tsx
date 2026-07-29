@@ -35,6 +35,23 @@ function LoginForm() {
       return;
     }
 
+    // בדיקת ההגדרה שהמנהל שולט בה (טאב "הגדרות" בפאנל הניהול): האם אימות מייל חובה
+    // כדי להתחבר. זו אכיפה שלנו בקוד, בנפרד מהגדרת "Confirm email" של Supabase עצמו.
+    if (!data.user.email_confirmed_at) {
+      try {
+        const settingsRes = await fetch("/api/settings");
+        const settingsJson = await settingsRes.json();
+        if (settingsJson.requireEmailVerification) {
+          await supabase.auth.signOut();
+          setError("יש לאמת את כתובת המייל שלך לפני ההתחברות. בדוק את תיבת הדואר שלך (גם בספאם).");
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // אם בדיקת ההגדרה נכשלה מסיבה כלשהי, לא חוסמים את המשתמש - עדיף חוויה שוטפת
+      }
+    }
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("role, banned, is_moderator")

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing } from "lucide-react";
+import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import UserManagementTable from "./UserManagementTable";
 import ProRequestsQueue from "./ProRequestsQueue";
@@ -8,9 +8,10 @@ import TicketsPanel from "./TicketsPanel";
 import SuggestionsQueue from "./SuggestionsQueue";
 import CategoriesManager from "./CategoriesManager";
 import NotificationsPanel from "./NotificationsPanel";
+import SiteSettingsPanel from "./SiteSettingsPanel";
 import type { AppRow, Profile, ProRequest } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories";
+type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "settings";
 
 export default function AdminDashboardClient({
   apps,
@@ -18,7 +19,8 @@ export default function AdminDashboardClient({
   profiles,
   proRequests,
   suggestionsPendingCount,
-  ticketsNeedingReplyCount
+  ticketsNeedingReplyCount,
+  requireEmailVerification
 }: {
   apps: AppRow[];
   allApps: AppRow[];
@@ -26,6 +28,7 @@ export default function AdminDashboardClient({
   proRequests: ProRequest[];
   suggestionsPendingCount: number;
   ticketsNeedingReplyCount: number;
+  requireEmailVerification: boolean;
 }) {
   const [tab, setTab] = useState<TabKey>("notifications");
 
@@ -39,7 +42,8 @@ export default function AdminDashboardClient({
     { key: "suggestions", label: "הצעות אפליקציות", icon: Gift },
     { key: "tickets", label: "פניות תמיכה", icon: MessageCircle },
     { key: "categories", label: "קטגוריות", icon: Tag },
-    { key: "users", label: "ניהול משתמשים", icon: Users }
+    { key: "users", label: "ניהול משתמשים", icon: Users },
+    { key: "settings", label: "הגדרות", icon: Settings }
   ] as const;
 
   const notificationItems = [
@@ -73,6 +77,7 @@ export default function AdminDashboardClient({
       {tab === "tickets" && <TicketsPanel />}
       {tab === "categories" && <CategoriesManager />}
       {tab === "users" && <UserManagementTable profiles={profiles} />}
+      {tab === "settings" && <SiteSettingsPanel requireEmailVerification={requireEmailVerification} />}
     </div>
   );
 }
