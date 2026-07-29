@@ -93,6 +93,7 @@ export interface AppSuggestion {
   points_awarded: boolean;
   reviewed_by: string | null;
   reviewed_at: string | null;
+  created_app_id: string | null;
   created_at: string;
   suggester?: Profile;
 }
