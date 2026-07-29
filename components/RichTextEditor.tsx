@@ -1,5 +1,5 @@
 "use client";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Bold, Italic, List, ListOrdered, Link2, Heading2, Underline } from "lucide-react";
 
 export default function RichTextEditor({
@@ -12,6 +12,18 @@ export default function RichTextEditor({
   placeholder?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+
+  // חשוב: מציבים את ה-HTML הראשוני פעם אחת בלבד (דרך useEffect), ולא דרך
+  // dangerouslySetInnerHTML בכל רינדור. אם היינו מציבים dangerouslySetInnerHTML
+  // בכל רינדור, כל הקלדה הייתה מפעילה onChange->setState בהורה->רינדור מחדש כאן
+  // שמאפס את ה-innerHTML ומחזיר את מיקום הסמן לתחילת השדה - זה בדיוק מה שגרם
+  // לטקסט בעברית להיראות "הפוך"/מבולגן: כל תו חדש הוקלד בתחילת השדה במקום בסופו.
+  useEffect(() => {
+    if (ref.current && ref.current.innerHTML !== value) {
+      ref.current.innerHTML = value || "";
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function exec(cmd: string, arg?: string) {
     document.execCommand(cmd, false, arg);
@@ -63,9 +75,8 @@ export default function RichTextEditor({
         dir="rtl"
         onInput={() => onChange(ref.current?.innerHTML ?? "")}
         data-placeholder={placeholder}
-        style={{ direction: "rtl", textAlign: "right", unicodeBidi: "isolate" }}
+        style={{ direction: "rtl", textAlign: "right" }}
         className="rich-content min-h-[180px] px-4 py-3 text-sm text-gray-100 outline-none empty:before:text-gray-500 empty:before:content-[attr(data-placeholder)]"
-        dangerouslySetInnerHTML={{ __html: value }}
       />
     </div>
   );

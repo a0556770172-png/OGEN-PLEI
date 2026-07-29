@@ -67,6 +67,53 @@ export default function DeveloperTermsPage() {
       return;
     }
 
+    // לא מחובר כרגע - אך ייתכן שכבר יש חשבון קיים עם המייל הזה (למשל נרשם בעבר כ"משתמש רגיל"
+    // ואומת את המייל אז, ועכשיו מתנתק/פותח דפדפן חדש ומנסה להירשם גם כמפתח). קריאה ל-signUp
+    // במקרה כזה "מצליחה" בשקט מבלי לשלוח שום מייל אמיתי (הגנת Supabase נגד חשיפת מיילים קיימים) -
+    // בדיוק הבאג שדווח. לכן בודקים קודם אם המייל כבר קיים, ואם כן מנסים להתחבר עם הסיסמה שהוזנה.
+    try {
+      const existsRes = await fetch("/api/auth/email-exists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email })
+      });
+      const existsJson = await existsRes.json().catch(() => ({}));
+
+      if (existsJson.exists) {
+        const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+          email: form.email,
+          password: form.password
+        });
+
+        if (signInErr || !signInData?.user) {
+          setLoading(false);
+          setError(
+            "כתובת המייל הזו כבר רשומה במערכת מהרשמה קודמת (למשל כמשתמש רגיל), אך הסיסמה שהזנת לא תואמת לחשבון הקיים. יש להתחבר עם הסיסמה הנכונה של אותו חשבון, ולאחר מכן ניתן יהיה לשדרג אותו לחשבון מפתח."
+          );
+          return;
+        }
+
+        // ההתחברות הצליחה - זה אכן החשבון הקיים שלו, משדרגים אותו במקום להירשם מחדש
+        const res = await fetch("/api/auth/upgrade-to-developer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fullName: form.fullName, phone: form.phone })
+        });
+        const json = await res.json().catch(() => null);
+        setLoading(false);
+        if (!res.ok) {
+          setError(json?.error || "שדרוג החשבון נכשל, נסה שוב");
+          return;
+        }
+        sessionStorage.removeItem("dev_signup_form");
+        setUpgradedInPlace(true);
+        setDone(true);
+        return;
+      }
+    } catch {
+      // אם בדיקת קיום המייל נכשלה מסיבה טכנית, ממשיכים בזהירות לניסיון הרשמה רגיל למטה
+    }
+
     const { error: err } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,

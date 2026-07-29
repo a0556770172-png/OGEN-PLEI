@@ -105,15 +105,15 @@ function LoginForm() {
           <div>
             <label className="mb-1.5 block text-sm text-gray-400">אימייל</label>
             <div className="relative">
-              <Mail className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-gray-500" />
-              <input dir="rtl" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="input-field pr-10" placeholder="you@example.com" />
+              <Mail className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-gray-500" />
+              <input dir="rtl" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="input-field pl-10" placeholder="you@example.com" />
             </div>
           </div>
           <div>
             <label className="mb-1.5 block text-sm text-gray-400">סיסמה</label>
             <div className="relative">
-              <Lock className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-gray-500" />
-              <input dir="rtl" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="input-field pr-10" placeholder="••••••••" />
+              <Lock className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-gray-500" />
+              <input dir="rtl" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="input-field pl-10" placeholder="••••••••" />
             </div>
           </div>
           <button type="submit" disabled={loading} className="btn-primary mt-2 w-full">
