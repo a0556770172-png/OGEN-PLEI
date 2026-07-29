@@ -3,6 +3,10 @@ import { revalidatePath } from "next/cache";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { addPoints } from "@/lib/points";
+import { extractApkIcon } from "@/lib/extractIcon";
+
+export const maxDuration = 60;
+export const runtime = "nodejs";
 
 const SUGGESTION_POINTS = 5;
 
@@ -53,6 +57,16 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   // יצירת האפליקציה בפועל בחנות - רק אם יש קובץ מצורף (הצעות ישנות בלי קובץ לא ניתנות
   // לפרסום אוטומטי) ורק אם עדיין לא נוצרה אפליקציה מההצעה הזו בעבר (מונע כפילות בלחיצה כפולה)
   if (status === "approved" && suggestion.file_key && suggestion.file_name && suggestion.file_size_bytes && !createdAppId) {
+    // מנסים לחלץ אייקון מתוך הקובץ (רק אם זה APK) לפני יצירת הרשומה, כדי שהאפליקציה
+    // תתפרסם מיד עם אייקון ולא תצטרך תיקון ידני מאוחר יותר.
+    let iconKey: string | null = null;
+    try {
+      const iconResult = await extractApkIcon(suggestion.file_key, suggestion.suggested_by);
+      if (iconResult.iconKey) iconKey = iconResult.iconKey;
+    } catch {
+      // חילוץ אייקון הוא נוחות בלבד - לא מכשילים את פרסום האפליקציה בגללו
+    }
+
     const { data: newApp, error: createError } = await admin
       .from("apps")
       .insert({
@@ -62,6 +76,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         description_html: suggestion.note ? `<p>${suggestion.note}</p>` : "",
         version: "1.0.0",
         category: "general",
+        icon_key: iconKey,
         file_key: suggestion.file_key,
         file_name: suggestion.file_name,
         file_size_bytes: suggestion.file_size_bytes,

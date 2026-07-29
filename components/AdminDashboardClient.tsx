@@ -9,6 +9,7 @@ import SuggestionsQueue from "./SuggestionsQueue";
 import CategoriesManager from "./CategoriesManager";
 import NotificationsPanel from "./NotificationsPanel";
 import SiteSettingsPanel from "./SiteSettingsPanel";
+import IconBackfillPanel from "./IconBackfillPanel";
 import type { AppRow, Profile, ProRequest } from "@/types/database";
 
 type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "settings";
@@ -71,7 +72,12 @@ export default function AdminDashboardClient({
 
       {tab === "notifications" && <NotificationsPanel items={notificationItems} onNavigate={(key) => setTab(key as TabKey)} />}
       {tab === "review" && <ReviewQueue apps={apps} canDelete={true} />}
-      {tab === "allApps" && <ReviewQueue apps={allApps} canDelete={true} emptyMessage="אין אפליקציות באתר עדיין." />}
+      {tab === "allApps" && (
+        <div className="flex flex-col gap-4">
+          <IconBackfillPanel />
+          <ReviewQueue apps={allApps} canDelete={true} emptyMessage="אין אפליקציות באתר עדיין." />
+        </div>
+      )}
       {tab === "pro" && <ProRequestsQueue requests={proRequests} />}
       {tab === "suggestions" && <SuggestionsQueue />}
       {tab === "tickets" && <TicketsPanel />}
