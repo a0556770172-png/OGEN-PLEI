@@ -27,13 +27,13 @@ export default function AppGrid({
     <section id="apps" className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
         <div className="relative w-full sm:max-w-xs">
-          <Search className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-gray-500" />
+          <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-gray-500" />
           <input
             dir="rtl"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="חיפוש אפליקציה..."
-            className="input-field pr-10"
+            className="input-field pl-10"
           />
         </div>
         <div className="flex flex-wrap justify-end gap-2 sm:justify-start">
