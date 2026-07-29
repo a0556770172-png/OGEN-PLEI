@@ -6,6 +6,11 @@ import { motion } from "framer-motion";
 import { Anchor, Mail, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
+// חשוב: בלי זה, Next.js מנסה לרנדר את הדף הזה כ-HTML סטטי כבר בזמן ה-build עצמו
+// (לפני שמשתני הסביבה של Vercel זמינים בפועל), מה שגורם לקריסת ה-build עם שגיאת
+// "Supabase URL and API key are required". force-dynamic דוחה את הרינדור לזמן הבקשה בפועל.
+export const dynamic = "force-dynamic";
+
 export default function LoginPage() {
   return (
     <Suspense fallback={null}>

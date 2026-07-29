@@ -5,6 +5,9 @@ import { motion } from "framer-motion";
 import { UserRound, Mail, Lock, AtSign, AlertCircle, MailCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
+// מונע רינדור סטטי בזמן ה-build (ראו הסבר מפורט ב-app/login/page.tsx)
+export const dynamic = "force-dynamic";
+
 export default function UserSignupPage() {
   const supabase = createClient();
   const [form, setForm] = useState({ username: "", email: "", password: "" });
@@ -71,8 +74,8 @@ export default function UserSignupPage() {
           <div>
             <label className="mb-1.5 block text-sm text-gray-400">שם משתמש</label>
             <div className="relative">
-              <AtSign className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-gray-500" />
-              <input dir="rtl" required minLength={3} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} className="input-field pr-10" placeholder="השם שיוצג באתר" />
+              <AtSign className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-gray-500" />
+              <input dir="rtl" required minLength={3} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} className="input-field pl-10" placeholder="השם שיוצג באתר" />
             </div>
           </div>
           <div>

@@ -6,6 +6,9 @@ import { ShieldAlert, CheckCircle2, AlertCircle, MailCheck } from "lucide-react"
 import { createClient } from "@/lib/supabase/client";
 import { DEVELOPER_TERMS } from "@/lib/constants";
 
+// מונע רינדור סטטי בזמן ה-build (ראו הסבר מפורט ב-app/login/page.tsx)
+export const dynamic = "force-dynamic";
+
 export default function DeveloperTermsPage() {
   const router = useRouter();
   const supabase = createClient();

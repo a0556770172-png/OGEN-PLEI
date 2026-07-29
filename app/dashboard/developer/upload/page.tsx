@@ -7,6 +7,9 @@ import RichTextEditor from "@/components/RichTextEditor";
 import { putToR2, extractIconFailureReason } from "@/lib/uploadHelpers";
 import type { Category } from "@/types/database";
 
+// מונע רינדור סטטי בזמן ה-build (ראו הסבר מפורט ב-app/login/page.tsx)
+export const dynamic = "force-dynamic";
+
 export default function UploadAppPage() {
   const router = useRouter();
   const [name, setName] = useState("");

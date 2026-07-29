@@ -5,6 +5,9 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Code2, Mail, Lock, AtSign, User, Phone, AlertCircle } from "lucide-react";
 
+// מונע רינדור סטטי בזמן ה-build (ראו הסבר מפורט ב-app/login/page.tsx)
+export const dynamic = "force-dynamic";
+
 export default function DeveloperSignupPage() {
   const router = useRouter();
   const [form, setForm] = useState({ username: "", email: "", password: "", fullName: "", phone: "" });
@@ -42,15 +45,15 @@ export default function DeveloperSignupPage() {
           <div>
             <label className="mb-1.5 block text-sm text-gray-400">שם מלא</label>
             <div className="relative">
-              <User className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-gray-500" />
-              <input dir="rtl" required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} className="input-field pr-10" placeholder="שם פרטי ומשפחה" />
+              <User className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-gray-500" />
+              <input dir="rtl" required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} className="input-field pl-10" placeholder="שם פרטי ומשפחה" />
             </div>
           </div>
           <div>
             <label className="mb-1.5 block text-sm text-gray-400">שם משתמש (יוצג כמפתח)</label>
             <div className="relative">
-              <AtSign className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-gray-500" />
-              <input dir="rtl" required minLength={3} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} className="input-field pr-10" placeholder="שם משתמש" />
+              <AtSign className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-gray-500" />
+              <input dir="rtl" required minLength={3} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} className="input-field pl-10" placeholder="שם משתמש" />
             </div>
           </div>
           <div>
@@ -63,8 +66,8 @@ export default function DeveloperSignupPage() {
           <div>
             <label className="mb-1.5 block text-sm text-gray-400">טלפון (אופציונלי)</label>
             <div className="relative">
-              <Phone className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-gray-500" />
-              <input dir="rtl" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input-field pr-10" placeholder="05X-XXXXXXX" />
+              <Phone className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-gray-500" />
+              <input dir="rtl" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input-field pl-10" placeholder="05X-XXXXXXX" />
             </div>
           </div>
           <div>
