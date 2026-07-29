@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 
@@ -36,6 +37,16 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       updated_at: new Date().toISOString()
     })
     .eq("id", params.id);
+
+  // חשוב: דף הבית (וכל דף שמציג את רשימת האפליקציות/פרטי האפליקציה) הוא force-dynamic,
+  // כלומר תמיד שולף נתונים טריים בבקשה חדשה מהשרת - אבל דפדפן שמנווט אליו בניווט צד-לקוח
+  // (קליק על לינק בתוך האתר, לא רענון מלא) עלול לקבל עותק שמור מה-Router Cache הפנימי של
+  // Next.js למשך עד כ-30 שניות. זה בדיוק הגורם לבאג שדווח: "אישרתי והאפליקציה לא מופיעה
+  // בחנות" - היא בעצם כן אושרה, רק שהדף שהוצג היה גרסה ישנה שנשמרה מקומית. revalidatePath
+  // מנקה את זה באופן יזום ברגע האישור, כך שגם ניווט צד-לקוח יקבל מיד את הרשימה המעודכנת.
+  revalidatePath("/");
+  revalidatePath(`/apps/${params.id}`);
+  revalidatePath("/users");
 
   return NextResponse.json({ ok: true });
 }

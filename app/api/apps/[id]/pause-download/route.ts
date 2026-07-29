@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 
@@ -28,6 +29,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       .update({ download_paused: false, download_paused_until: null })
       .eq("id", app.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    revalidatePath(`/apps/${app.id}`);
     return NextResponse.json({ ok: true });
   }
 
@@ -42,6 +44,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         .update({ download_paused: true, download_paused_until: null })
         .eq("id", app.id);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      revalidatePath(`/apps/${app.id}`);
       return NextResponse.json({ ok: true });
     }
 
@@ -59,6 +62,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       .update({ download_paused: false, download_paused_until: until })
       .eq("id", app.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    revalidatePath(`/apps/${app.id}`);
     return NextResponse.json({ ok: true, until });
   }
 

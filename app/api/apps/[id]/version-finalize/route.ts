@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { deleteObject, BUCKETS } from "@/lib/r2";
@@ -47,6 +48,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (previousFileKey && previousFileKey !== fileKey) {
     await deleteObject(BUCKETS.apps, previousFileKey).catch(() => {});
   }
+
+  revalidatePath("/");
+  revalidatePath(`/apps/${app.id}`);
 
   return NextResponse.json({ ok: true });
 }

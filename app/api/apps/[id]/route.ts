@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { deleteObject, createUploadUrl, BUCKETS } from "@/lib/r2";
@@ -47,6 +48,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
   }
 
+  revalidatePath("/");
+  revalidatePath(`/apps/${app.id}`);
+
   return NextResponse.json({ ok: true, iconUploadUrl, iconKey });
 }
 
@@ -66,6 +70,9 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   await deleteObject(BUCKETS.apps, app.file_key).catch(() => {});
   if (app.icon_key) await deleteObject(BUCKETS.assets, app.icon_key).catch(() => {});
   await admin.from("apps").delete().eq("id", app.id);
+
+  revalidatePath("/");
+  revalidatePath(`/apps/${app.id}`);
 
   return NextResponse.json({ ok: true });
 }
