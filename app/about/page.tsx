@@ -72,7 +72,7 @@ export default function AboutPage() {
           <li className="flex items-center gap-2"><Star className="h-3.5 w-3.5 text-gold" /> עד 100MB לקובץ (במקום 30MB בחשבון רגיל)</li>
         </ul>
         <p className="mt-4 text-sm text-gray-400">
-          מגיעים ל-PRO בשתי דרכים: בקשת שדרוג ואישור מנהל, או צבירה עצמאית של 200 נקודות (מכל מקור
+          מגיעים ל-PRO בשתי דרכים: בקשת שדרוג ואישור מנהל, או צבירה עצמאית של 300 נקודות (מכל מקור
           יחד) - ואז השדרוג ניתן אוטומטית.
         </p>
       </section>

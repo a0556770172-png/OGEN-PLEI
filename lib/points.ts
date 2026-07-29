@@ -3,7 +3,7 @@ import { createAdminSupabase } from "./supabase/admin";
 // סף נקודות למתן PRO אוטומטי - כל מי שמגיע לסף הזה (מכל מקור נקודות: העלאות, הורדות,
 // הצעות אפליקציות שאושרו וכו') מקבל אוטומטית שדרוג ל-PRO, גם אם אינו מפתח עדיין
 // (במקרה כזה הוא פשוט "ייהנה" מהמכסה המוגברת ברגע שיהפוך למפתח).
-const PRO_POINTS_THRESHOLD = 200;
+const PRO_POINTS_THRESHOLD = 300;
 
 export async function addPoints(profileId: string, delta: number) {
   const admin = createAdminSupabase();

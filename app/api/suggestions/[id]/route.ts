@@ -7,7 +7,7 @@ const SUGGESTION_POINTS = 5;
 
 // אישור/דחייה של הצעת אפליקציה - צוות (מנהל/פיקוח) בלבד.
 // אישור מזכה את המציע ב-5 נק' (פעם אחת בלבד, גם אם מישהו ילחץ פעמיים בטעות),
-// ואם הצבירה הכוללת שלו מגיעה ל-200, הוא משודרג אוטומטית ל-PRO (ראו lib/points.ts).
+// ואם הצבירה הכוללת שלו מגיעה ל-300, הוא משודרג אוטומטית ל-PRO (ראו lib/points.ts).
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const result = await requireProfile();
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
