@@ -1,12 +1,16 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ImagePlus, Loader2, CheckCircle2 } from "lucide-react";
+import { ImagePlus, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+
+type FailedItem = { id: string; ok: boolean; reason?: string; detail?: string };
 
 export default function IconBackfillPanel() {
   const router = useRouter();
   const [running, setRunning] = useState(false);
-  const [summary, setSummary] = useState<{ succeeded: number; failedCount: number; remaining: number } | null>(null);
+  const [succeeded, setSucceeded] = useState(0);
+  const [failed, setFailed] = useState<FailedItem[]>([]);
+  const [ranAtLeastOnce, setRanAtLeastOnce] = useState(false);
 
   async function runOnce() {
     setRunning(true);
@@ -18,13 +22,10 @@ export default function IconBackfillPanel() {
         setRunning(false);
         return;
       }
-      setSummary((prev) => ({
-        succeeded: (prev?.succeeded ?? 0) + json.succeeded,
-        failedCount: (prev?.failedCount ?? 0) + json.failed.length,
-        remaining: json.remaining
-      }));
+      setRanAtLeastOnce(true);
+      setSucceeded((prev) => prev + json.succeeded);
+      setFailed((prev) => [...prev, ...json.failed]);
       router.refresh();
-      // אם נשארו עוד אפליקציות ללא אייקון, ממשיכים אוטומטית לאצווה הבאה
       if (json.remaining > 0 && json.processed > 0) {
         setTimeout(runOnce, 400);
         return;
@@ -49,13 +50,27 @@ export default function IconBackfillPanel() {
           {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
           {running ? "מריץ..." : "הרץ חילוץ אייקונים חסרים"}
         </button>
-        {summary && !running && (
+        {ranAtLeastOnce && !running && (
           <span className="inline-flex items-center gap-1 text-xs text-gray-400">
             <CheckCircle2 className="h-3.5 w-3.5 text-accent" />
-            {summary.succeeded} אייקונים חולצו בהצלחה{summary.failedCount > 0 ? `, ${summary.failedCount} נכשלו (בד"כ אייקון אדפטיבי שהמנגנון לא יודע להרכיב)` : ""}
+            {succeeded} הצליחו, {failed.length} נכשלו
           </span>
         )}
       </div>
+
+      {failed.length > 0 && !running && (
+        <div className="flex flex-col gap-2 rounded-xl border border-red-500/30 bg-red-500/5 p-3">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-red-400">
+            <AlertTriangle className="h-3.5 w-3.5" /> פירוט הכשלים (שימושי לאבחון):
+          </div>
+          {failed.map((f, i) => (
+            <div key={`${f.id}-${i}`} className="text-xs text-gray-400">
+              <span className="font-mono text-gray-500">{f.id.slice(0, 8)}...</span> — {f.reason}
+              {f.detail && <span className="text-gray-500"> ({f.detail})</span>}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

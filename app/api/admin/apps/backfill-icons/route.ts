@@ -31,7 +31,7 @@ export async function POST() {
     .limit(BATCH_SIZE);
 
   const list = candidates ?? [];
-  const results: { id: string; ok: boolean; reason?: string }[] = [];
+  const results: { id: string; ok: boolean; reason?: string; detail?: string }[] = [];
 
   for (const app of list) {
     try {
@@ -40,10 +40,10 @@ export async function POST() {
         await admin.from("apps").update({ icon_key: iconResult.iconKey }).eq("id", app.id);
         results.push({ id: app.id, ok: true });
       } else {
-        results.push({ id: app.id, ok: false, reason: iconResult.reason });
+        results.push({ id: app.id, ok: false, reason: iconResult.reason, detail: (iconResult as any).detail });
       }
     } catch (err: any) {
-      results.push({ id: app.id, ok: false, reason: String(err?.message || err) });
+      results.push({ id: app.id, ok: false, reason: "exception", detail: String(err?.message || err) });
     }
   }
 
