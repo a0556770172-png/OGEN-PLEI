@@ -62,7 +62,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     let iconKey: string | null = null;
     try {
       const iconResult = await extractApkIcon(suggestion.file_key, suggestion.suggested_by);
-      if (iconResult.iconKey) iconKey = iconResult.iconKey;
+      if (iconResult.iconKey !== null) iconKey = iconResult.iconKey;
     } catch {
       // חילוץ אייקון הוא נוחות בלבד - לא מכשילים את פרסום האפליקציה בגללו
     }

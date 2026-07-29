@@ -36,11 +36,15 @@ export async function POST() {
   for (const app of list) {
     try {
       const iconResult = await extractApkIcon(app.file_key, app.developer_id);
-      if (iconResult.iconKey) {
+      // חשוב: הבדיקה חייבת להיות "!== null" ולא בדיקת אמת רגילה (if (iconResult.iconKey)) -
+      // כי מבחינת טיפוסי TypeScript, מחרוזת ריקה היא גם היא "falsy", אז בדיקת אמת רגילה לא
+      // מצליחה לצמצם (narrow) את הטיפוס באופן ודאי, וזה גרם לשגיאת קומפילציה על .reason
+      // שהפילה את כל הבנייה ב-Vercel בלי שום שגיאה גלויה מלבד "Command npm run build exited with 1".
+      if (iconResult.iconKey !== null) {
         await admin.from("apps").update({ icon_key: iconResult.iconKey }).eq("id", app.id);
         results.push({ id: app.id, ok: true });
       } else {
-        results.push({ id: app.id, ok: false, reason: iconResult.reason, detail: (iconResult as any).detail });
+        results.push({ id: app.id, ok: false, reason: iconResult.reason, detail: iconResult.detail });
       }
     } catch (err: any) {
       results.push({ id: app.id, ok: false, reason: "exception", detail: String(err?.message || err) });
