@@ -6,6 +6,7 @@ import { tmpdir } from "os";
 import path from "path";
 // @ts-ignore - אין טיפוסי TypeScript רשמיים לחבילה הזו
 import AppInfoParser from "app-info-parser";
+import AdmZip from "adm-zip";
 import { createDownloadUrl, createUploadUrl, BUCKETS } from "@/lib/r2";
 
 export type ExtractIconResult =
@@ -20,11 +21,26 @@ async function downloadToTempFile(url: string, destPath: string) {
   await pipeline(Readable.fromWeb(res.body as any), createWriteStream(destPath));
 }
 
+// כמה מהאפליקציות (בעיקר כאלה שאושרו מתוך "הצעות אפליקציה" שהורדו מ-APKPure) מגיעות
+// כ-".apks" - זהו לא קובץ APK רגיל אלא ארכיון ZIP שמכיל בתוכו כמה קבצי APK (base.apk +
+// splits לפי שפה/מסך/ארכיטקטורה). כדי לחלץ אייקון מקובץ כזה צריך קודם לפתוח את ה-ZIP
+// ולמצוא בתוכו את ה-base.apk (או, אם אין קובץ בשם הזה, את קובץ ה-.apk הכי גדול - הוא כמעט
+// תמיד ה-base שמכיל את המשאבים כולל האייקון, בעוד ה-splits הם קבצים קטנים לרוב).
+function findBaseApkEntry(zip: AdmZip) {
+  const apkEntries = zip.getEntries().filter((e) => !e.isDirectory && e.entryName.toLowerCase().endsWith(".apk"));
+  if (apkEntries.length === 0) return null;
+  const named = apkEntries.find((e) => e.entryName.toLowerCase().endsWith("base.apk"));
+  if (named) return named;
+  return apkEntries.reduce((biggest, e) => (e.header.size > biggest.header.size ? e : biggest), apkEntries[0]);
+}
+
 // לוגיקת חילוץ האייקון המשותפת - מנותקת מבדיקת הרשאות/בעלות על הקובץ, כדי שאפשר יהיה
 // להשתמש בה גם מתוך זרימות שאינן "מפתח מעלה APK משלו" (למשל: אישור הצעת אפליקציה ע"י
 // צוות, או חילוץ למפרע לאפליקציות ישנות) - הבדיקות האלה קורות בכל נתיב API בנפרד.
 export async function extractApkIcon(fileKey: string, ownerId: string): Promise<ExtractIconResult> {
-  if (!fileKey.toLowerCase().endsWith(".apk")) {
+  const lowerKey = fileKey.toLowerCase();
+  const isApks = lowerKey.endsWith(".apks");
+  if (!lowerKey.endsWith(".apk") && !isApks) {
     return { iconKey: null, reason: "not-apk" };
   }
 
@@ -34,8 +50,20 @@ export async function extractApkIcon(fileKey: string, ownerId: string): Promise<
     stage = "download";
     const downloadUrl = await createDownloadUrl(BUCKETS.apps, fileKey);
     tempDir = await mkdtemp(path.join(tmpdir(), "ogenplay-apk-"));
-    const apkPath = path.join(tempDir, "app.apk");
-    await downloadToTempFile(downloadUrl, apkPath);
+    const downloadedPath = path.join(tempDir, isApks ? "bundle.apks" : "app.apk");
+    await downloadToTempFile(downloadUrl, downloadedPath);
+
+    let apkPath = downloadedPath;
+    if (isApks) {
+      stage = "unzip-bundle";
+      const zip = new AdmZip(downloadedPath);
+      const baseEntry = findBaseApkEntry(zip);
+      if (!baseEntry) {
+        return { iconKey: null, reason: "no-apk-in-bundle" };
+      }
+      apkPath = path.join(tempDir, "base-extracted.apk");
+      zip.extractEntryTo(baseEntry, tempDir, false, true, false, "base-extracted.apk");
+    }
 
     stage = "parse";
     const parser = new AppInfoParser(apkPath);

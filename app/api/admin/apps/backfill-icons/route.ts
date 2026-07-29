@@ -27,7 +27,10 @@ export async function POST() {
     .select("id, developer_id, file_key")
     .is("icon_key", null)
     .neq("status", "archived")
-    .ilike("file_key", "%.apk")
+    // "%.apk" לא תופס קבצי ".apks" (חבילת APK מרובת-קבצים שנפוצה בהצעות שהורדו מ-APKPure) -
+    // בלעדי ה-or הזה אפליקציות כאלה נעלמות בשקט מרשימת המועמדים, בלי שום שגיאה, וזה בדיוק מה
+    // שגרם ל"0 הצליחו, 0 נכשלו" אצל כל האפליקציות הישנות שהגיעו מהצעות עם קובץ .apks.
+    .or("file_key.ilike.%.apk,file_key.ilike.%.apks")
     .limit(BATCH_SIZE);
 
   const list = candidates ?? [];
@@ -60,7 +63,10 @@ export async function POST() {
     .select("id", { count: "exact", head: true })
     .is("icon_key", null)
     .neq("status", "archived")
-    .ilike("file_key", "%.apk");
+    // "%.apk" לא תופס קבצי ".apks" (חבילת APK מרובת-קבצים שנפוצה בהצעות שהורדו מ-APKPure) -
+    // בלעדי ה-or הזה אפליקציות כאלה נעלמות בשקט מרשימת המועמדים, בלי שום שגיאה, וזה בדיוק מה
+    // שגרם ל"0 הצליחו, 0 נכשלו" אצל כל האפליקציות הישנות שהגיעו מהצעות עם קובץ .apks.
+    .or("file_key.ilike.%.apk,file_key.ilike.%.apks");
 
   return NextResponse.json({
     processed: results.length,
