@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Check, X, Archive, Trash2, Loader2, User, HardDrive } from "lucide-react";
+import { Download, Check, X, Archive, Trash2, Loader2, User, HardDrive, ShieldQuestion, CheckCircle2, XCircle } from "lucide-react";
 import type { AppRow } from "@/types/database";
 import StatusBadge from "./StatusBadge";
 import { formatFileSize } from "@/lib/format";
+
+type VerifyResult = { status: string; visibleToPublic: boolean; updatedAt: string | null } | { error: string };
 
 export default function ReviewQueue({
   apps,
@@ -17,6 +19,25 @@ export default function ReviewQueue({
 }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [verifyResults, setVerifyResults] = useState<Record<string, VerifyResult>>({});
+
+  async function verify(appId: string) {
+    setVerifyingId(appId);
+    setVerifyResults((prev) => {
+      const next = { ...prev };
+      delete next[appId];
+      return next;
+    });
+    try {
+      const res = await fetch(`/api/admin/apps/${appId}/verify`, { cache: "no-store" });
+      const json = await res.json();
+      setVerifyResults((prev) => ({ ...prev, [appId]: res.ok ? json : { error: json.error || "שגיאה בבדיקה" } }));
+    } catch {
+      setVerifyResults((prev) => ({ ...prev, [appId]: { error: "שגיאה בבדיקה" } }));
+    }
+    setVerifyingId(null);
+  }
 
   async function act(appId: string, action: string) {
     let note: string | null = null;
@@ -78,6 +99,9 @@ export default function ReviewQueue({
               <button onClick={() => download(app.id)} disabled={busyId === app.id} className="btn-ghost text-xs">
                 {busyId === app.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} הורדה לבדיקה
               </button>
+              <button onClick={() => verify(app.id)} disabled={verifyingId === app.id} className="btn-ghost text-xs">
+                {verifyingId === app.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldQuestion className="h-3.5 w-3.5" />} בדיקת פרסום בוודאות
+              </button>
               {app.status !== "approved" && (
                 <button onClick={() => act(app.id, "approve")} disabled={busyId === app.id} className="inline-flex items-center gap-1 rounded-xl bg-accent/15 px-3 py-2 text-xs font-bold text-accent transition hover:bg-accent/25">
                   <Check className="h-3.5 w-3.5" /> אישור פרסום
@@ -100,6 +124,25 @@ export default function ReviewQueue({
               )}
             </div>
           </div>
+
+          {verifyResults[app.id] && (
+            "error" in verifyResults[app.id] ? (
+              <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-400">
+                <XCircle className="h-4 w-4 shrink-0" /> {(verifyResults[app.id] as { error: string }).error}
+              </div>
+            ) : (verifyResults[app.id] as { status: string; visibleToPublic: boolean; updatedAt: string | null }).visibleToPublic ? (
+              <div className="flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/10 px-4 py-2.5 text-sm text-accent">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                כן, בוודאות - האפליקציה מוצגת כרגע בחנות לכל מבקר (נבדק ישירות מול מסד הנתונים, בלי שום cache).
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-400">
+                <XCircle className="h-4 w-4 shrink-0" />
+                לא, האפליקציה לא מוצגת בחנות כרגע (סטטוס במסד הנתונים: {(verifyResults[app.id] as { status: string }).status}
+                {(verifyResults[app.id] as { status: string }).status !== "approved" ? " - יש לאשר אותה כדי שתתפרסם" : ""}).
+              </div>
+            )
+          )}
         </div>
       ))}
     </div>
