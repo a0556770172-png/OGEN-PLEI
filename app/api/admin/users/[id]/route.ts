@@ -26,6 +26,16 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   const admin = createAdminSupabase();
 
+  // תיקון באג חמור: חבר צוות פיקוח הצליח לחסום את חשבון המנהל בפועל, מה שנועל אותו
+  // מחוץ לאתר. חשבון מנהל (role === "admin") מוגן לחלוטין מפעולות חסימה/הדחה של כל אחד -
+  // כולל מנהל אחר, אם יש כזה - בלי יוצא מן הכלל.
+  if (action === "ban") {
+    const { data: targetProfile } = await admin.from("profiles").select("role").eq("id", params.id).single();
+    if (targetProfile?.role === "admin") {
+      return NextResponse.json({ error: "לא ניתן לחסום חשבון מנהל בפועל" }, { status: 403 });
+    }
+  }
+
   const patch: Record<string, any> = {};
   switch (action) {
     // חסימה/הסרת חסימה - גם צוות פיקוח יכול לבצע, לא רק מנהל.
