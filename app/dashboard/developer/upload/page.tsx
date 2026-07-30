@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { UploadCloud, Loader2, AlertCircle, CheckCircle2, FileArchive, Image as ImageIcon, Sparkles } from "lucide-react";
+import { UploadCloud, Loader2, AlertCircle, CheckCircle2, FileArchive, Image as ImageIcon, Sparkles, ShieldAlert } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import { putToR2, extractIconFailureReason } from "@/lib/uploadHelpers";
 import type { Category } from "@/types/database";
@@ -23,6 +23,14 @@ export default function UploadAppPage() {
   const [error, setError] = useState("");
   const [status, setStatus] = useState<"idle" | "uploading" | "extracting-icon" | "needs-icon" | "done">("idle");
 
+  // לפני שהעלאה בפועל מתחילה, מציגים חלונית אישור עם הגרסה והקטגוריה שנבחרו - מטרתה
+  // רק לגרום למפתח לעצור רגע ולוודא שהוא לא בחר בטעות גרסה ישנה/לא נכונה, או קטגוריה
+  // לא מתאימה. זה לא בדיקה טכנית, רק תזכורת - הוא עדיין יכול לאשר ולהמשיך בכל מקרה.
+  const [showConfirm, setShowConfirm] = useState(false);
+  // אם המפתח מסמן שהאפליקציה עברה עריכה להמעטת פרסומות עבור נטפרי, מפרסמים אותה
+  // בקטגוריה הייעודית "מותאם נטפרי" במקום הקטגוריה הרגילה שנבחרה בטופס.
+  const [netfreeAdapted, setNetfreeAdapted] = useState(false);
+
   // אחרי שהאפליקציה כבר נשמרה בהצלחה (ונשלחה לבדיקה) אבל בלי אייקון - שומרים את המזהה שלה
   // כדי לאפשר להשלים אייקון בשלב נפרד, בלי לבנות מחדש את כל שאר הטופס.
   const [pendingAppId, setPendingAppId] = useState<string | null>(null);
@@ -41,11 +49,16 @@ export default function UploadAppPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
+  function openConfirm(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     if (!file) { setError("יש לבחור קובץ להעלאה"); return; }
+    setShowConfirm(true);
+  }
 
+  async function doUpload() {
+    if (!file) { setError("יש לבחור קובץ להעלאה"); return; }
+    setShowConfirm(false);
     setStatus("uploading");
     try {
       const initRes = await fetch("/api/apps/upload-init", {
@@ -104,7 +117,7 @@ export default function UploadAppPage() {
           shortDescription,
           descriptionHtml,
           version,
-          category,
+          category: netfreeAdapted ? "netfree" : category,
           fileKey: initJson.fileKey,
           fileName: file.name,
           fileSize: file.size,
@@ -222,7 +235,7 @@ export default function UploadAppPage() {
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={openConfirm} className="flex flex-col gap-4">
             <div>
               <label className="mb-1.5 block text-sm text-gray-400">שם האפליקציה / התוכנה</label>
               <input required value={name} onChange={(e) => setName(e.target.value)} className="input-field" placeholder="שם האפליקציה או התוכנה" />
@@ -264,6 +277,73 @@ export default function UploadAppPage() {
           </form>
         )}
       </motion.div>
+
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md rounded-2xl border border-white/10 bg-surface p-6"
+          >
+            <div className="mb-4 flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-gold" />
+              <h2 className="text-lg font-bold text-white">רגע לפני שליחה - תבדקו שוב</h2>
+            </div>
+            <p className="mb-4 text-sm text-gray-400">
+              נא לוודא שהפרטים האלה נכונים - במיוחד מספר הגרסה והקטגוריה, כדי שלא תעלה בטעות גרסה ישנה או קטגוריה
+              לא מתאימה.
+            </p>
+            <div className="mb-5 flex flex-col gap-2 rounded-xl border border-white/10 bg-surface2 p-4 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">שם</span>
+                <span className="font-bold text-white">{name || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">גרסה</span>
+                <span className="font-bold text-white">{version || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">קטגוריה</span>
+                <span className="font-bold text-white">
+                  {netfreeAdapted ? "מותאם נטפרי" : categories.find((c) => c.value === category)?.label ?? category}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">קובץ</span>
+                <span className="max-w-[60%] truncate font-bold text-white">{file?.name}</span>
+              </div>
+            </div>
+
+            <label className="mb-5 flex cursor-pointer items-start gap-2.5 rounded-xl border border-white/10 bg-surface2 p-4 text-sm">
+              <input
+                type="checkbox"
+                checked={netfreeAdapted}
+                onChange={(e) => setNetfreeAdapted(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+              />
+              <span className="text-gray-300">
+                האם האפליקציה עברה עריכה להמעטת פרסומות, כך שתתאים לגלישה מסוננת בנטפרי?
+                <span className="mt-1 block text-xs text-gray-500">
+                  אם מסמנים כן - האפליקציה תפורסם (אחרי אישור הצוות) בקטגוריה הייעודית "מותאם נטפרי" במקום הקטגוריה
+                  שנבחרה למעלה.
+                </span>
+              </span>
+            </label>
+
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button onClick={doUpload} className="btn-primary flex-1">
+                <CheckCircle2 className="h-4 w-4" /> כן, הכל נכון - שליחה
+              </button>
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-gray-400 hover:text-white"
+              >
+                לא, אני רוצה לתקן
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
