@@ -39,11 +39,31 @@ export async function POST(request: Request, { params }: { params: { appId: stri
     }
   }
 
+  // הגבלת 15 הורדות ביום למשתמש (על כל האפליקציות יחד) - מונע זיוף נקודות ע"י הורדות
+  // חוזרות ונשנות. צוות ובעלי אפליקציה על האפליקציה שלהם לא מוגבלים - הם לא מקבלים
+  // נקודות מהורדה כזו ממילא (רק מהורדה של משתמשים אחרים).
+  const DAILY_DOWNLOAD_LIMIT = 15;
+  if (!isOwnerOrStaff) {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count: recentDownloads } = await admin
+      .from("download_events")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("created_at", since);
+    if ((recentDownloads ?? 0) >= DAILY_DOWNLOAD_LIMIT) {
+      return NextResponse.json(
+        { error: `הגעת למכסת ${DAILY_DOWNLOAD_LIMIT} ההורדות היומית. נסו שוב מחר.` },
+        { status: 429 }
+      );
+    }
+  }
+
   const url = await createDownloadUrl(BUCKETS.apps, app.file_key, app.file_name);
 
   await admin.from("apps").update({ downloads_count: app.downloads_count + 1 }).eq("id", app.id);
+  await admin.from("download_events").insert({ user_id: user.id, app_id: app.id });
 
-  if (app.status === "approved") {
+  if (app.status === "approved" && !isOwnerOrStaff) {
     const POINTS_PER_DOWNLOAD = 2;
     await admin.from("points_log").insert({
       profile_id: app.developer_id,

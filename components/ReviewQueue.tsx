@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Check, X, Archive, Trash2, Loader2, User, HardDrive, ShieldQuestion, CheckCircle2, XCircle } from "lucide-react";
+import { Download, Check, X, Archive, Trash2, Loader2, User, HardDrive, ShieldQuestion, CheckCircle2, XCircle, ImageOff, MessageSquarePlus } from "lucide-react";
 import type { AppRow } from "@/types/database";
 import StatusBadge from "./StatusBadge";
 import { formatFileSize } from "@/lib/format";
@@ -74,6 +74,20 @@ export default function ReviewQueue({
     else alert("שגיאה במחיקה");
   }
 
+  async function sendNote(appId: string) {
+    const note = window.prompt("הודעה למפתח (למשל: \"נא להוסיף אייקון לאפליקציה\"):");
+    if (!note || !note.trim()) return;
+    setBusyId(appId);
+    const res = await fetch(`/api/apps/${appId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ adminNote: note.trim() })
+    });
+    setBusyId(null);
+    if (res.ok) router.refresh();
+    else alert("שגיאה בשליחת ההודעה");
+  }
+
   if (apps.length === 0) {
     return <div className="card p-10 text-center text-gray-500">{emptyMessage ?? "אין אפליקציות הממתינות לבדיקה כרגע 🎉"}</div>;
   }
@@ -84,11 +98,19 @@ export default function ReviewQueue({
         <div key={app.id} className="card flex flex-col gap-3 p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <div className="mb-1 flex items-center gap-2">
+              <div className="mb-1 flex flex-wrap items-center gap-2">
                 <h3 className="font-bold text-white">{app.name}</h3>
                 <StatusBadge status={app.status} />
+                {!app.icon_key && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-bold text-gold">
+                    <ImageOff className="h-3 w-3" /> אין אייקון
+                  </span>
+                )}
               </div>
               <p className="text-sm text-gray-400">{app.short_description}</p>
+              {app.admin_note && (
+                <p className="mt-1.5 text-xs text-gold">הערת צוות למפתח: {app.admin_note}</p>
+              )}
               <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
                 <span className="inline-flex items-center gap-1"><User className="h-3.5 w-3.5" /> {app.developer?.username}</span>
                 <span className="inline-flex items-center gap-1"><HardDrive className="h-3.5 w-3.5" /> {formatFileSize(app.file_size_bytes)}</span>
@@ -101,6 +123,9 @@ export default function ReviewQueue({
               </button>
               <button onClick={() => verify(app.id)} disabled={verifyingId === app.id} className="btn-ghost text-xs">
                 {verifyingId === app.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldQuestion className="h-3.5 w-3.5" />} בדיקת פרסום בוודאות
+              </button>
+              <button onClick={() => sendNote(app.id)} disabled={busyId === app.id} className="btn-ghost text-xs">
+                <MessageSquarePlus className="h-3.5 w-3.5" /> הודעה למפתח
               </button>
               {app.status !== "approved" && (
                 <button onClick={() => act(app.id, "approve")} disabled={busyId === app.id} className="inline-flex items-center gap-1 rounded-xl bg-accent/15 px-3 py-2 text-xs font-bold text-accent transition hover:bg-accent/25">

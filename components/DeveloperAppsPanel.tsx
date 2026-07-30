@@ -108,6 +108,17 @@ export default function DeveloperAppsPanel({
   proAdminMessage?: string | null;
   maxApps: number;
 }) {
+  const router = useRouter();
+
+  async function dismissAdminNote(appId: string) {
+    const res = await fetch(`/api/apps/${appId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ adminNote: null })
+    });
+    if (res.ok) router.refresh();
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -158,6 +169,14 @@ export default function DeveloperAppsPanel({
                   <p className="truncate text-sm text-gray-500">{app.short_description}</p>
                   {app.status === "rejected" && app.review_note && (
                     <p className="mt-1 text-xs text-red-400">סיבת דחייה: {app.review_note}</p>
+                  )}
+                  {app.admin_note && (
+                    <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-gold/30 bg-gold/10 px-2.5 py-1.5 text-xs text-gold">
+                      <span className="flex-1">הודעה מהצוות: {app.admin_note}</span>
+                      <button onClick={() => dismissAdminNote(app.id)} className="shrink-0 font-bold underline hover:text-white">
+                        טופל, הסתר
+                      </button>
+                    </div>
                   )}
                   <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
                     <span>{app.downloads_count.toLocaleString("he-IL")} הורדות</span>

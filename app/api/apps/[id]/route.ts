@@ -21,7 +21,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 
   const body = await request.json().catch(() => ({}));
-  const { name, shortDescription, descriptionHtml, category, iconFileName, iconContentType } = body;
+  const { name, shortDescription, descriptionHtml, category, iconFileName, iconContentType, adminNote } = body;
 
   const updates: Record<string, any> = {};
   if (typeof name === "string" && name.trim()) updates.name = name.trim();
@@ -30,6 +30,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (typeof category === "string") {
     const { count } = await admin.from("categories").select("id", { count: "exact", head: true }).eq("value", category);
     if ((count ?? 0) > 0) updates.category = category;
+  }
+  // הערת צוות למפתח (למשל "חסר אייקון, נא להוסיף") - רק צוות יכול לקבוע הערה חדשה;
+  // הבעלים של האפליקציה יכול רק לנקות אותה (adminNote === null) אחרי שטיפל בעניין.
+  if (typeof adminNote === "string" && isStaff(profile)) {
+    updates.admin_note = adminNote.trim() || null;
+    updates.admin_note_at = new Date().toISOString();
+  } else if (adminNote === null) {
+    updates.admin_note = null;
   }
 
   let iconUploadUrl: string | undefined;

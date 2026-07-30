@@ -8,9 +8,12 @@ export async function POST(request: Request) {
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
   const { user } = result;
 
-  const { appName, note, fileKey, fileName, fileSize } = await request.json().catch(() => ({}));
+  const { appName, version, note, fileKey, fileName, fileSize } = await request.json().catch(() => ({}));
   if (!appName?.trim()) {
     return NextResponse.json({ error: "חובה למלא את שם האפליקציה/התוכנה" }, { status: 400 });
+  }
+  if (!version?.trim()) {
+    return NextResponse.json({ error: "חובה למלא את מספר הגרסה" }, { status: 400 });
   }
   if (!fileKey || !fileName || !fileSize) {
     return NextResponse.json({ error: "חובה להעלות את קובץ ההתקנה של האפליקציה/התוכנה" }, { status: 400 });
@@ -20,6 +23,7 @@ export async function POST(request: Request) {
   const { error } = await admin.from("app_suggestions").insert({
     suggested_by: user.id,
     app_name: appName.trim(),
+    version: version.trim(),
     note: note?.trim() || null,
     file_key: fileKey,
     file_name: fileName,

@@ -120,8 +120,11 @@ export default function TicketsPanel() {
               {messages.map((m) => (
                 <div
                   key={m.id}
+                  // בסגנון וואטסאפ: ההודעות שאני (הצוות) שולח מופיעות אצלי בצד ימין, וההודעות
+                  // הנכנסות מהמשתמש מופיעות בצד שמאל. "self-end"/"self-start" הם לוגיים לפי
+                  // כיוון הטקסט (RTL כאן) - self-start = ימין, self-end = שמאל.
                   className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
-                    m.sender_role === "staff" ? "self-end bg-primary/20 text-white" : "self-start bg-surface2 text-gray-200"
+                    m.sender_role === "staff" ? "self-start bg-primary/20 text-white" : "self-end bg-surface2 text-gray-200"
                   }`}
                 >
                   <p className="mb-1 text-xs font-bold text-gray-400">{m.sender_role === "staff" ? "צוות" : selected.user?.username ?? "משתמש"}</p>

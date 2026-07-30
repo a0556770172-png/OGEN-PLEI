@@ -74,7 +74,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         name: suggestion.app_name,
         short_description: (suggestion.note?.trim() || suggestion.app_name).slice(0, 140),
         description_html: suggestion.note ? `<p>${suggestion.note}</p>` : "",
-        version: "1.0.0",
+        version: suggestion.version?.trim() || "1.0.0",
         category: "general",
         icon_key: iconKey,
         file_key: suggestion.file_key,

@@ -39,6 +39,8 @@ export interface AppRow {
   downloads_count: number;
   download_paused: boolean;
   download_paused_until: string | null;
+  admin_note: string | null;
+  admin_note_at: string | null;
   created_at: string;
   updated_at: string;
   developer?: Profile;
@@ -85,6 +87,7 @@ export interface AppSuggestion {
   suggested_by: string;
   app_name: string;
   app_link: string | null;
+  version: string | null;
   note: string | null;
   file_key: string | null;
   file_name: string | null;

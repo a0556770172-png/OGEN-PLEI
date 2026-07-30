@@ -15,6 +15,7 @@ const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
 export default function SuggestAppPage() {
   const supabase = createClient();
   const [appName, setAppName] = useState("");
+  const [version, setVersion] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -56,6 +57,7 @@ export default function SuggestAppPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           appName,
+          version,
           note,
           fileKey: initJson.fileKey,
           fileName: file.name,
@@ -66,6 +68,7 @@ export default function SuggestAppPage() {
       if (!res.ok) throw new Error(json?.error || "שגיאה בשליחת ההצעה - ודאו שאתם מחוברים לחשבון");
 
       setAppName("");
+      setVersion("");
       setFile(null);
       setNote("");
       setSuccess(true);
@@ -102,9 +105,15 @@ export default function SuggestAppPage() {
           </div>
         )}
 
-        <div>
-          <label className="mb-1.5 block text-sm text-gray-400">שם האפליקציה / התוכנה</label>
-          <input required value={appName} onChange={(e) => setAppName(e.target.value)} className="input-field" placeholder="למשל: Waze" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-400">שם האפליקציה / התוכנה</label>
+            <input required value={appName} onChange={(e) => setAppName(e.target.value)} className="input-field" placeholder="למשל: Waze" />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-400">מספר גרסה</label>
+            <input required value={version} onChange={(e) => setVersion(e.target.value)} className="input-field" placeholder="למשל: 5.2.1" />
+          </div>
         </div>
         <div>
           <label className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-400"><FileArchive className="h-4 w-4" /> קובץ ההתקנה (APK לאפליקציה, או קובץ ההתקנה של התוכנה)</label>

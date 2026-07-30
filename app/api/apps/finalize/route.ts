@@ -20,6 +20,9 @@ export async function POST(request: Request) {
   if (!name || !fileKey || !fileName || !fileSize) {
     return NextResponse.json({ error: "חסרים שדות חובה" }, { status: 400 });
   }
+  if (!version || !String(version).trim()) {
+    return NextResponse.json({ error: "חובה למלא את מספר הגרסה" }, { status: 400 });
+  }
 
   const plan = profile.is_pro ? LIMITS.pro : LIMITS.free;
   const maxBytes = plan.maxFileMb * 1024 * 1024;

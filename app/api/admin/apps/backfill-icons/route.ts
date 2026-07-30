@@ -22,9 +22,10 @@ export async function POST() {
   }
 
   const admin = createAdminSupabase();
+  const startedAt = Date.now();
   const { data: candidates } = await admin
     .from("apps")
-    .select("id, developer_id, file_key")
+    .select("id, name, developer_id, file_key")
     .is("icon_key", null)
     .neq("status", "archived")
     // "%.apk" לא תופס קבצי ".apks" (חבילת APK מרובת-קבצים שנפוצה בהצעות שהורדו מ-APKPure) -
@@ -34,9 +35,10 @@ export async function POST() {
     .limit(BATCH_SIZE);
 
   const list = candidates ?? [];
-  const results: { id: string; ok: boolean; reason?: string; detail?: string }[] = [];
+  const results: { id: string; name: string; ok: boolean; reason?: string; detail?: string; ms: number }[] = [];
 
   for (const app of list) {
+    const appStartedAt = Date.now();
     try {
       const iconResult = await extractApkIcon(app.file_key, app.developer_id);
       // חשוב: הבדיקה חייבת להיות "!== null" ולא בדיקת אמת רגילה (if (iconResult.iconKey)) -
@@ -45,12 +47,26 @@ export async function POST() {
       // שהפילה את כל הבנייה ב-Vercel בלי שום שגיאה גלויה מלבד "Command npm run build exited with 1".
       if (iconResult.iconKey !== null) {
         await admin.from("apps").update({ icon_key: iconResult.iconKey }).eq("id", app.id);
-        results.push({ id: app.id, ok: true });
+        results.push({ id: app.id, name: app.name, ok: true, ms: Date.now() - appStartedAt });
       } else {
-        results.push({ id: app.id, ok: false, reason: iconResult.reason, detail: iconResult.detail });
+        results.push({
+          id: app.id,
+          name: app.name,
+          ok: false,
+          reason: iconResult.reason,
+          detail: iconResult.detail,
+          ms: Date.now() - appStartedAt
+        });
       }
     } catch (err: any) {
-      results.push({ id: app.id, ok: false, reason: "exception", detail: String(err?.message || err) });
+      results.push({
+        id: app.id,
+        name: app.name,
+        ok: false,
+        reason: "exception",
+        detail: String(err?.message || err),
+        ms: Date.now() - appStartedAt
+      });
     }
   }
 
@@ -72,6 +88,8 @@ export async function POST() {
     processed: results.length,
     succeeded: results.filter((r) => r.ok).length,
     failed: results.filter((r) => !r.ok),
-    remaining: remaining ?? 0
+    results,
+    remaining: remaining ?? 0,
+    batchMs: Date.now() - startedAt
   });
 }
