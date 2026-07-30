@@ -50,7 +50,7 @@ export async function getPublicUsersList(): Promise<PublicUserSummary[]> {
       role: p.role,
       is_moderator: p.is_moderator,
       is_pro: p.is_pro,
-      avatarUrl: await getAvatarUrl(p.avatar_key),
+      avatarUrl: await getAvatarUrl(p.avatar_key, p.role),
       appsCount: appsCountByDev.get(p.id) ?? 0,
       createdAt: p.created_at,
       lastSeenAt: p.last_seen_at

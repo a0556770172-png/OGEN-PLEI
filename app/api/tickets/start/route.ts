@@ -24,9 +24,10 @@ export async function POST(request: Request) {
   const { data: targetProfile } = await admin.from("profiles").select("id").eq("id", targetUserId).single();
   if (!targetProfile) return NextResponse.json({ error: "המשתמש לא נמצא" }, { status: 404 });
 
+  // השיחה משוייכת מיד למי שיזם אותה - חברי צוות אחרים (חוץ מהמנהל) לא יראו אותה.
   const { data: ticket, error } = await admin
     .from("tickets")
-    .insert({ user_id: targetUserId, subject: subject.trim(), started_by_staff: true })
+    .insert({ user_id: targetUserId, subject: subject.trim(), started_by_staff: true, assigned_staff_id: user.id })
     .select()
     .single();
   if (error || !ticket) {

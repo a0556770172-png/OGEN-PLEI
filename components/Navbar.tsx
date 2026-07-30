@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Anchor, LayoutDashboard, LogOut, Menu, X, ShieldCheck, User } from "lucide-react";
+import { LayoutDashboard, LogOut, Menu, X, ShieldCheck, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/database";
 
@@ -34,7 +34,8 @@ export default function Navbar() {
           .then((json) => { if (active) setAvatarUrl(json.url ?? null); })
           .catch(() => {});
       } else if (active) {
-        setAvatarUrl(null);
+        // למנהל בפועל בלי תמונת פרופיל משלו - לוגו האתר משמש כברירת מחדל.
+        setAvatarUrl((data as Profile)?.role === "admin" ? "/logo-512.png" : null);
       }
     }
     load();
@@ -59,10 +60,11 @@ export default function Navbar() {
       <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-center px-4 py-3 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 group justify-self-start">
           <motion.div
-            whileHover={{ rotate: -12, scale: 1.08 }}
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-glow"
+            whileHover={{ rotate: -8, scale: 1.08 }}
+            className="flex h-9 w-9 items-center justify-center rounded-xl shadow-glow"
           >
-            <Anchor className="h-5 w-5 text-white" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="עוגן פליי" className="h-9 w-9" />
           </motion.div>
           <span className="text-lg font-black tracking-tight">
             עוגן <span className="text-gradient">פליי</span>

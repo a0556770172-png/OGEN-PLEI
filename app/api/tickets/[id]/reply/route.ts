@@ -21,6 +21,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (!staff && ticket.user_id !== user.id) {
     return NextResponse.json({ error: "אין הרשאה לפנייה זו" }, { status: 403 });
   }
+  // פרטיות בין חברי צוות: שיחה ששוייכה לחבר צוות אחר (לא מנהל) אינה נגישה לצוות פיקוח אחר.
+  if (staff && profile.role !== "admin" && ticket.assigned_staff_id && ticket.assigned_staff_id !== user.id) {
+    return NextResponse.json({ error: "שיחה זו משוייכת לחבר צוות אחר" }, { status: 403 });
+  }
 
   // צירוף קבצים למשתמשים אסור לגמרי; לצוות מותר רק למנהל בפועל או למי שקיבל הרשאה מפורשת.
   if (attachmentKey) {
@@ -46,10 +50,12 @@ export async function POST(request: Request, { params }: { params: { id: string 
   }
 
   // תגובת משתמש פותחת מחדש פנייה סגורה. תגובת צוות לא סוגרת אוטומטית - יש כפתור נפרד לסגירה.
+  // תגובת צוות ראשונה "משייכת" את השיחה אליו - מאותו רגע חברי צוות אחרים (חוץ מהמנהל) לא רואים אותה.
   await admin
     .from("tickets")
     .update({
       status: !staff && ticket.status === "closed" ? "open" : ticket.status,
+      assigned_staff_id: staff && !ticket.assigned_staff_id ? user.id : ticket.assigned_staff_id,
       updated_at: new Date().toISOString()
     })
     .eq("id", ticket.id);

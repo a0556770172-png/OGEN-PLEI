@@ -29,8 +29,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
   }
 
   const admin = createAdminSupabase();
-  const { data: ticket } = await admin.from("tickets").select("id").eq("id", params.id).single();
+  const { data: ticket } = await admin.from("tickets").select("id, assigned_staff_id").eq("id", params.id).single();
   if (!ticket) return NextResponse.json({ error: "הפנייה לא נמצאה" }, { status: 404 });
+  if (profile.role !== "admin" && ticket.assigned_staff_id && ticket.assigned_staff_id !== profile.id) {
+    return NextResponse.json({ error: "שיחה זו משוייכת לחבר צוות אחר" }, { status: 403 });
+  }
 
   const { fileName, fileSize, contentType } = await request.json().catch(() => ({}));
   if (!fileName || !fileSize || !contentType) {

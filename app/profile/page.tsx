@@ -3,6 +3,8 @@ import { getCurrentProfile } from "@/lib/profile";
 import { getAvatarUrl } from "@/lib/avatar";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { LIMITS } from "@/lib/constants";
+import Link from "next/link";
+import { Rocket } from "lucide-react";
 import AvatarUploadForm from "@/components/AvatarUploadForm";
 import DeveloperAppsPanel from "@/components/DeveloperAppsPanel";
 import type { AppRow } from "@/types/database";
@@ -13,7 +15,7 @@ export default async function ProfilePage() {
   const { user, profile } = await getCurrentProfile();
   if (!user || !profile) redirect("/login");
 
-  const avatarUrl = await getAvatarUrl(profile.avatar_key);
+  const avatarUrl = await getAvatarUrl(profile.avatar_key, profile.role);
 
   // מנהל יכול גם הוא לפעול כמפתח (להעלות אפליקציות בעצמו), בדיוק כמו מפתח רגיל
   const isDeveloper = profile.role === "developer" || profile.role === "admin";
@@ -50,6 +52,19 @@ export default async function ProfilePage() {
       <div className="card mx-auto w-full max-w-xl p-8">
         <AvatarUploadForm currentAvatarUrl={avatarUrl} username={profile.username} />
       </div>
+
+      {profile.role === "user" && (
+        <div className="card mx-auto flex w-full max-w-xl flex-col items-center gap-3 p-6 text-center">
+          <Rocket className="h-8 w-8 text-primary-light" />
+          <div>
+            <p className="font-bold text-white">רוצה לפרסם אפליקציות ותוכנות משלך?</p>
+            <p className="text-sm text-gray-400">אפשר לשדרג את החשבון שלך למפתח בכמה שניות, ישירות מכאן.</p>
+          </div>
+          <Link href="/profile/become-developer" className="btn-primary">
+            <Rocket className="h-4 w-4" /> הרשמה כמפתח
+          </Link>
+        </div>
+      )}
 
       {isDeveloper && (
         <DeveloperAppsPanel

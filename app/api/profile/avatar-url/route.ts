@@ -9,6 +9,6 @@ export async function GET() {
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
   const { profile } = result;
 
-  const url = await getAvatarUrl(profile.avatar_key);
+  const url = await getAvatarUrl(profile.avatar_key, profile.role);
   return NextResponse.json({ url });
 }

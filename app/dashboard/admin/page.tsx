@@ -7,7 +7,8 @@ import {
   getPendingProRequests,
   getPendingSuggestionsCount,
   getTicketsNeedingReplyCount,
-  getPendingDeletionRequests
+  getPendingDeletionRequests,
+  getOpenAutoApprovedCouncilCount
 } from "@/lib/admin-data";
 import { getSiteSettingsServer } from "@/lib/settings";
 import AdminDashboardClient from "@/components/AdminDashboardClient";
@@ -19,7 +20,7 @@ export default async function AdminDashboard() {
   if (!user || !profile) redirect("/login");
   if (profile.role !== "admin") redirect("/");
 
-  const [apps, allApps, profiles, proRequests, suggestionsPendingCount, ticketsNeedingReplyCount, deletionRequests, siteSettings] =
+  const [apps, allApps, profiles, proRequests, suggestionsPendingCount, ticketsNeedingReplyCount, deletionRequests, councilAutoApprovedCount, siteSettings] =
     await Promise.all([
       getReviewQueueApps(),
       getAllAppsForAdmin(),
@@ -28,6 +29,7 @@ export default async function AdminDashboard() {
       getPendingSuggestionsCount(),
       getTicketsNeedingReplyCount(),
       getPendingDeletionRequests(),
+      getOpenAutoApprovedCouncilCount(),
       getSiteSettingsServer()
     ]);
 
@@ -45,6 +47,7 @@ export default async function AdminDashboard() {
         suggestionsPendingCount={suggestionsPendingCount}
         ticketsNeedingReplyCount={ticketsNeedingReplyCount}
         deletionRequests={deletionRequests}
+        councilAutoApprovedCount={councilAutoApprovedCount}
         requireEmailVerification={siteSettings.require_email_verification}
         currentProfile={profile}
       />

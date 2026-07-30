@@ -1,24 +1,28 @@
 "use client";
 import { useState } from "react";
-import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users } from "lucide-react";
+import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import TicketsPanel from "./TicketsPanel";
 import SuggestionsQueue from "./SuggestionsQueue";
 import NotificationsPanel from "./NotificationsPanel";
 import CategoriesManager from "./CategoriesManager";
 import UserManagementTable from "./UserManagementTable";
+import IconBackfillPanel from "./IconBackfillPanel";
+import CouncilPanel from "./CouncilPanel";
 import type { AppRow, Profile } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "tickets" | "suggestions" | "categories" | "users";
+type TabKey = "notifications" | "review" | "allApps" | "tickets" | "suggestions" | "categories" | "users" | "council";
 
 export default function ModeratorDashboardClient({
   apps,
+  allApps,
   suggestionsPendingCount,
   ticketsNeedingReplyCount,
   profiles,
   currentProfile
 }: {
   apps: AppRow[];
+  allApps: AppRow[];
   suggestionsPendingCount: number;
   ticketsNeedingReplyCount: number;
   profiles: Profile[];
@@ -31,10 +35,12 @@ export default function ModeratorDashboardClient({
   const tabs = [
     { key: "notifications", label: `התראות${notificationCount ? ` (${notificationCount})` : ""}`, icon: BellRing },
     { key: "review", label: `בדיקת פרסום (${apps.length})`, icon: ClipboardList },
+    { key: "allApps", label: `כל האפליקציות (${allApps.length})`, icon: LayoutGrid },
     { key: "suggestions", label: "הצעות אפליקציות", icon: Gift },
     { key: "tickets", label: "הודעות", icon: MessageCircle },
     { key: "categories", label: "קטגוריות", icon: Tag },
-    { key: "users", label: "ניהול משתמשים", icon: Users }
+    { key: "users", label: "ניהול משתמשים", icon: Users },
+    { key: "council", label: "ועדה", icon: Siren }
   ] as const;
 
   const notificationItems = [
@@ -62,10 +68,18 @@ export default function ModeratorDashboardClient({
       {tab === "notifications" && <NotificationsPanel items={notificationItems} onNavigate={(key) => setTab(key as TabKey)} />}
       {/* צוות פיקוח יכול גם למחוק אפליקציות, לא רק לאשר/לדחות */}
       {tab === "review" && <ReviewQueue apps={apps} canDelete={true} />}
+      {tab === "allApps" && (
+        <div className="flex flex-col gap-4">
+          <IconBackfillPanel />
+          {/* גם כפילויות של אפליקציות שכבר אושרו - לפי שיקול דעת הצוות */}
+          <ReviewQueue apps={allApps} canDelete={true} emptyMessage="אין אפליקציות באתר עדיין." />
+        </div>
+      )}
       {tab === "suggestions" && <SuggestionsQueue />}
       {tab === "tickets" && <TicketsPanel currentProfile={currentProfile} profiles={profiles} />}
       {tab === "categories" && <CategoriesManager />}
       {tab === "users" && <UserManagementTable profiles={profiles} />}
+      {tab === "council" && <CouncilPanel currentProfile={currentProfile} />}
     </div>
   );
 }

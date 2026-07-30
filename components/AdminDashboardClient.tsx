@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert } from "lucide-react";
+import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import UserManagementTable from "./UserManagementTable";
 import ProRequestsQueue from "./ProRequestsQueue";
@@ -11,9 +11,10 @@ import NotificationsPanel from "./NotificationsPanel";
 import SiteSettingsPanel from "./SiteSettingsPanel";
 import IconBackfillPanel from "./IconBackfillPanel";
 import DeletionRequestsPanel from "./DeletionRequestsPanel";
+import CouncilPanel from "./CouncilPanel";
 import type { AppRow, Profile, ProRequest, UserDeletionRequest } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "settings";
+type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "settings";
 
 export default function AdminDashboardClient({
   apps,
@@ -23,6 +24,7 @@ export default function AdminDashboardClient({
   suggestionsPendingCount,
   ticketsNeedingReplyCount,
   deletionRequests,
+  councilAutoApprovedCount,
   requireEmailVerification,
   currentProfile
 }: {
@@ -33,13 +35,14 @@ export default function AdminDashboardClient({
   suggestionsPendingCount: number;
   ticketsNeedingReplyCount: number;
   deletionRequests: UserDeletionRequest[];
+  councilAutoApprovedCount: number;
   requireEmailVerification: boolean;
   currentProfile: Profile;
 }) {
   const [tab, setTab] = useState<TabKey>("notifications");
 
   const notificationCount =
-    apps.length + proRequests.length + suggestionsPendingCount + ticketsNeedingReplyCount + deletionRequests.length;
+    apps.length + proRequests.length + suggestionsPendingCount + ticketsNeedingReplyCount + deletionRequests.length + councilAutoApprovedCount;
 
   const tabs = [
     { key: "notifications", label: `התראות${notificationCount ? ` (${notificationCount})` : ""}`, icon: BellRing },
@@ -51,6 +54,7 @@ export default function AdminDashboardClient({
     { key: "categories", label: "קטגוריות", icon: Tag },
     { key: "users", label: "ניהול משתמשים", icon: Users },
     { key: "deletionRequests", label: `בקשות מחיקת משתמשים (${deletionRequests.length})`, icon: ShieldAlert },
+    { key: "council", label: "ועדה", icon: Siren },
     { key: "settings", label: "הגדרות", icon: Settings }
   ] as const;
 
@@ -59,7 +63,8 @@ export default function AdminDashboardClient({
     { key: "pro", label: "בקשות PRO ממתינות", description: "מפתחים שביקשו שדרוג לחשבון PRO", count: proRequests.length, icon: Crown },
     { key: "suggestions", label: "הצעות אפליקציות ממתינות", description: "משתמשים שהציעו אפליקציה להוספה למאגר", count: suggestionsPendingCount, icon: Gift },
     { key: "tickets", label: "הודעות ממתינות למענה", description: "הודעות שמשתמשים כתבו ועדיין לא קיבלו תגובה", count: ticketsNeedingReplyCount, icon: MessageCircle },
-    { key: "deletionRequests", label: "בקשות מחיקת משתמשים מצוות פיקוח", description: "בקשות מחיקה שהגיש צוות הפיקוח וממתינות לאישורך", count: deletionRequests.length, icon: ShieldAlert }
+    { key: "deletionRequests", label: "בקשות מחיקת משתמשים מצוות פיקוח", description: "בקשות מחיקה שהגיש צוות הפיקוח וממתינות לאישורך", count: deletionRequests.length, icon: ShieldAlert },
+    { key: "council", label: "ועדות שנפתחו אוטומטית ע\"י הצוות", description: "שני חברי צוות ביקשו לפתוח ועדה תוך 24 שעות - דורש תשומת לבך", count: councilAutoApprovedCount, icon: Siren }
   ];
 
   return (
@@ -92,6 +97,7 @@ export default function AdminDashboardClient({
       {tab === "categories" && <CategoriesManager />}
       {tab === "users" && <UserManagementTable profiles={profiles} isAdmin={true} />}
       {tab === "deletionRequests" && <DeletionRequestsPanel requests={deletionRequests} />}
+      {tab === "council" && <CouncilPanel currentProfile={currentProfile} />}
       {tab === "settings" && <SiteSettingsPanel requireEmailVerification={requireEmailVerification} />}
     </div>
   );

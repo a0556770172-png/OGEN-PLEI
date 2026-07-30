@@ -1,9 +1,9 @@
 "use client";
 import { motion } from "framer-motion";
-import { Sparkles, ShieldCheck, Rocket, Gift } from "lucide-react";
+import { Sparkles, ShieldCheck, Rocket, Gift, Download } from "lucide-react";
 import Link from "next/link";
 
-export default function HomeHero({ total }: { total: number }) {
+export default function HomeHero({ total, totalDownloads }: { total: number; totalDownloads: number }) {
   return (
     <section className="relative overflow-hidden rounded-3xl border border-border bg-surface/60 px-6 py-16 text-center sm:px-12">
       <motion.div
@@ -21,6 +21,18 @@ export default function HomeHero({ total }: { total: number }) {
         <p className="max-w-xl text-lg text-gray-400">
           כל אפליקציה ותוכנה עוברת בדיקה ידנית ומוקפדת לפני פרסום. הורידו בביטחון, פרסמו בקלות.
         </p>
+        {totalDownloads > 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="inline-flex items-center gap-2.5 rounded-2xl border border-accent/30 bg-gradient-to-l from-accent/15 to-primary/15 px-5 py-3 shadow-glow"
+          >
+            <Download className="h-5 w-5 text-accent" />
+            <span className="text-lg font-black text-white">{totalDownloads.toLocaleString("he-IL")}</span>
+            <span className="text-sm font-bold text-gray-300">הורדות של משתמשים באתר</span>
+          </motion.div>
+        )}
         <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
           <Link href="/signup/developer" className="btn-primary">
             <Rocket className="h-4 w-4" /> הרשמה כמפתח

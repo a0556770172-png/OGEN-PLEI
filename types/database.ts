@@ -83,6 +83,7 @@ export interface Ticket {
   subject: string;
   status: TicketStatus;
   started_by_staff: boolean;
+  assigned_staff_id: string | null;
   created_at: string;
   updated_at: string;
   user?: Profile;
@@ -120,6 +121,28 @@ export interface AppSuggestion {
   created_app_id: string | null;
   created_at: string;
   suggester?: Profile;
+}
+
+export type CouncilThreadStatus = "open" | "closed";
+
+export interface CouncilThread {
+  id: string;
+  title: string;
+  status: CouncilThreadStatus;
+  opened_by: string;
+  auto_approved: boolean;
+  created_at: string;
+  updated_at: string;
+  opener?: Profile;
+}
+
+export interface CouncilMessage {
+  id: string;
+  thread_id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+  sender?: Profile;
 }
 
 export interface Category {

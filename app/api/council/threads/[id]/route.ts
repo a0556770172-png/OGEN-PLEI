@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 
-// סגירה/פתיחה מחדש של פנייה - צוות (מנהל/פיקוח) בלבד
+// סגירה/פתיחה מחדש של דיון ועדה - כל חבר צוות יכול (זה ערוץ משותף, לא פרטי כמו הודעות רגילות).
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const result = await requireProfile();
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
@@ -18,16 +18,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 
   const admin = createAdminSupabase();
-
-  // פרטיות בין חברי צוות: אי אפשר לגעת בשיחה ששוייכה לחבר צוות אחר (מלבד המנהל).
-  if (profile.role !== "admin") {
-    const { data: ticket } = await admin.from("tickets").select("assigned_staff_id").eq("id", params.id).single();
-    if (ticket?.assigned_staff_id && ticket.assigned_staff_id !== profile.id) {
-      return NextResponse.json({ error: "שיחה זו משוייכת לחבר צוות אחר" }, { status: 403 });
-    }
-  }
-
-  await admin.from("tickets").update({ status, updated_at: new Date().toISOString() }).eq("id", params.id);
+  await admin.from("council_threads").update({ status, updated_at: new Date().toISOString() }).eq("id", params.id);
 
   return NextResponse.json({ ok: true });
 }

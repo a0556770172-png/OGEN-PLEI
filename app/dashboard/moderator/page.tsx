@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/profile";
-import { getReviewQueueApps, getPendingSuggestionsCount, getTicketsNeedingReplyCount, getAllProfiles } from "@/lib/admin-data";
+import { getReviewQueueApps, getAllAppsForAdmin, getPendingSuggestionsCount, getTicketsNeedingReplyCount, getAllProfiles } from "@/lib/admin-data";
 import ModeratorDashboardClient from "@/components/ModeratorDashboardClient";
 
 export const dynamic = "force-dynamic";
@@ -12,8 +12,9 @@ export default async function ModeratorDashboard() {
   // לפיקוח מגיע לכאן, ולא מאבד את הגישה לאזור המפתח שלו אם יש לו כזה.
   if (!profile.is_moderator && profile.role !== "admin") redirect("/");
 
-  const [apps, suggestionsPendingCount, ticketsNeedingReplyCount, profiles] = await Promise.all([
+  const [apps, allApps, suggestionsPendingCount, ticketsNeedingReplyCount, profiles] = await Promise.all([
     getReviewQueueApps(),
+    getAllAppsForAdmin(),
     getPendingSuggestionsCount(),
     getTicketsNeedingReplyCount(),
     getAllProfiles()
@@ -27,6 +28,7 @@ export default async function ModeratorDashboard() {
       </div>
       <ModeratorDashboardClient
         apps={apps}
+        allApps={allApps}
         suggestionsPendingCount={suggestionsPendingCount}
         ticketsNeedingReplyCount={ticketsNeedingReplyCount}
         profiles={profiles}

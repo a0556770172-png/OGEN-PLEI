@@ -77,6 +77,18 @@ export async function getPendingDeletionRequests(): Promise<UserDeletionRequest[
   return (data as unknown as UserDeletionRequest[]) ?? [];
 }
 
+// ועדות שנפתחו אוטומטית (בלי אישור מנהל, כי שני חברי צוות ביקשו תוך 24 שעות) ועדיין פתוחות -
+// אלה "קופצות" למנהל כהתראה, כדי שיידע שמשהו דורש תשומת לב דחופה מהצוות.
+export async function getOpenAutoApprovedCouncilCount(): Promise<number> {
+  const admin = createAdminSupabase();
+  const { count } = await admin
+    .from("council_threads")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "open")
+    .eq("auto_approved", true);
+  return count ?? 0;
+}
+
 export async function getPendingDeletionRequestsCount(): Promise<number> {
   const admin = createAdminSupabase();
   const { count } = await admin
