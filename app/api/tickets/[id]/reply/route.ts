@@ -8,8 +8,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
   const { user, profile } = result;
 
-  const { message } = await request.json().catch(() => ({}));
-  if (!message?.trim()) {
+  const { message, attachmentKey, attachmentName, attachmentType } = await request.json().catch(() => ({}));
+  if (!message?.trim() && !attachmentKey) {
     return NextResponse.json({ error: "אי אפשר לשלוח הודעה ריקה" }, { status: 400 });
   }
 
@@ -22,11 +22,24 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ error: "אין הרשאה לפנייה זו" }, { status: 403 });
   }
 
+  // צירוף קבצים למשתמשים אסור לגמרי; לצוות מותר רק למנהל בפועל או למי שקיבל הרשאה מפורשת.
+  if (attachmentKey) {
+    if (!staff) {
+      return NextResponse.json({ error: "לא ניתן לצרף קבצים" }, { status: 403 });
+    }
+    if (profile.role !== "admin" && !profile.can_send_attachments) {
+      return NextResponse.json({ error: "אין לך הרשאה לשלוח קבצים מצורפים" }, { status: 403 });
+    }
+  }
+
   const { error } = await admin.from("ticket_messages").insert({
     ticket_id: ticket.id,
     sender_id: user.id,
     sender_role: staff ? "staff" : "user",
-    body: message.trim()
+    body: message?.trim() || "",
+    attachment_key: attachmentKey ?? null,
+    attachment_name: attachmentName ?? null,
+    attachment_type: attachmentType ?? null
   });
   if (error) {
     return NextResponse.json({ error: `שגיאה בשליחת ההודעה: ${error.message}` }, { status: 500 });

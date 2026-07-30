@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { MessageCircle, Plus, Send, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import TicketAttachment from "@/components/TicketAttachment";
 import type { Ticket, TicketMessage } from "@/types/database";
 
 export default function SupportPage() {
@@ -85,8 +86,8 @@ export default function SupportPage() {
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-3xl font-black">פניות תמיכה</h1>
-          <p className="text-gray-400">שאלה, בעיה, או בקשה? אפשר לפנות אלינו כאן ונחזור אליכם.</p>
+          <h1 className="text-3xl font-black">הודעות</h1>
+          <p className="text-gray-400">שאלה, בעיה, או בקשה? אפשר לפנות אלינו כאן, וגם לקבל כאן הודעות מהצוות.</p>
         </div>
         <button onClick={() => setShowNew((v) => !v)} className="btn-primary">
           <Plus className="h-4 w-4" /> פנייה חדשה
@@ -178,7 +179,10 @@ export default function SupportPage() {
                     }`}
                   >
                     <p className="mb-1 text-xs font-bold text-gray-400">{m.sender_role === "staff" ? "צוות עוגן פליי" : "אני"}</p>
-                    <p className="whitespace-pre-wrap">{m.body}</p>
+                    {m.body && <p className="whitespace-pre-wrap">{m.body}</p>}
+                    {m.attachment_key && (
+                      <TicketAttachment attachmentKey={m.attachment_key} attachmentName={m.attachment_name} attachmentType={m.attachment_type} />
+                    )}
                   </div>
                 ))}
               </div>

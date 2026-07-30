@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireProfile } from "@/lib/auth-helpers";
+import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 
-// ניהול קטגוריות - מנהל בפועל בלבד (role='admin'), לא צוות פיקוח
+// ניהול קטגוריות - כל צוות (מנהל או פיקוח) יכול לנהל קטגוריות
 function slugify(input: string) {
   return input
     .trim()
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const result = await requireProfile();
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
   const { profile } = result;
-  if (profile.role !== "admin") return NextResponse.json({ error: "רק מנהל יכול לנהל קטגוריות" }, { status: 403 });
+  if (!isStaff(profile)) return NextResponse.json({ error: "רק צוות יכול לנהל קטגוריות" }, { status: 403 });
 
   const body = await request.json().catch(() => ({}));
   const label = typeof body.label === "string" ? body.label.trim() : "";

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings } from "lucide-react";
+import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import UserManagementTable from "./UserManagementTable";
 import ProRequestsQueue from "./ProRequestsQueue";
@@ -10,9 +10,10 @@ import CategoriesManager from "./CategoriesManager";
 import NotificationsPanel from "./NotificationsPanel";
 import SiteSettingsPanel from "./SiteSettingsPanel";
 import IconBackfillPanel from "./IconBackfillPanel";
-import type { AppRow, Profile, ProRequest } from "@/types/database";
+import DeletionRequestsPanel from "./DeletionRequestsPanel";
+import type { AppRow, Profile, ProRequest, UserDeletionRequest } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "settings";
+type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "settings";
 
 export default function AdminDashboardClient({
   apps,
@@ -21,7 +22,9 @@ export default function AdminDashboardClient({
   proRequests,
   suggestionsPendingCount,
   ticketsNeedingReplyCount,
-  requireEmailVerification
+  deletionRequests,
+  requireEmailVerification,
+  currentProfile
 }: {
   apps: AppRow[];
   allApps: AppRow[];
@@ -29,11 +32,14 @@ export default function AdminDashboardClient({
   proRequests: ProRequest[];
   suggestionsPendingCount: number;
   ticketsNeedingReplyCount: number;
+  deletionRequests: UserDeletionRequest[];
   requireEmailVerification: boolean;
+  currentProfile: Profile;
 }) {
   const [tab, setTab] = useState<TabKey>("notifications");
 
-  const notificationCount = apps.length + proRequests.length + suggestionsPendingCount + ticketsNeedingReplyCount;
+  const notificationCount =
+    apps.length + proRequests.length + suggestionsPendingCount + ticketsNeedingReplyCount + deletionRequests.length;
 
   const tabs = [
     { key: "notifications", label: `התראות${notificationCount ? ` (${notificationCount})` : ""}`, icon: BellRing },
@@ -41,9 +47,10 @@ export default function AdminDashboardClient({
     { key: "allApps", label: `כל האפליקציות (${allApps.length})`, icon: LayoutGrid },
     { key: "pro", label: `בקשות PRO (${proRequests.length})`, icon: Crown },
     { key: "suggestions", label: "הצעות אפליקציות", icon: Gift },
-    { key: "tickets", label: "פניות תמיכה", icon: MessageCircle },
+    { key: "tickets", label: "הודעות", icon: MessageCircle },
     { key: "categories", label: "קטגוריות", icon: Tag },
     { key: "users", label: "ניהול משתמשים", icon: Users },
+    { key: "deletionRequests", label: `בקשות מחיקת משתמשים (${deletionRequests.length})`, icon: ShieldAlert },
     { key: "settings", label: "הגדרות", icon: Settings }
   ] as const;
 
@@ -51,7 +58,8 @@ export default function AdminDashboardClient({
     { key: "review", label: "אפליקציות ממתינות לבדיקה", description: "אפליקציות חדשות שממתינות לאישור/דחייה שלך", count: apps.length, icon: ClipboardList },
     { key: "pro", label: "בקשות PRO ממתינות", description: "מפתחים שביקשו שדרוג לחשבון PRO", count: proRequests.length, icon: Crown },
     { key: "suggestions", label: "הצעות אפליקציות ממתינות", description: "משתמשים שהציעו אפליקציה להוספה למאגר", count: suggestionsPendingCount, icon: Gift },
-    { key: "tickets", label: "פניות תמיכה ממתינות למענה", description: "פניות שמשתמשים כתבו ועדיין לא קיבלו תגובה", count: ticketsNeedingReplyCount, icon: MessageCircle }
+    { key: "tickets", label: "הודעות ממתינות למענה", description: "הודעות שמשתמשים כתבו ועדיין לא קיבלו תגובה", count: ticketsNeedingReplyCount, icon: MessageCircle },
+    { key: "deletionRequests", label: "בקשות מחיקת משתמשים מצוות פיקוח", description: "בקשות מחיקה שהגיש צוות הפיקוח וממתינות לאישורך", count: deletionRequests.length, icon: ShieldAlert }
   ];
 
   return (
@@ -80,9 +88,10 @@ export default function AdminDashboardClient({
       )}
       {tab === "pro" && <ProRequestsQueue requests={proRequests} />}
       {tab === "suggestions" && <SuggestionsQueue />}
-      {tab === "tickets" && <TicketsPanel />}
+      {tab === "tickets" && <TicketsPanel currentProfile={currentProfile} profiles={profiles} />}
       {tab === "categories" && <CategoriesManager />}
-      {tab === "users" && <UserManagementTable profiles={profiles} />}
+      {tab === "users" && <UserManagementTable profiles={profiles} isAdmin={true} />}
+      {tab === "deletionRequests" && <DeletionRequestsPanel requests={deletionRequests} />}
       {tab === "settings" && <SiteSettingsPanel requireEmailVerification={requireEmailVerification} />}
     </div>
   );

@@ -17,7 +17,24 @@ export interface Profile {
   banned: boolean;
   accepted_terms_at: string | null;
   last_seen_at: string | null;
+  moderator_agreement_signed_at: string | null;
+  can_send_attachments: boolean;
   created_at: string;
+}
+
+export type DeletionRequestStatus = "pending" | "approved" | "rejected";
+
+export interface UserDeletionRequest {
+  id: string;
+  target_user_id: string;
+  requested_by: string;
+  reason: string | null;
+  status: DeletionRequestStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  target?: Profile;
+  requester?: Profile;
 }
 
 export interface AppRow {
@@ -65,6 +82,7 @@ export interface Ticket {
   user_id: string;
   subject: string;
   status: TicketStatus;
+  started_by_staff: boolean;
   created_at: string;
   updated_at: string;
   user?: Profile;
@@ -76,6 +94,9 @@ export interface TicketMessage {
   sender_id: string;
   sender_role: "user" | "staff";
   body: string;
+  attachment_key: string | null;
+  attachment_name: string | null;
+  attachment_type: string | null;
   created_at: string;
   sender?: Profile;
 }

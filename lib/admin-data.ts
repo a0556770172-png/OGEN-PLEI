@@ -1,5 +1,5 @@
 import { createAdminSupabase } from "./supabase/admin";
-import type { AppRow, Profile, ProRequest } from "@/types/database";
+import type { AppRow, Profile, ProRequest, UserDeletionRequest } from "@/types/database";
 
 export async function getReviewQueueApps(): Promise<AppRow[]> {
   const admin = createAdminSupabase();
@@ -64,4 +64,24 @@ export async function getTicketsNeedingReplyCount(): Promise<number> {
     if (!latestByTicket.has(m.ticket_id)) latestByTicket.set(m.ticket_id, m.sender_role);
   }
   return [...latestByTicket.values()].filter((role) => role === "user").length;
+}
+
+// בקשות מחיקת משתמש שהוגשו ע"י צוות פיקוח וממתינות לאישור/דחייה של מנהל בפועל בלבד.
+export async function getPendingDeletionRequests(): Promise<UserDeletionRequest[]> {
+  const admin = createAdminSupabase();
+  const { data } = await admin
+    .from("user_deletion_requests")
+    .select("*, target:profiles!user_deletion_requests_target_user_id_fkey(username, email, role), requester:profiles!user_deletion_requests_requested_by_fkey(username, email)")
+    .eq("status", "pending")
+    .order("created_at", { ascending: true });
+  return (data as unknown as UserDeletionRequest[]) ?? [];
+}
+
+export async function getPendingDeletionRequestsCount(): Promise<number> {
+  const admin = createAdminSupabase();
+  const { count } = await admin
+    .from("user_deletion_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending");
+  return count ?? 0;
 }

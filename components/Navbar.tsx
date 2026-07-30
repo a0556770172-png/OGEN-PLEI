@@ -106,7 +106,7 @@ export default function Navbar() {
                 </span>
               </Link>
               <Link href="/support" className="text-sm font-medium text-gray-300 transition hover:text-white">
-                פניות תמיכה
+                הודעות
               </Link>
               {adminHref && (
                 <Link href={adminHref} className="btn-ghost text-sm">

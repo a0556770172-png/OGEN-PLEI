@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { requireProfile } from "@/lib/auth-helpers";
+import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const result = await requireProfile();
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
   const { profile } = result;
-  if (profile.role !== "admin") return NextResponse.json({ error: "רק מנהל יכול לנהל קטגוריות" }, { status: 403 });
+  if (!isStaff(profile)) return NextResponse.json({ error: "רק צוות יכול לנהל קטגוריות" }, { status: 403 });
 
   const body = await request.json().catch(() => ({}));
   const label = typeof body.label === "string" ? body.label.trim() : "";
@@ -30,7 +30,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   const result = await requireProfile();
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
   const { profile } = result;
-  if (profile.role !== "admin") return NextResponse.json({ error: "רק מנהל יכול לנהל קטגוריות" }, { status: 403 });
+  if (!isStaff(profile)) return NextResponse.json({ error: "רק צוות יכול לנהל קטגוריות" }, { status: 403 });
 
   const admin = createAdminSupabase();
   const { data: category } = await admin.from("categories").select("*").eq("id", params.id).single();

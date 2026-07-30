@@ -1,22 +1,28 @@
 "use client";
 import { useState } from "react";
-import { ClipboardList, MessageCircle, Gift, BellRing } from "lucide-react";
+import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import TicketsPanel from "./TicketsPanel";
 import SuggestionsQueue from "./SuggestionsQueue";
 import NotificationsPanel from "./NotificationsPanel";
-import type { AppRow } from "@/types/database";
+import CategoriesManager from "./CategoriesManager";
+import UserManagementTable from "./UserManagementTable";
+import type { AppRow, Profile } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "tickets" | "suggestions";
+type TabKey = "notifications" | "review" | "tickets" | "suggestions" | "categories" | "users";
 
 export default function ModeratorDashboardClient({
   apps,
   suggestionsPendingCount,
-  ticketsNeedingReplyCount
+  ticketsNeedingReplyCount,
+  profiles,
+  currentProfile
 }: {
   apps: AppRow[];
   suggestionsPendingCount: number;
   ticketsNeedingReplyCount: number;
+  profiles: Profile[];
+  currentProfile: Profile;
 }) {
   const [tab, setTab] = useState<TabKey>("notifications");
 
@@ -26,13 +32,15 @@ export default function ModeratorDashboardClient({
     { key: "notifications", label: `התראות${notificationCount ? ` (${notificationCount})` : ""}`, icon: BellRing },
     { key: "review", label: `בדיקת פרסום (${apps.length})`, icon: ClipboardList },
     { key: "suggestions", label: "הצעות אפליקציות", icon: Gift },
-    { key: "tickets", label: "פניות תמיכה", icon: MessageCircle }
+    { key: "tickets", label: "הודעות", icon: MessageCircle },
+    { key: "categories", label: "קטגוריות", icon: Tag },
+    { key: "users", label: "ניהול משתמשים", icon: Users }
   ] as const;
 
   const notificationItems = [
     { key: "review", label: "אפליקציות ממתינות לבדיקה", description: "אפליקציות חדשות שממתינות לאישור/דחייה שלך", count: apps.length, icon: ClipboardList },
     { key: "suggestions", label: "הצעות אפליקציות ממתינות", description: "משתמשים שהציעו אפליקציה להוספה למאגר", count: suggestionsPendingCount, icon: Gift },
-    { key: "tickets", label: "פניות תמיכה ממתינות למענה", description: "פניות שמשתמשים כתבו ועדיין לא קיבלו תגובה", count: ticketsNeedingReplyCount, icon: MessageCircle }
+    { key: "tickets", label: "הודעות ממתינות למענה", description: "הודעות שמשתמשים כתבו ועדיין לא קיבלו תגובה", count: ticketsNeedingReplyCount, icon: MessageCircle }
   ];
 
   return (
@@ -52,9 +60,12 @@ export default function ModeratorDashboardClient({
       </div>
 
       {tab === "notifications" && <NotificationsPanel items={notificationItems} onNavigate={(key) => setTab(key as TabKey)} />}
-      {tab === "review" && <ReviewQueue apps={apps} canDelete={false} />}
+      {/* צוות פיקוח יכול גם למחוק אפליקציות, לא רק לאשר/לדחות */}
+      {tab === "review" && <ReviewQueue apps={apps} canDelete={true} />}
       {tab === "suggestions" && <SuggestionsQueue />}
-      {tab === "tickets" && <TicketsPanel />}
+      {tab === "tickets" && <TicketsPanel currentProfile={currentProfile} profiles={profiles} />}
+      {tab === "categories" && <CategoriesManager />}
+      {tab === "users" && <UserManagementTable profiles={profiles} />}
     </div>
   );
 }

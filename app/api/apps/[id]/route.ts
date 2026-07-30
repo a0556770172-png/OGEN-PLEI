@@ -72,7 +72,8 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   if (!app) return NextResponse.json({ error: "האפליקציה לא נמצאה" }, { status: 404 });
 
   const isOwner = app.developer_id === user.id;
-  const canDelete = (isOwner && app.status !== "approved") || profile.role === "admin";
+  // צוות פיקוח (לא רק מנהל בפועל) יכול גם הוא למחוק אפליקציות - זה חלק מהרשאות הפיקוח הרגילות.
+  const canDelete = (isOwner && app.status !== "approved") || isStaff(profile);
   if (!canDelete) return NextResponse.json({ error: "אין הרשאה למחוק אפליקציה זו" }, { status: 403 });
 
   await deleteObject(BUCKETS.apps, app.file_key).catch(() => {});
