@@ -18,6 +18,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 
   const admin = createAdminSupabase();
+  const { data: thread } = await admin.from("council_threads").select("id").eq("id", params.id).single();
+  if (!thread) return NextResponse.json({ error: "הוועדה לא נמצאה" }, { status: 404 });
+
   await admin.from("council_threads").update({ status, updated_at: new Date().toISOString() }).eq("id", params.id);
 
   return NextResponse.json({ ok: true });

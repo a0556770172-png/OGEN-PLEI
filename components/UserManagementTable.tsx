@@ -108,10 +108,14 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
                     <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                   ) : (
                     <>
-                      {p.banned ? (
-                        <button title="הסרת חסימה" onClick={() => act(p.id, "unban")} className="rounded-lg p-1.5 text-accent hover:bg-accent/10"><ShieldCheck className="h-4 w-4" /></button>
-                      ) : (
-                        <button title="חסימת משתמש" onClick={() => act(p.id, "ban")} className="rounded-lg p-1.5 text-red-400 hover:bg-red-500/10"><Ban className="h-4 w-4" /></button>
+                      {/* חשבון מנהל בפועל מוגן מחסימה לגמרי (גם בשרת וגם כאן) - אין טעם להציג
+                          כפתור שתמיד ייכשל, וזה בדיוק סוג הבאג שכבר תוקן פעם אחת. */}
+                      {p.role !== "admin" && (
+                        p.banned ? (
+                          <button title="הסרת חסימה" onClick={() => act(p.id, "unban")} className="rounded-lg p-1.5 text-accent hover:bg-accent/10"><ShieldCheck className="h-4 w-4" /></button>
+                        ) : (
+                          <button title="חסימת משתמש" onClick={() => act(p.id, "ban")} className="rounded-lg p-1.5 text-red-400 hover:bg-red-500/10"><Ban className="h-4 w-4" /></button>
+                        )
                       )}
                       {isAdmin && p.is_moderator && (
                         <button

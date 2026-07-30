@@ -15,16 +15,19 @@ export async function POST(request: Request, { params }: { params: { messageId: 
   }
 
   const admin = createAdminSupabase();
-  const { data: message } = await admin.from("ticket_messages").select("*, ticket:tickets(*)").eq("id", params.messageId).single();
+  const { data: message } = await admin.from("ticket_messages").select("*").eq("id", params.messageId).single();
   if (!message) return NextResponse.json({ error: "ההודעה לא נמצאה" }, { status: 404 });
 
-  const ticket = (message as any).ticket;
+  // נשלף בנפרד (לא כ-join) כדי לוודא בוודאות שהבדיקה לא מדלגת בשקט אם ה-join מחזיר null.
+  const { data: ticket } = await admin.from("tickets").select("user_id, assigned_staff_id").eq("id", message.ticket_id).single();
+  if (!ticket) return NextResponse.json({ error: "הפנייה לא נמצאה" }, { status: 404 });
+
   const staff = isStaff(profile);
-  const isOwner = ticket?.user_id === user.id;
+  const isOwner = ticket.user_id === user.id;
   if (!staff && !isOwner) {
     return NextResponse.json({ error: "אין הרשאה" }, { status: 403 });
   }
-  if (staff && profile.role !== "admin" && ticket?.assigned_staff_id && ticket.assigned_staff_id !== user.id) {
+  if (staff && profile.role !== "admin" && ticket.assigned_staff_id && ticket.assigned_staff_id !== user.id) {
     return NextResponse.json({ error: "שיחה זו משוייכת לחבר צוות אחר" }, { status: 403 });
   }
 

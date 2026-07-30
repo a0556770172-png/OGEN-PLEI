@@ -19,12 +19,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   const admin = createAdminSupabase();
 
+  const { data: ticket } = await admin.from("tickets").select("assigned_staff_id").eq("id", params.id).single();
+  if (!ticket) return NextResponse.json({ error: "הפנייה לא נמצאה" }, { status: 404 });
+
   // פרטיות בין חברי צוות: אי אפשר לגעת בשיחה ששוייכה לחבר צוות אחר (מלבד המנהל).
-  if (profile.role !== "admin") {
-    const { data: ticket } = await admin.from("tickets").select("assigned_staff_id").eq("id", params.id).single();
-    if (ticket?.assigned_staff_id && ticket.assigned_staff_id !== profile.id) {
-      return NextResponse.json({ error: "שיחה זו משוייכת לחבר צוות אחר" }, { status: 403 });
-    }
+  if (profile.role !== "admin" && ticket.assigned_staff_id && ticket.assigned_staff_id !== profile.id) {
+    return NextResponse.json({ error: "שיחה זו משוייכת לחבר צוות אחר" }, { status: 403 });
   }
 
   await admin.from("tickets").update({ status, updated_at: new Date().toISOString() }).eq("id", params.id);

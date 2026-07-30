@@ -9,6 +9,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (profile.role !== "admin") return NextResponse.json({ error: "רק מנהל יכול לאשר שדרוג PRO" }, { status: 403 });
 
   const { action, adminMessage } = await request.json();
+  if (action !== "approve" && action !== "reject") {
+    return NextResponse.json({ error: "פעולה לא חוקית" }, { status: 400 });
+  }
   const admin = createAdminSupabase();
 
   const { data: reqRow } = await admin.from("pro_requests").select("*").eq("id", params.id).single();
