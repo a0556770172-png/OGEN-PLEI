@@ -1,8 +1,9 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { UserRound, Mail, Lock, AtSign, AlertCircle, MailCheck } from "lucide-react";
+import { UserRound, Mail, Lock, AtSign, AlertCircle, MailCheck, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 // מונע רינדור סטטי בזמן ה-build (ראו הסבר מפורט ב-app/login/page.tsx)
@@ -10,10 +11,12 @@ export const dynamic = "force-dynamic";
 
 export default function UserSignupPage() {
   const supabase = createClient();
+  const router = useRouter();
   const [form, setForm] = useState({ username: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [autoLoggingIn, setAutoLoggingIn] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -23,7 +26,7 @@ export default function UserSignupPage() {
       return;
     }
     setLoading(true);
-    const { error: err } = await supabase.auth.signUp({
+    const { data, error: err } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
@@ -31,12 +34,53 @@ export default function UserSignupPage() {
         emailRedirectTo: `${window.location.origin}/auth/callback`
       }
     });
-    setLoading(false);
     if (err) {
+      setLoading(false);
       setError(err.message.includes("already") ? "כתובת המייל כבר רשומה במערכת" : `שגיאה בהרשמה: ${err.message}`);
       return;
     }
+
+    // אם Supabase כבר החזיר session מיידית - זה אומר שאימות מייל לא נדרש בפועל, אז אין
+    // טעם/מקום להטעות ולומר "שלחנו לך מייל, לך תבדוק" - פשוט ממשיכים ישר פנימה.
+    if (data.session) {
+      setLoading(false);
+      router.push("/");
+      router.refresh();
+      return;
+    }
+
+    // אחרת, בודקים את הגדרת האתר: אם אימות מייל לא חובה כרגע, מנסים להתחבר מיידית עם
+    // אותם הפרטים. אם זה מצליח - מעולה, אין צורך במסך "בדוק את המייל" בכלל. אם זה נכשל
+    // (כי Supabase עצמו עדיין דורש אימות, ללא תלות בהגדרה שלנו) - רק אז מציגים את ההודעה
+    // האמיתית שבאמת נשלח מייל וצריך לאשר אותו.
+    try {
+      const settingsRes = await fetch("/api/settings");
+      const settingsJson = await settingsRes.json();
+      if (!settingsJson.requireEmailVerification) {
+        setAutoLoggingIn(true);
+        const { error: signInErr } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password });
+        setAutoLoggingIn(false);
+        if (!signInErr) {
+          setLoading(false);
+          router.push("/");
+          router.refresh();
+          return;
+        }
+      }
+    } catch {
+      // אם בדיקת ההגדרה נכשלה מסיבה טכנית, ממשיכים בזהירות למסך "בדוק את המייל" למטה
+    }
+
+    setLoading(false);
     setDone(true);
+  }
+
+  if (loading && autoLoggingIn) {
+    return (
+      <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center gap-3 text-gray-400">
+        <Loader2 className="h-8 w-8 animate-spin" /> משלים הרשמה...
+      </div>
+    );
   }
 
   if (done) {
@@ -58,7 +102,7 @@ export default function UserSignupPage() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="card p-8">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-glow">
-            <UserRound className="h-6 w-6 text-white" />
+            <UserRound className="h-6 w-6 text-[#fff]" />
           </div>
           <h1 className="text-2xl font-black">הרשמה כמשתמש</h1>
           <p className="text-sm text-gray-400">כדי להוריד אפליקציות מהחנות</p>

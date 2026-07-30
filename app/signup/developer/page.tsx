@@ -29,7 +29,7 @@ export default function DeveloperSignupPage() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="card p-8">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-primary shadow-glow">
-            <Code2 className="h-6 w-6 text-white" />
+            <Code2 className="h-6 w-6 text-[#fff]" />
           </div>
           <h1 className="text-2xl font-black">הרשמה כמפתח</h1>
           <p className="text-sm text-gray-400">מסלול פרסום אפליקציות ותוכנות בעוגן פליי</p>

@@ -84,7 +84,7 @@ export default function SuggestAppPage() {
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <div className="text-center">
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-gold to-primary shadow-glow">
-          <Gift className="h-6 w-6 text-white" />
+          <Gift className="h-6 w-6 text-[#fff]" />
         </div>
         <h1 className="text-3xl font-black">הוספה למאגר וצבירת נקודות</h1>
         <p className="mx-auto mt-2 max-w-lg text-gray-400">
@@ -121,7 +121,7 @@ export default function SuggestAppPage() {
             required
             type="file"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-white"
+            className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[#fff]"
           />
           <p className="mt-1.5 text-xs text-gray-500">יש להעלות בעצמכם את קובץ ההתקנה (עד 100MB) כדי שהצוות יוכל לבדוק ולפרסם אותו.</p>
         </div>

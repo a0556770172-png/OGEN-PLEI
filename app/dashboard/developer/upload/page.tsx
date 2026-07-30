@@ -181,7 +181,7 @@ export default function UploadAppPage() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="card p-8">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-glow">
-            <UploadCloud className="h-6 w-6 text-white" />
+            <UploadCloud className="h-6 w-6 text-[#fff]" />
           </div>
           <h1 className="text-2xl font-black">העלאת אפליקציה / תוכנה</h1>
           <p className="text-sm text-gray-400">האפליקציה או התוכנה תישלח לבדיקה ידנית לפני פרסום בחנות</p>
@@ -220,7 +220,7 @@ export default function UploadAppPage() {
                 type="file"
                 accept="image/*"
                 onChange={(e) => setFollowUpIcon(e.target.files?.[0] ?? null)}
-                className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-white"
+                className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[#fff]"
               />
             </div>
 
@@ -262,11 +262,11 @@ export default function UploadAppPage() {
             </div>
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-400"><FileArchive className="h-4 w-4" /> קובץ ההתקנה (APK לאפליקציה, או קובץ ההתקנה של התוכנה)</label>
-              <input required type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-white" />
+              <input required type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[#fff]" />
             </div>
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-400"><ImageIcon className="h-4 w-4" /> אייקון (אופציונלי)</label>
-              <input type="file" accept="image/*" onChange={(e) => setIcon(e.target.files?.[0] ?? null)} className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-white" />
+              <input type="file" accept="image/*" onChange={(e) => setIcon(e.target.files?.[0] ?? null)} className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[#fff]" />
               <p className="mt-1.5 text-xs text-gray-500">אם לא תעלו אייקון וקובץ האפליקציה הוא APK/APKS, ננסה לחלץ אותו אוטומטית מתוך הקובץ עצמו. אם גם זה לא יצליח, נבקש מכם להעלות תמונה לפני שנסיים.</p>
             </div>
 

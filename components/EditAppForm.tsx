@@ -163,7 +163,7 @@ export default function EditAppForm({
         </div>
         <div>
           <label className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-400"><ImageIcon className="h-4 w-4" /> החלפת אייקון (אופציונלי)</label>
-          <input type="file" accept="image/*" onChange={(e) => setIcon(e.target.files?.[0] ?? null)} className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-white" />
+          <input type="file" accept="image/*" onChange={(e) => setIcon(e.target.files?.[0] ?? null)} className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[#fff]" />
         </div>
 
         <button type="submit" disabled={savingDetails} className="btn-primary mt-2 w-full sm:w-auto">
@@ -203,7 +203,7 @@ export default function EditAppForm({
           </div>
           <div>
             <label className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-400"><FileArchive className="h-4 w-4" /> קובץ חדש (עד {plan.maxFileMb}MB)</label>
-            <input type="file" onChange={(e) => setVersionFile(e.target.files?.[0] ?? null)} className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-white" />
+            <input type="file" onChange={(e) => setVersionFile(e.target.files?.[0] ?? null)} className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[#fff]" />
           </div>
         </div>
 

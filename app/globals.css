@@ -2,13 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   מצב בהיר/כהה - כל צבעי הרקע/משטח/גבול והטקסט הכללי (white/gray) מבוססים על
+   משתני CSS כאן, כדי שהחלפת מצב תעבוד בכל האתר בלי לגעת בכל קומפוננטה בנפרד.
+   ברירת המחדל (ללא class מיוחד) היא המצב הכהה המקורי; class בשם "light" על ה-html
+   הופך אותו לבהיר. הטריפלטים הם R G B (בלי rgb()) כדי לתמוך במודיפייר שקיפות /NN.
+   ============================================================ */
+:root {
+  --c-bg: 10 11 16;
+  --c-surface: 18 20 28;
+  --c-surface2: 25 28 39;
+  --c-border: 36 40 56;
+  --c-white: 255 255 255;
+  --c-gray-100: 243 244 246;
+  --c-gray-200: 229 231 235;
+  --c-gray-300: 209 213 219;
+  --c-gray-400: 156 163 175;
+  --c-gray-500: 107 114 128;
+  --c-gray-600: 75 85 99;
+}
+
+html.light {
+  --c-bg: 246 247 251;
+  --c-surface: 255 255 255;
+  --c-surface2: 241 242 248;
+  --c-border: 224 226 235;
+  --c-white: 17 17 20;
+  --c-gray-100: 24 24 27;
+  --c-gray-200: 39 39 42;
+  --c-gray-300: 63 63 70;
+  --c-gray-400: 82 82 91;
+  --c-gray-500: 113 113 122;
+  --c-gray-600: 161 161 170;
+}
+
 html, body {
-  background-color: #0a0b10;
-  color: #eef0f6;
+  background-color: rgb(var(--c-bg));
+  color: rgb(var(--c-white));
 }
 
 * {
-  scrollbar-color: #3a3f55 #0a0b10;
+  scrollbar-color: #3a3f55 rgb(var(--c-bg));
 }
 
 ::selection {
@@ -29,7 +63,7 @@ html, body {
 }
 
 .btn-primary {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-bold text-white shadow-glow transition-all duration-300 hover:bg-primary-light hover:shadow-[0_0_55px_rgba(124,92,255,0.45)] active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-bold text-[#fff] shadow-glow transition-all duration-300 hover:bg-primary-light hover:shadow-[0_0_55px_rgba(124,92,255,0.45)] active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
 }
 
 .btn-ghost {

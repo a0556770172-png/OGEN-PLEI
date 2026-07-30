@@ -39,7 +39,7 @@ export default function AppGrid({
         <div className="flex flex-wrap justify-end gap-2 sm:justify-start">
           <button
             onClick={() => setCategory("all")}
-            className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${category === "all" ? "bg-primary text-white" : "bg-surface2 text-gray-400 hover:text-white"}`}
+            className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${category === "all" ? "bg-primary text-[#fff]" : "bg-surface2 text-gray-400 hover:text-white"}`}
           >
             הכל
           </button>
@@ -47,7 +47,7 @@ export default function AppGrid({
             <button
               key={c.value}
               onClick={() => setCategory(c.value)}
-              className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${category === c.value ? "bg-primary text-white" : "bg-surface2 text-gray-400 hover:text-white"}`}
+              className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${category === c.value ? "bg-primary text-[#fff]" : "bg-surface2 text-gray-400 hover:text-white"}`}
             >
               {c.label}
             </button>

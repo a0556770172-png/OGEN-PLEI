@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { LayoutDashboard, LogOut, Menu, X, ShieldCheck, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/database";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Navbar() {
   const supabase = createClient();
@@ -126,11 +127,15 @@ export default function Navbar() {
               </button>
             </div>
           )}
+          <ThemeToggle />
         </nav>
 
-        <button className="justify-self-end md:hidden" onClick={() => setOpen((o) => !o)}>
-          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        <div className="flex items-center gap-2 justify-self-end md:hidden">
+          <ThemeToggle />
+          <button onClick={() => setOpen((o) => !o)}>
+            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </div>
 
       {open && (

@@ -117,7 +117,7 @@ export default function DeveloperTermsPage() {
       // אם בדיקת קיום המייל נכשלה מסיבה טכנית, ממשיכים בזהירות לניסיון הרשמה רגיל למטה
     }
 
-    const { error: err } = await supabase.auth.signUp({
+    const { data: signUpData, error: err } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
@@ -131,12 +131,38 @@ export default function DeveloperTermsPage() {
         emailRedirectTo: `${window.location.origin}/auth/callback`
       }
     });
-    setLoading(false);
     if (err) {
+      setLoading(false);
       setError(err.message.includes("already") ? "כתובת המייל כבר רשומה במערכת" : `שגיאה בהרשמה: ${err.message}`);
       return;
     }
     sessionStorage.removeItem("dev_signup_form");
+
+    // אם Supabase כבר החזיר session מיידית, או שההגדרה שלנו לא דורשת אימות מייל ואפשר
+    // להתחבר מיידית עם אותם פרטים - אין טעם להטעות ולומר "שלחנו לך מייל, לך תבדוק".
+    if (signUpData.session) {
+      setLoading(false);
+      router.push("/profile");
+      router.refresh();
+      return;
+    }
+    try {
+      const settingsRes = await fetch("/api/settings");
+      const settingsJson = await settingsRes.json();
+      if (!settingsJson.requireEmailVerification) {
+        const { error: signInErr } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password });
+        if (!signInErr) {
+          setLoading(false);
+          router.push("/profile");
+          router.refresh();
+          return;
+        }
+      }
+    } catch {
+      // אם בדיקת ההגדרה נכשלה מסיבה טכנית, ממשיכים בזהירות למסך "בדוק את המייל" למטה
+    }
+
+    setLoading(false);
     setDone(true);
   }
 
@@ -174,7 +200,7 @@ export default function DeveloperTermsPage() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="card p-8">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-gold shadow-glow">
-            <ShieldAlert className="h-6 w-6 text-white" />
+            <ShieldAlert className="h-6 w-6 text-[#fff]" />
           </div>
           <h1 className="text-2xl font-black">תנאי שימוש לחשבון מפתח</h1>
           <p className="text-sm text-gray-400">יש לקרוא ולאשר את כל הסעיפים לפני השלמת ההרשמה</p>

@@ -25,7 +25,7 @@ export default async function UsersDirectoryPage() {
     <div className="mx-auto flex max-w-4xl flex-col gap-8">
       <div className="text-center">
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-glow">
-          <Users className="h-6 w-6 text-white" />
+          <Users className="h-6 w-6 text-[#fff]" />
         </div>
         <h1 className="text-3xl font-black">משתמשי הקהילה</h1>
         <p className="mx-auto mt-2 max-w-lg text-gray-400">כל חברי הקהילה והמפתחים שמרכיבים את עוגן פליי.</p>

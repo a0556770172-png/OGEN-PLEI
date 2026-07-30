@@ -57,7 +57,7 @@ export default function ModeratorDashboardClient({
             key={t.key}
             onClick={() => setTab(t.key)}
             className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold transition ${
-              tab === t.key ? "bg-primary text-white shadow-glow" : "bg-surface2 text-gray-400 hover:text-white"
+              tab === t.key ? "bg-primary text-[#fff] shadow-glow" : "bg-surface2 text-gray-400 hover:text-white"
             }`}
           >
             <t.icon className="h-4 w-4" /> {t.label}

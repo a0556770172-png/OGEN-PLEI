@@ -7,7 +7,7 @@ export default function AboutPage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-10">
       <section className="text-center">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-glow">
-          <ShieldCheck className="h-7 w-7 text-white" />
+          <ShieldCheck className="h-7 w-7 text-[#fff]" />
         </div>
         <h1 className="text-4xl font-black">אודות עוגן פליי</h1>
         <p className="mx-auto mt-4 max-w-xl text-lg text-gray-400">

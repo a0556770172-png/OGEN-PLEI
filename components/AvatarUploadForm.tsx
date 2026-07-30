@@ -79,7 +79,7 @@ export default function AvatarUploadForm({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={busy}
-          className="absolute -bottom-1 -left-1 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white shadow-glow transition hover:scale-105"
+          className="absolute -bottom-1 -left-1 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-[#fff] shadow-glow transition hover:scale-105"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
         </button>
