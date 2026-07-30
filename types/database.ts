@@ -89,6 +89,9 @@ export interface Ticket {
   user?: Profile;
 }
 
+// reactions: מפה של אימוג'י -> רשימת מזהי משתמשים שהגיבו בו (למשל { "👍": ["uuid1","uuid2"] })
+export type MessageReactions = Record<string, string[]>;
+
 export interface TicketMessage {
   id: string;
   ticket_id: string;
@@ -98,8 +101,13 @@ export interface TicketMessage {
   attachment_key: string | null;
   attachment_name: string | null;
   attachment_type: string | null;
+  reply_to_id: string | null;
+  reactions: MessageReactions;
+  edited_at: string | null;
+  deleted_at: string | null;
   created_at: string;
   sender?: Profile;
+  replyTo?: TicketMessage;
 }
 
 export type SuggestionStatus = "pending" | "approved" | "rejected";
@@ -141,8 +149,13 @@ export interface CouncilMessage {
   thread_id: string;
   sender_id: string;
   body: string;
+  reply_to_id: string | null;
+  reactions: MessageReactions;
+  edited_at: string | null;
+  deleted_at: string | null;
   created_at: string;
   sender?: Profile;
+  replyTo?: CouncilMessage;
 }
 
 export interface Category {

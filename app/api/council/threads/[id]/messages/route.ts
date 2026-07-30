@@ -12,7 +12,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ error: "רק צוות יכול לכתוב בוועדה" }, { status: 403 });
   }
 
-  const { message } = await request.json().catch(() => ({}));
+  const { message, replyToId } = await request.json().catch(() => ({}));
   if (!message?.trim()) {
     return NextResponse.json({ error: "אי אפשר לשלוח הודעה ריקה" }, { status: 400 });
   }
@@ -24,7 +24,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const { error } = await admin.from("council_messages").insert({
     thread_id: params.id,
     sender_id: user.id,
-    body: message.trim()
+    body: message.trim(),
+    reply_to_id: replyToId ?? null
   });
   if (error) return NextResponse.json({ error: "שגיאה בשליחת ההודעה" }, { status: 500 });
 

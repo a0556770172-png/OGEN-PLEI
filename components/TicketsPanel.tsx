@@ -1,12 +1,18 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Send, Loader2, CheckCircle2, RotateCcw, MessageCircle, Paperclip, Plus, X } from "lucide-react";
+import {
+  Send, Loader2, CheckCircle2, RotateCcw, MessageCircle, Paperclip, Plus, X,
+  Quote, Reply, Copy, Pencil, Trash2, Bold, Check
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import TicketAttachment from "./TicketAttachment";
+import MessageReactionsBar from "./MessageReactions";
+import { FormattedMessageBody, buildQuoteText, copyMessageWithLink, toggleBoldAtSelection } from "@/lib/chatFormat";
 import type { Ticket, TicketMessage, Profile } from "@/types/database";
 
 // פאנל "הודעות" של הצוות (מנהל/פיקוח) - כאן מאוחדות פניות התמיכה עם אפשרות לצוות
 // לפתוח שיחה יזומה למשתמש ספציפי, ולצרף קבצים (מוגבל למנהל או למי שקיבל הרשאה).
+// כולל: אימוג'י, ציטוט, הגבה להודעה ספציפית, העתקת קישור+טקסט, הדגשת כתב, עריכה ומחיקה.
 export default function TicketsPanel({ currentProfile, profiles = [] }: { currentProfile?: Profile; profiles?: Profile[] }) {
   const supabase = createClient();
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -17,6 +23,12 @@ export default function TicketsPanel({ currentProfile, profiles = [] }: { curren
   const [busy, setBusy] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const [replyingTo, setReplyingTo] = useState<TicketMessage | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const [showNew, setShowNew] = useState(false);
   const [newTargetId, setNewTargetId] = useState("");
@@ -42,10 +54,22 @@ export default function TicketsPanel({ currentProfile, profiles = [] }: { curren
 
   async function openTicket(ticket: Ticket) {
     setSelected(ticket);
+    setReplyingTo(null);
+    setEditingId(null);
     const { data } = await supabase
       .from("ticket_messages")
       .select("*")
       .eq("ticket_id", ticket.id)
+      .order("created_at", { ascending: true });
+    setMessages((data as TicketMessage[]) ?? []);
+  }
+
+  async function refreshMessages() {
+    if (!selected) return;
+    const { data } = await supabase
+      .from("ticket_messages")
+      .select("*")
+      .eq("ticket_id", selected.id)
       .order("created_at", { ascending: true });
     setMessages((data as TicketMessage[]) ?? []);
   }
@@ -82,12 +106,13 @@ export default function TicketsPanel({ currentProfile, profiles = [] }: { curren
     await fetch(`/api/tickets/${selected.id}/reply`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: reply, ...attachment })
+      body: JSON.stringify({ message: reply, replyToId: replyingTo?.id ?? null, ...attachment })
     });
     setReply("");
     setPendingFile(null);
+    setReplyingTo(null);
     setBusy(false);
-    await openTicket(selected);
+    await refreshMessages();
     await loadTickets();
   }
 
@@ -126,6 +151,78 @@ export default function TicketsPanel({ currentProfile, profiles = [] }: { curren
     setNewMessage("");
     setUserQuery("");
     await loadTickets();
+  }
+
+  async function toggleReaction(messageId: string, emoji: string) {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== messageId || !currentProfile) return m;
+        const reactions = { ...m.reactions };
+        const users = new Set(reactions[emoji] ?? []);
+        if (users.has(currentProfile.id)) users.delete(currentProfile.id);
+        else users.add(currentProfile.id);
+        if (users.size > 0) reactions[emoji] = [...users];
+        else delete reactions[emoji];
+        return { ...m, reactions };
+      })
+    );
+    await fetch(`/api/tickets/messages/${messageId}/react`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emoji })
+    });
+    await refreshMessages();
+  }
+
+  function quoteMessage(m: TicketMessage) {
+    const senderName = m.sender_role === "staff" ? "צוות" : selected?.user?.username ?? "משתמש";
+    setReply((prev) => buildQuoteText(senderName, m.body) + prev);
+    textareaRef.current?.focus();
+  }
+
+  function replyToMessage(m: TicketMessage) {
+    setReplyingTo(m);
+    textareaRef.current?.focus();
+  }
+
+  async function copyMessage(m: TicketMessage) {
+    const ok = await copyMessageWithLink(m.id, m.body);
+    if (ok) {
+      setCopiedId(m.id);
+      setTimeout(() => setCopiedId(null), 1500);
+    }
+  }
+
+  function startEdit(m: TicketMessage) {
+    setEditingId(m.id);
+    setEditingText(m.body);
+  }
+
+  async function saveEdit(messageId: string) {
+    if (!editingText.trim()) return;
+    setBusy(true);
+    await fetch(`/api/tickets/messages/${messageId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body: editingText })
+    });
+    setBusy(false);
+    setEditingId(null);
+    await refreshMessages();
+  }
+
+  async function deleteMessage(messageId: string) {
+    if (!confirm("למחוק את ההודעה? אי אפשר לשחזר.")) return;
+    setBusy(true);
+    await fetch(`/api/tickets/messages/${messageId}`, { method: "DELETE" });
+    setBusy(false);
+    await refreshMessages();
+  }
+
+  function toggleBold() {
+    if (!textareaRef.current) return;
+    setReply((prev) => toggleBoldAtSelection(textareaRef.current!, prev));
+    textareaRef.current.focus();
   }
 
   const filteredUsers = profiles.filter(
@@ -227,22 +324,86 @@ export default function TicketsPanel({ currentProfile, profiles = [] }: { curren
                 </button>
               </div>
 
-              <div className="flex max-h-[360px] flex-col gap-3 overflow-y-auto">
-                {messages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
-                      m.sender_role === "staff" ? "self-start bg-primary/20 text-white" : "self-end bg-surface2 text-gray-200"
-                    }`}
-                  >
-                    <p className="mb-1 text-xs font-bold text-gray-400">{m.sender_role === "staff" ? "צוות" : selected.user?.username ?? "משתמש"}</p>
-                    {m.body && <p className="whitespace-pre-wrap">{m.body}</p>}
-                    {m.attachment_key && (
-                      <TicketAttachment attachmentKey={m.attachment_key} attachmentName={m.attachment_name} attachmentType={m.attachment_type} />
-                    )}
-                  </div>
-                ))}
+              <div className="flex max-h-[420px] flex-col gap-3 overflow-y-auto">
+                {messages.map((m) => {
+                  const isMine = currentProfile && m.sender_id === currentProfile.id;
+                  const repliedMsg = m.reply_to_id ? messages.find((x) => x.id === m.reply_to_id) : null;
+                  return (
+                    <div
+                      key={m.id}
+                      id={`msg-${m.id}`}
+                      className={`group max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                        m.sender_role === "staff" ? "self-start bg-primary/20 text-white" : "self-end bg-surface2 text-gray-200"
+                      }`}
+                    >
+                      <p className="mb-1 text-xs font-bold text-gray-400">{m.sender_role === "staff" ? "צוות" : selected.user?.username ?? "משתמש"}</p>
+
+                      {m.deleted_at ? (
+                        <p className="italic text-gray-500">ההודעה נמחקה</p>
+                      ) : (
+                        <>
+                          {repliedMsg && (
+                            <div className="mb-1.5 rounded-lg border-e-2 border-current/40 bg-black/10 px-2 py-1 text-xs opacity-70">
+                              {repliedMsg.deleted_at ? "ההודעה נמחקה" : repliedMsg.body.slice(0, 80)}
+                            </div>
+                          )}
+
+                          {editingId === m.id ? (
+                            <div className="flex flex-col gap-2">
+                              <textarea
+                                value={editingText}
+                                onChange={(e) => setEditingText(e.target.value)}
+                                rows={2}
+                                className="input-field resize-none text-black"
+                              />
+                              <div className="flex gap-2">
+                                <button onClick={() => saveEdit(m.id)} disabled={busy} className="btn-primary px-3 py-1 text-xs"><Check className="h-3.5 w-3.5" /> שמירה</button>
+                                <button onClick={() => setEditingId(null)} className="btn-ghost px-3 py-1 text-xs">ביטול</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <FormattedMessageBody text={m.body} />
+                              {m.edited_at && <span className="text-[10px] text-gray-500"> (נערך)</span>}
+                              {m.attachment_key && (
+                                <TicketAttachment attachmentKey={m.attachment_key} attachmentName={m.attachment_name} attachmentType={m.attachment_type} />
+                              )}
+                            </>
+                          )}
+
+                          {currentProfile && (
+                            <MessageReactionsBar reactions={m.reactions} currentUserId={currentProfile.id} onToggle={(emoji) => toggleReaction(m.id, emoji)} />
+                          )}
+
+                          {editingId !== m.id && (
+                            <div className="mt-1.5 flex items-center gap-2.5 opacity-0 transition group-hover:opacity-100">
+                              <button onClick={() => quoteMessage(m)} title="ציטוט" className="text-gray-400 hover:text-white"><Quote className="h-3.5 w-3.5" /></button>
+                              <button onClick={() => replyToMessage(m)} title="הגבה" className="text-gray-400 hover:text-white"><Reply className="h-3.5 w-3.5" /></button>
+                              <button onClick={() => copyMessage(m)} title="העתקת קישור וטקסט" className="text-gray-400 hover:text-white">
+                                {copiedId === m.id ? <Check className="h-3.5 w-3.5 text-accent" /> : <Copy className="h-3.5 w-3.5" />}
+                              </button>
+                              {isMine && (
+                                <>
+                                  <button onClick={() => startEdit(m)} title="עריכה" className="text-gray-400 hover:text-white"><Pencil className="h-3.5 w-3.5" /></button>
+                                  <button onClick={() => deleteMessage(m.id)} title="מחיקה" className="text-gray-400 hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
+
+              {replyingTo && (
+                <div className="flex items-center gap-2 rounded-lg bg-surface2 px-3 py-2 text-xs text-gray-300">
+                  <Reply className="h-3.5 w-3.5 shrink-0 text-primary-light" />
+                  <span className="min-w-0 flex-1 truncate">מגיב ל: {replyingTo.deleted_at ? "הודעה שנמחקה" : replyingTo.body}</span>
+                  <button type="button" onClick={() => setReplyingTo(null)} className="text-gray-500 hover:text-red-400"><X className="h-3.5 w-3.5" /></button>
+                </div>
+              )}
 
               {pendingFile && (
                 <div className="flex items-center gap-2 rounded-lg bg-surface2 px-3 py-2 text-xs text-gray-300">
@@ -253,26 +414,30 @@ export default function TicketsPanel({ currentProfile, profiles = [] }: { curren
               )}
 
               <form onSubmit={sendReply} className="flex items-end gap-2">
-                {canAttach && (
-                  <>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*,video/*,audio/*"
-                      className="hidden"
-                      onChange={(e) => setPendingFile(e.target.files?.[0] ?? null)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      title="צירוף תמונה/וידאו/הקלטת קול"
-                      className="btn-ghost shrink-0 px-3"
-                    >
-                      <Paperclip className="h-4 w-4" />
-                    </button>
-                  </>
-                )}
+                <div className="flex shrink-0 flex-col gap-1">
+                  <button type="button" onClick={toggleBold} title="הדגשת כתב" className="btn-ghost px-3"><Bold className="h-4 w-4" /></button>
+                  {canAttach && (
+                    <>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*,video/*,audio/*"
+                        className="hidden"
+                        onChange={(e) => setPendingFile(e.target.files?.[0] ?? null)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        title="צירוף תמונה/וידאו/הקלטת קול"
+                        className="btn-ghost px-3"
+                      >
+                        <Paperclip className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
+                </div>
                 <textarea
+                  ref={textareaRef}
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}
                   rows={2}

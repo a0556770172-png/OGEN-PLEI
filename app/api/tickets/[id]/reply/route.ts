@@ -8,7 +8,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
   const { user, profile } = result;
 
-  const { message, attachmentKey, attachmentName, attachmentType } = await request.json().catch(() => ({}));
+  const { message, attachmentKey, attachmentName, attachmentType, replyToId } = await request.json().catch(() => ({}));
   if (!message?.trim() && !attachmentKey) {
     return NextResponse.json({ error: "אי אפשר לשלוח הודעה ריקה" }, { status: 400 });
   }
@@ -43,7 +43,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     body: message?.trim() || "",
     attachment_key: attachmentKey ?? null,
     attachment_name: attachmentName ?? null,
-    attachment_type: attachmentType ?? null
+    attachment_type: attachmentType ?? null,
+    reply_to_id: replyToId ?? null
   });
   if (error) {
     return NextResponse.json({ error: `שגיאה בשליחת ההודעה: ${error.message}` }, { status: 500 });
