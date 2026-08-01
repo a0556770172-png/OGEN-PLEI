@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { deleteUserCompletely } from "@/lib/user-deletion";
+import { logAudit } from "@/lib/audit";
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const result = await requireProfile();
@@ -53,8 +54,20 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return NextResponse.json({ error: "פעולה לא חוקית" }, { status: 400 });
   }
 
+  const { data: targetForLabel } = await admin.from("profiles").select("username").eq("id", params.id).single();
   const { error } = await admin.from("profiles").update(patch).eq("id", params.id);
   if (error) return NextResponse.json({ error: "שגיאה בעדכון המשתמש" }, { status: 500 });
+
+  if (action === "ban" || action === "unban") {
+    await logAudit({
+      actorId: profile.id,
+      action: action === "ban" ? "ban_user" : "unban_user",
+      targetType: "user",
+      targetId: params.id,
+      targetLabel: targetForLabel?.username ?? null,
+      undoable: true
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }

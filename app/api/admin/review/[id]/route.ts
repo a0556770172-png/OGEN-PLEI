@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { logAudit } from "@/lib/audit";
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const result = await requireProfile();
@@ -37,6 +38,18 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       updated_at: new Date().toISOString()
     })
     .eq("id", params.id);
+
+  if (action === "approve" || action === "reject") {
+    await logAudit({
+      actorId: user.id,
+      action: action === "approve" ? "approve_app" : "reject_app",
+      targetType: "app",
+      targetId: params.id,
+      targetLabel: app.name,
+      meta: { previousStatus: app.status, note: note ?? null },
+      undoable: true
+    });
+  }
 
   // חשוב: דף הבית (וכל דף שמציג את רשימת האפליקציות/פרטי האפליקציה) הוא force-dynamic,
   // כלומר תמיד שולף נתונים טריים בבקשה חדשה מהשרת - אבל דפדפן שמנווט אליו בניווט צד-לקוח

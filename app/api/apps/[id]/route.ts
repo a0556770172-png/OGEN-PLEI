@@ -3,6 +3,8 @@ import { revalidatePath } from "next/cache";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { deleteObject, createUploadUrl, BUCKETS } from "@/lib/r2";
+import { logAudit } from "@/lib/audit";
+import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
 
 // עריכת פרטי הפרסום (שם/תיאור/קטגוריה/אייקון) - הבעלים של האפליקציה בלבד, או צוות.
 // שינוי פרטים בלבד (לא קובץ) לא מאפס את הבדיקה - זה נשאר כפי שהיה (מאושר/ממתין/וכו').
@@ -26,7 +28,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   const updates: Record<string, any> = {};
   if (typeof name === "string" && name.trim()) updates.name = name.trim();
   if (typeof shortDescription === "string") updates.short_description = shortDescription;
-  if (typeof descriptionHtml === "string") updates.description_html = descriptionHtml;
+  if (typeof descriptionHtml === "string") updates.description_html = sanitizeUserHtml(descriptionHtml);
   if (typeof category === "string") {
     const { count } = await admin.from("categories").select("id", { count: "exact", head: true }).eq("value", category);
     if ((count ?? 0) > 0) updates.category = category;
@@ -56,6 +58,18 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
   }
 
+  if (typeof updates.category === "string" && updates.category !== app.category && isStaff(profile)) {
+    await logAudit({
+      actorId: user.id,
+      action: "change_app_category",
+      targetType: "app",
+      targetId: app.id,
+      targetLabel: app.name,
+      meta: { from: app.category, to: updates.category },
+      undoable: true
+    });
+  }
+
   revalidatePath("/");
   revalidatePath(`/apps/${app.id}`);
 
@@ -79,6 +93,19 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   await deleteObject(BUCKETS.apps, app.file_key).catch(() => {});
   if (app.icon_key) await deleteObject(BUCKETS.assets, app.icon_key).catch(() => {});
   await admin.from("apps").delete().eq("id", app.id);
+
+  if (isStaff(profile)) {
+    // מחיקה לא ניתנת לביטול (הקבצים כבר נמחקו בפועל מ-R2) - נרשמת ללוג לצורך שקיפות בלבד.
+    await logAudit({
+      actorId: user.id,
+      action: "delete_app",
+      targetType: "app",
+      targetId: app.id,
+      targetLabel: app.name,
+      meta: { wasOwner: isOwner },
+      undoable: false
+    });
+  }
 
   revalidatePath("/");
   revalidatePath(`/apps/${app.id}`);

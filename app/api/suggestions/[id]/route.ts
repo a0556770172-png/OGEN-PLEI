@@ -4,6 +4,8 @@ import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { addPoints } from "@/lib/points";
 import { extractApkIcon } from "@/lib/extractIcon";
+import { logAudit } from "@/lib/audit";
+import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -73,7 +75,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         developer_id: suggestion.suggested_by,
         name: suggestion.app_name,
         short_description: (suggestion.note?.trim() || suggestion.app_name).slice(0, 140),
-        description_html: suggestion.note ? `<p>${suggestion.note}</p>` : "",
+        description_html: suggestion.note ? sanitizeUserHtml(`<p>${suggestion.note}</p>`) : "",
         version: suggestion.version?.trim() || "1.0.0",
         category: "general",
         icon_key: iconKey,
@@ -94,6 +96,16 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       revalidatePath(`/apps/${newApp.id}`);
     }
   }
+
+  await logAudit({
+    actorId: user.id,
+    action: status === "approved" ? "approve_suggestion" : "reject_suggestion",
+    targetType: "suggestion",
+    targetId: suggestion.id,
+    targetLabel: suggestion.app_name,
+    meta: { createdAppId },
+    undoable: false
+  });
 
   return NextResponse.json({ ok: true, createdAppId });
 }

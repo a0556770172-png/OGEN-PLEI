@@ -51,6 +51,7 @@ export default function CouncilPanel({ currentProfile }: { currentProfile: Profi
     setSelected(thread);
     setReplyingTo(null);
     setEditingId(null);
+    fetch(`/api/council/threads/${thread.id}/mark-read`, { method: "POST" }).catch(() => {});
     const { data } = await supabase
       .from("council_messages")
       .select("*, sender:profiles!council_messages_sender_id_fkey(username)")

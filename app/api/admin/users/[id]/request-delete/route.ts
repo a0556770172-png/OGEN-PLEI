@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { notifyAdmins } from "@/lib/push";
 
 // צוות פיקוח מגיש כאן בקשה למחיקת משתמש - זו לא מחיקה בפועל, רק בקשה שממתינה
 // לאישור מנהל. אם המבקש הוא מנהל בפועל, אין טעם בבקשה - הוא יכול למחוק ישירות
@@ -44,6 +45,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
     reason
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  notifyAdmins({ title: "בקשת מחיקת משתמש חדשה", body: `${profile.username} ביקש למחוק משתמש`, url: "/dashboard/admin" }).catch(() => {});
 
   return NextResponse.json({ ok: true });
 }

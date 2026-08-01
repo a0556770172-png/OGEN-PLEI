@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren } from "lucide-react";
+import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import UserManagementTable from "./UserManagementTable";
 import ProRequestsQueue from "./ProRequestsQueue";
@@ -12,9 +12,10 @@ import SiteSettingsPanel from "./SiteSettingsPanel";
 import IconBackfillPanel from "./IconBackfillPanel";
 import DeletionRequestsPanel from "./DeletionRequestsPanel";
 import CouncilPanel from "./CouncilPanel";
+import AuditLogPanel from "./AuditLogPanel";
 import type { AppRow, Profile, ProRequest, UserDeletionRequest } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "settings";
+type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "settings";
 
 export default function AdminDashboardClient({
   apps,
@@ -55,6 +56,7 @@ export default function AdminDashboardClient({
     { key: "users", label: "ניהול משתמשים", icon: Users },
     { key: "deletionRequests", label: `בקשות מחיקת משתמשים (${deletionRequests.length})`, icon: ShieldAlert },
     { key: "council", label: "ועדה", icon: Siren },
+    { key: "auditLog", label: "מעקב פיקוח", icon: History },
     { key: "settings", label: "הגדרות", icon: Settings }
   ] as const;
 
@@ -98,6 +100,7 @@ export default function AdminDashboardClient({
       {tab === "users" && <UserManagementTable profiles={profiles} isAdmin={true} />}
       {tab === "deletionRequests" && <DeletionRequestsPanel requests={deletionRequests} />}
       {tab === "council" && <CouncilPanel currentProfile={currentProfile} />}
+      {tab === "auditLog" && <AuditLogPanel />}
       {tab === "settings" && <SiteSettingsPanel requireEmailVerification={requireEmailVerification} />}
     </div>
   );

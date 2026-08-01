@@ -1,8 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Check, X, Archive, Trash2, Loader2, User, HardDrive, ShieldQuestion, CheckCircle2, XCircle, ImageOff, MessageSquarePlus } from "lucide-react";
-import type { AppRow } from "@/types/database";
+import { Download, Check, X, Archive, Trash2, Loader2, User, HardDrive, ShieldQuestion, CheckCircle2, XCircle, ImageOff, MessageSquarePlus, FolderInput } from "lucide-react";
+import type { AppRow, Category } from "@/types/database";
 import StatusBadge from "./StatusBadge";
 import { formatFileSize } from "@/lib/format";
 
@@ -21,6 +21,23 @@ export default function ReviewQueue({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [verifyResults, setVerifyResults] = useState<Record<string, VerifyResult>>({});
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    fetch("/api/categories").then((r) => r.json()).then((json) => setCategories(json.categories ?? [])).catch(() => {});
+  }, []);
+
+  async function changeCategory(appId: string, category: string) {
+    setBusyId(appId);
+    const res = await fetch(`/api/apps/${appId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category })
+    });
+    setBusyId(null);
+    if (res.ok) router.refresh();
+    else alert("שגיאה בשינוי הקטגוריה");
+  }
 
   async function verify(appId: string) {
     setVerifyingId(appId);
@@ -127,6 +144,21 @@ export default function ReviewQueue({
               <button onClick={() => sendNote(app.id)} disabled={busyId === app.id} className="btn-ghost text-xs">
                 <MessageSquarePlus className="h-3.5 w-3.5" /> הודעה למפתח
               </button>
+              {categories.length > 0 && (
+                <label className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface2 px-2.5 py-2 text-xs text-gray-300">
+                  <FolderInput className="h-3.5 w-3.5 text-gray-500" />
+                  <select
+                    value={app.category}
+                    disabled={busyId === app.id}
+                    onChange={(e) => changeCategory(app.id, e.target.value)}
+                    className="bg-transparent text-xs text-gray-200 outline-none"
+                  >
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.value} className="bg-surface2 text-gray-200">{c.label}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
               {app.status !== "approved" && (
                 <button onClick={() => act(app.id, "approve")} disabled={busyId === app.id} className="inline-flex items-center gap-1 rounded-xl bg-accent/15 px-3 py-2 text-xs font-bold text-accent transition hover:bg-accent/25">
                   <Check className="h-3.5 w-3.5" /> אישור פרסום

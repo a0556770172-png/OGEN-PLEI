@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { deleteUserCompletely } from "@/lib/user-deletion";
+import { logAudit } from "@/lib/audit";
 
 // אישור/דחייה של בקשת מחיקת משתמש שהוגשה ע"י צוות פיקוח - מנהל בפועל בלבד.
 // אישור מבצע בפועל את המחיקה הבלתי הפיכה; דחייה רק סוגרת את הבקשה בלי לגעת במשתמש.
@@ -32,6 +33,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       .from("user_deletion_requests")
       .update({ status: "rejected", reviewed_by: user.id, reviewed_at: new Date().toISOString() })
       .eq("id", params.id);
+    await logAudit({
+      actorId: user.id,
+      action: "reject_deletion_request",
+      targetType: "deletion_request",
+      targetId: params.id,
+      undoable: false
+    });
     return NextResponse.json({ ok: true });
   }
 
@@ -43,6 +51,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     .from("user_deletion_requests")
     .update({ status: "approved", reviewed_by: user.id, reviewed_at: new Date().toISOString() })
     .eq("id", params.id);
+
+  await logAudit({
+    actorId: user.id,
+    action: "approve_deletion_request",
+    targetType: "deletion_request",
+    targetId: params.id,
+    undoable: false
+  });
 
   revalidatePath("/");
   return NextResponse.json({ ok: true });

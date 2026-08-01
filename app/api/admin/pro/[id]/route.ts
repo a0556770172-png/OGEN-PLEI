@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { logAudit } from "@/lib/audit";
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const result = await requireProfile();
@@ -31,6 +32,17 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     pro_status: status,
     is_pro: action === "approve" ? true : false
   }).eq("id", reqRow.developer_id);
+
+  const { data: dev } = await admin.from("profiles").select("username, pro_status, is_pro").eq("id", reqRow.developer_id).single();
+  await logAudit({
+    actorId: user.id,
+    action: action === "approve" ? "approve_pro" : "reject_pro",
+    targetType: "pro_request",
+    targetId: params.id,
+    targetLabel: dev?.username ?? null,
+    meta: { developerId: reqRow.developer_id },
+    undoable: true
+  });
 
   return NextResponse.json({ ok: true });
 }

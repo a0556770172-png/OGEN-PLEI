@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { notifyAdmins } from "@/lib/push";
 
 export async function POST(request: Request) {
   const result = await requireProfile();
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
 
   await admin.from("pro_requests").insert({ developer_id: user.id, message: message || null, status: "pending" });
   await admin.from("profiles").update({ pro_status: "requested" }).eq("id", user.id);
+  notifyAdmins({ title: "בקשת שדרוג PRO חדשה", body: `${profile.username} ביקש שדרוג לחשבון PRO`, url: "/dashboard/admin" }).catch(() => {});
 
   return NextResponse.json({ ok: true });
 }

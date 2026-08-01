@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { notifyAdmins } from "@/lib/push";
 
 // בקשה לפתיחת "ועדה" - ערוץ חירום/עדכונים לכל צוות הפיקוח. מנהל בפועל פותח באופן מיידי;
 // חבר צוות פיקוח רק "מבקש", ואם עוד חבר צוות שונה מבקש גם הוא תוך 24 שעות - זה נפתח
@@ -75,6 +76,12 @@ export async function POST(request: Request) {
 
     const ids = (pendingRequests ?? []).map((r) => r.id);
     await admin.from("council_open_requests").update({ status: "fulfilled" }).in("id", ids);
+
+    notifyAdmins({
+      title: "ועדה נפתחה אוטומטית",
+      body: `${distinctRequesters.size} חברי צוות ביקשו לפתוח ועדה: ${title.trim()}`,
+      url: "/dashboard/admin"
+    }).catch(() => {});
 
     return NextResponse.json({ thread, opened: true, autoApproved: true });
   }

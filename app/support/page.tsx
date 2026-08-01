@@ -47,6 +47,7 @@ export default function SupportPage() {
     setSelected(ticket);
     setReplyingTo(null);
     setEditingId(null);
+    fetch(`/api/tickets/${ticket.id}/mark-read`, { method: "POST" }).catch(() => {});
     const { data } = await supabase
       .from("ticket_messages")
       .select("*")

@@ -7,6 +7,7 @@ import { LayoutDashboard, LogOut, Menu, X, ShieldCheck, User } from "lucide-reac
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/database";
 import ThemeToggle from "@/components/ThemeToggle";
+import PushNotificationsSetup from "@/components/PushNotificationsSetup";
 
 export default function Navbar() {
   const supabase = createClient();
@@ -16,6 +17,10 @@ export default function Navbar() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [unread, setUnread] = useState<{ totalUnread: number; conversations: { title: string; unreadCount: number }[] }>({
+    totalUnread: 0,
+    conversations: []
+  });
 
   useEffect(() => {
     let active = true;
@@ -43,6 +48,25 @@ export default function Navbar() {
     const { data: sub } = supabase.auth.onAuthStateChange(() => load());
     return () => { active = false; sub.subscription.unsubscribe(); };
   }, [pathname]);
+
+  // בודק כל 25 שניות אם יש הודעות שלא נקראו, ומראה כמה ומאיזו שיחה - כדי שלא יהיה צריך
+  // להיכנס בכל פעם לבדוק ידנית. רץ רק למשתמשים מחוברים.
+  useEffect(() => {
+    if (!profile) { setUnread({ totalUnread: 0, conversations: [] }); return; }
+    let active = true;
+    async function poll() {
+      try {
+        const res = await fetch("/api/notifications/unread");
+        const json = await res.json();
+        if (active) setUnread({ totalUnread: json.totalUnread ?? 0, conversations: json.conversations ?? [] });
+      } catch {
+        // כשל זמני בבדיקה - לא קריטי, ננסה שוב בסבב הבא
+      }
+    }
+    poll();
+    const interval = setInterval(poll, 25000);
+    return () => { active = false; clearInterval(interval); };
+  }, [profile?.id]);
 
   async function logout() {
     await supabase.auth.signOut();
@@ -108,9 +132,19 @@ export default function Navbar() {
                   )}
                 </span>
               </Link>
-              <Link href="/support" className="text-sm font-medium text-gray-300 transition hover:text-white">
+              <Link
+                href="/support"
+                title={unread.conversations.map((c) => `${c.title}: ${c.unreadCount}`).join(" | ") || undefined}
+                className="relative flex items-center text-sm font-medium text-gray-300 transition hover:text-white"
+              >
                 הודעות
+                {unread.totalUnread > 0 && (
+                  <span className="ms-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-black text-[#fff]">
+                    {unread.totalUnread}
+                  </span>
+                )}
               </Link>
+              {(adminHref || moderatorHref) && <PushNotificationsSetup />}
               {adminHref && (
                 <Link href={adminHref} className="btn-ghost text-sm">
                   <LayoutDashboard className="h-4 w-4" /> ניהול
@@ -158,7 +192,9 @@ export default function Navbar() {
             {profile && (
               <>
                 <Link href="/profile" onClick={() => setOpen(false)}>הפרופיל שלי</Link>
-                <Link href="/support" onClick={() => setOpen(false)}>פניות תמיכה</Link>
+                <Link href="/support" onClick={() => setOpen(false)}>
+                  הודעות{unread.totalUnread > 0 ? ` (${unread.totalUnread})` : ""}
+                </Link>
                 {adminHref && <Link href={adminHref} onClick={() => setOpen(false)}>ניהול</Link>}
                 {moderatorHref && <Link href={moderatorHref} onClick={() => setOpen(false)}>פיקוח</Link>}
                 <button onClick={logout} className="text-right text-red-400">יציאה</button>

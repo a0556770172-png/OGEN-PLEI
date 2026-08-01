@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { notifyAdmins } from "@/lib/push";
 
 // כל משתמש מחובר (רגיל או מפתח) יכול להציע אפליקציה פופולרית להוספה למאגר
 export async function POST(request: Request) {
@@ -33,6 +34,8 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: `שגיאה בשליחת ההצעה: ${error.message}` }, { status: 500 });
   }
+
+  notifyAdmins({ title: "הצעת אפליקציה חדשה", body: `הוצעה אפליקציה חדשה: ${appName.trim()}`, url: "/dashboard/admin" }).catch(() => {});
 
   return NextResponse.json({ ok: true });
 }

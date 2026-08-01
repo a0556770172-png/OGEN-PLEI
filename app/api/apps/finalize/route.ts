@@ -3,6 +3,7 @@ import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { addPoints } from "@/lib/points";
 import { LIMITS } from "@/lib/constants";
+import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
 
 export async function POST(request: Request) {
   const result = await requireProfile();
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
       developer_id: user.id,
       name,
       short_description: shortDescription ?? "",
-      description_html: descriptionHtml ?? "",
+      description_html: sanitizeUserHtml(descriptionHtml ?? ""),
       version: version || "1.0.0",
       category: category || "general",
       icon_key: iconKey ?? null,

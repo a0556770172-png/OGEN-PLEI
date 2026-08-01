@@ -56,6 +56,8 @@ export default function TicketsPanel({ currentProfile, profiles = [] }: { curren
     setSelected(ticket);
     setReplyingTo(null);
     setEditingId(null);
+    // מסמן את השיחה כנקראת ברגע שנפתחת, כדי שספירת ההודעות שלא נקראו תתעדכן מייד
+    fetch(`/api/tickets/${ticket.id}/mark-read`, { method: "POST" }).catch(() => {});
     const { data } = await supabase
       .from("ticket_messages")
       .select("*")
