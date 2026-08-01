@@ -28,6 +28,27 @@ export default function CouncilPanel({ currentProfile }: { currentProfile: Profi
   const [editingText, setEditingText] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  const [unreadByThread, setUnreadByThread] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    let active = true;
+    async function loadUnread() {
+      try {
+        const res = await fetch("/api/notifications/unread");
+        const json = await res.json();
+        if (!active) return;
+        const map: Record<string, number> = {};
+        (json.conversations ?? []).forEach((c: any) => { if (c.type === "council") map[c.id] = c.unreadCount; });
+        setUnreadByThread(map);
+      } catch {
+        // כשל זמני - לא קריטי
+      }
+    }
+    loadUnread();
+    const interval = setInterval(loadUnread, 20000);
+    return () => { active = false; clearInterval(interval); };
+  }, [selected?.id]);
+
   const [showNew, setShowNew] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newReason, setNewReason] = useState("");
@@ -248,6 +269,11 @@ export default function CouncilPanel({ currentProfile }: { currentProfile: Profi
                     {t.opener?.username ?? "צוות"} {t.auto_approved && "· נפתח אוטומטית"}
                   </p>
                 </div>
+                {!!unreadByThread[t.id] && (
+                  <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-black text-[#fff]">
+                    {unreadByThread[t.id]}
+                  </span>
+                )}
                 <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${
                   t.status === "open" ? "bg-gold/15 text-gold" : "bg-gray-500/15 text-gray-400"
                 }`}>

@@ -18,6 +18,9 @@ export interface Profile {
   accepted_terms_at: string | null;
   last_seen_at: string | null;
   moderator_agreement_signed_at: string | null;
+  notes: string | null;
+  display_email: string | null;
+  show_email_tag: boolean;
   can_send_attachments: boolean;
   created_at: string;
 }

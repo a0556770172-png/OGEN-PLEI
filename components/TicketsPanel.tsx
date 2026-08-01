@@ -38,6 +38,29 @@ export default function TicketsPanel({ currentProfile, profiles = [] }: { curren
 
   const canAttach = !!currentProfile && (currentProfile.role === "admin" || currentProfile.can_send_attachments);
 
+  // מספר ההודעות שלא נקראו לכל שיחה בנפרד (לפי מזהה) - כדי להראות בדיוק לאיזו שיחה ברשימה
+  // יש הודעות חדשות, ולא רק מספר כולל אחד.
+  const [unreadByTicket, setUnreadByTicket] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    let active = true;
+    async function loadUnread() {
+      try {
+        const res = await fetch("/api/notifications/unread");
+        const json = await res.json();
+        if (!active) return;
+        const map: Record<string, number> = {};
+        (json.conversations ?? []).forEach((c: any) => { if (c.type === "ticket") map[c.id] = c.unreadCount; });
+        setUnreadByTicket(map);
+      } catch {
+        // כשל זמני - לא קריטי
+      }
+    }
+    loadUnread();
+    const interval = setInterval(loadUnread, 20000);
+    return () => { active = false; clearInterval(interval); };
+  }, [selected?.id]);
+
   async function loadTickets() {
     const { data } = await supabase
       .from("tickets")
@@ -296,11 +319,18 @@ export default function TicketsPanel({ currentProfile, profiles = [] }: { curren
                   <p className="truncate font-bold text-white">{t.subject}</p>
                   <p className="truncate text-xs text-gray-500">{t.user?.username ?? t.user?.email ?? "משתמש"}</p>
                 </div>
-                <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${
-                  t.status === "open" ? "bg-accent/15 text-accent" : "bg-gray-500/15 text-gray-400"
-                }`}>
-                  {t.status === "open" ? "פתוחה" : "סגורה"}
-                </span>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {!!unreadByTicket[t.id] && (
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-black text-[#fff]">
+                      {unreadByTicket[t.id]}
+                    </span>
+                  )}
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                    t.status === "open" ? "bg-accent/15 text-accent" : "bg-gray-500/15 text-gray-400"
+                  }`}>
+                    {t.status === "open" ? "פתוחה" : "סגורה"}
+                  </span>
+                </div>
               </button>
             ))
           )}

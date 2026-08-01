@@ -21,7 +21,7 @@ export default function ProRequestButton({ proStatus, adminMessage }: { proStatu
   const messageBox = adminMessage ? (
     <p className="mt-1.5 flex items-start gap-1.5 text-xs text-gray-400">
       <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary-light" />
-      <span>הודעה מהמנהל: "{adminMessage}"</span>
+      <span>"{adminMessage}"</span>
     </p>
   ) : null;
 

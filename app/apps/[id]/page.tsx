@@ -4,7 +4,9 @@ import { getCategoriesServer } from "@/lib/categories";
 import { formatFileSize } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
 import DownloadButton from "@/components/DownloadButton";
-import { Package, User, Calendar, HardDrive } from "lucide-react";
+import ReportAppButton from "@/components/ReportAppButton";
+import { createAdminSupabase } from "@/lib/supabase/admin";
+import { Package, User, Calendar, HardDrive, Flag } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +18,15 @@ export default async function AppDetailPage({ params }: { params: { id: string }
   const categories = await getCategoriesServer();
   const category = categories.find((c) => c.value === app.category)?.label ?? app.category;
   const isPaused = app.download_paused || (app.download_paused_until ? new Date(app.download_paused_until).getTime() > Date.now() : false);
+
+  // דיווחים מאושרים בלבד - שקיפות למשתמשים על בעיות שצוות הפיקוח אישר שהן אמיתיות.
+  const admin = createAdminSupabase();
+  const { data: approvedReports } = await admin
+    .from("app_reports")
+    .select("id, reason, reviewed_at")
+    .eq("app_id", app.id)
+    .eq("status", "approved")
+    .order("reviewed_at", { ascending: false });
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -41,8 +52,9 @@ export default async function AppDetailPage({ params }: { params: { id: string }
               <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> גרסה {app.version}</span>
               <span>{category}</span>
             </div>
-            <div className="mt-5">
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               <DownloadButton appId={app.id} status={app.status} downloadsCount={app.downloads_count} isPaused={isPaused} />
+              <ReportAppButton appId={app.id} />
             </div>
           </div>
         </div>
@@ -51,6 +63,21 @@ export default async function AppDetailPage({ params }: { params: { id: string }
           <div className="mt-8 border-t border-border pt-6">
             <h2 className="mb-3 text-lg font-bold text-white">תיאור מלא</h2>
             <div className="rich-content text-gray-300" dangerouslySetInnerHTML={{ __html: app.description_html }} />
+          </div>
+        )}
+
+        {approvedReports && approvedReports.length > 0 && (
+          <div className="mt-8 border-t border-border pt-6">
+            <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-white">
+              <Flag className="h-4 w-4 text-red-400" /> דיווחים מאושרים על האפליקציה
+            </h2>
+            <div className="flex flex-col gap-2">
+              {approvedReports.map((r) => (
+                <div key={r.id} className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-gray-300">
+                  {r.reason}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

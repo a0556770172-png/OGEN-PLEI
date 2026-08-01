@@ -1,6 +1,6 @@
-import { ShieldCheck, Users, Layers, Star, Crown, UploadCloud, Download, Gift } from "lucide-react";
+import { ShieldCheck, Users, Layers, Star, Crown, UploadCloud, Download, Gift, MessageSquareText } from "lucide-react";
 
-export const metadata = { title: "אודות — עוגן פליי" };
+export const metadata = { title: "הסברים — עוגן פליי" };
 
 export default function AboutPage() {
   return (
@@ -9,7 +9,7 @@ export default function AboutPage() {
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-glow">
           <ShieldCheck className="h-7 w-7 text-[#fff]" />
         </div>
-        <h1 className="text-4xl font-black">אודות עוגן פליי</h1>
+        <h1 className="text-4xl font-black">הסברים</h1>
         <p className="mx-auto mt-4 max-w-xl text-lg text-gray-400">
           עוגן פליי היא פלטפורמה חרדית - מאגר של אפליקציות ותוכנות מאושרות להורדה, שעברו בדיקה ידנית
           מראש ועומדות בסטנדרט הצניעות המקובל, כך שניתן להוריד אותן דרך סינוני הרשת השונים ללא צורך
@@ -73,7 +73,42 @@ export default function AboutPage() {
         </ul>
         <p className="mt-4 text-sm text-gray-400">
           מגיעים ל-PRO בשתי דרכים: בקשת שדרוג ואישור מנהל, או צבירה עצמאית של 300 נקודות (מכל מקור
-          יחד) - ואז השדרוג ניתן אוטומטית.
+          יחד) - ואז השדרוג ניתן אוטומטית. שדרוג PRO אינו אוטומטי מיידי בבקשה - הפעלת המערכת
+          (אחסון, תעבורה ותחזוקה) כרוכה בעלות, ולכן קיימים תנאים וקריטריונים למתן שדרוג, וכל בקשה
+          נבדקת בהתאם.
+        </p>
+      </section>
+
+      <section className="card p-8">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15 text-primary-light"><MessageSquareText className="h-4 w-4" /></div>
+          <h2 className="text-2xl font-black">איך פותחים צ'אט עם משתמש אחר?</h2>
+        </div>
+        <p className="text-sm text-gray-400">
+          יכולת פתיחת שיחה עם משתמש אחר נפתחת אוטומטית ברגע שהעליתם או הצעתם (בהצעה שאושרה) 10
+          אפליקציות/תוכנות במאגר, בכל שילוב בין העלאה פרטית להצעה ציבורית - שני המקורות מצטרפים
+          יחד לאותו סכום. אין צורך לבקש - ברגע שהגעתם ל-10, כפתור "פתיחת שיחה" יופיע בפרופיל
+          הציבורי של משתמשים אחרים, וגם אצלכם בעמוד הפרופיל תוכלו לראות לאיזה שלב הגעתם.
+        </p>
+        <p className="mt-3 text-sm text-gray-400">
+          חשוב לדעת: הצ'אט בין משתמשים מיועד אך ורק לצורך טכני בנושא האפליקציות והתוכנות שהמפתח
+          העלה למאגר (למשל שאלות תמיכה, תיאום עדכון גרסה וכדומה) - ולא לשיחה כללית.
+        </p>
+      </section>
+
+      <section className="card p-8 text-center">
+        <h2 className="mb-2 text-xl font-black">יש לכם רעיון, הצעה לשיפור, או שאלה?</h2>
+        <p className="text-sm text-gray-400">
+          נשמח לשמוע! אפשר לכתוב בפורום בקישור הזה:{" "}
+          <a
+            href="https://mitmachim.top/topic/99932/%D7%A9%D7%99%D7%AA%D7%95%D7%A3-%D7%A2%D7%95%D7%92%D7%9F-%D7%A4%D7%9C%D7%99%D7%99-%D7%94%D7%A4%D7%99%D7%AA%D7%A8%D7%95%D7%9F-%D7%9C%D7%9E%D7%A4%D7%AA%D7%97%D7%99%D7%9D-%D7%91%D7%A0%D7%98%D7%A4%D7%A8%D7%99-%D7%9E%D7%90%D7%92%D7%A8-%D7%AA%D7%95%D7%9B%D7%A0%D7%95%D7%AA-%D7%95%D7%90%D7%A4%D7%9C%D7%99%D7%A7%D7%A6%D7%99%D7%95%D7%AA-%D7%9E%D7%90%D7%95%D7%A9%D7%A8%D7%95%D7%AA-%D7%91%D7%A0%D7%98%D7%A4%D7%A8%D7%99-%D7%91%D7%A4%D7%99%D7%AA%D7%95%D7%97?_=1785616963425"
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            className="text-primary-light hover:underline"
+          >
+            לחצו כאן לפתיחת נושא בפורום
+          </a>{" "}
+          או פשוט לשלוח הודעה לצוות הניהול דרך עמוד ה"הודעות" באתר.
         </p>
       </section>
     </div>

@@ -16,16 +16,45 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: "לא ניתן לבצע פעולה זו על החשבון שלך" }, { status: 400 });
   }
 
-  const { action } = await request.json();
+  const { action, username } = await request.json();
 
-  // פעולות אלה (מינוי/הדחה מפיקוח, מתן/הסרת PRO, מתן הרשאת קבצים) הן בסמכות מנהל בפועל
-  // בלבד - גם חבר צוות פיקוח שרואה את המסך הזה לא יכול לבצע אותן.
-  const adminOnlyActions = ["promote_moderator", "demote_moderator", "make_pro", "remove_pro", "grant_attachments", "revoke_attachments"];
+  // פעולות אלה (מינוי/הדחה מפיקוח, מתן/הסרת PRO, מתן הרשאת קבצים, עריכת פרטי משתמש) הן
+  // בסמכות מנהל בפועל בלבד - גם חבר צוות פיקוח שרואה את המסך הזה לא יכול לבצע אותן.
+  const adminOnlyActions = ["promote_moderator", "demote_moderator", "make_pro", "remove_pro", "grant_attachments", "revoke_attachments", "edit_profile"];
   if (adminOnlyActions.includes(action) && profile.role !== "admin") {
     return NextResponse.json({ error: "רק מנהל בפועל יכול לבצע פעולה זו" }, { status: 403 });
   }
 
   const admin = createAdminSupabase();
+
+  if (action === "edit_profile") {
+    const trimmed = typeof username === "string" ? username.trim() : "";
+    if (trimmed.length < 3) {
+      return NextResponse.json({ error: "שם המשתמש חייב להכיל לפחות 3 תווים" }, { status: 400 });
+    }
+    const { count: taken } = await admin
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("username", trimmed)
+      .neq("id", params.id);
+    if ((taken ?? 0) > 0) {
+      return NextResponse.json({ error: "שם המשתמש הזה כבר תפוס" }, { status: 400 });
+    }
+    const { data: before } = await admin.from("profiles").select("username").eq("id", params.id).single();
+    const { error: updateError } = await admin.from("profiles").update({ username: trimmed }).eq("id", params.id);
+    if (updateError) return NextResponse.json({ error: "שגיאה בעדכון שם המשתמש" }, { status: 500 });
+
+    await logAudit({
+      actorId: profile.id,
+      action: "edit_user_profile",
+      targetType: "user",
+      targetId: params.id,
+      targetLabel: trimmed,
+      meta: { from: before?.username ?? null, to: trimmed },
+      undoable: false
+    });
+    return NextResponse.json({ ok: true });
+  }
 
   // תיקון באג חמור: חבר צוות פיקוח הצליח לחסום את חשבון המנהל בפועל, מה שנועל אותו
   // מחוץ לאתר. חשבון מנהל (role === "admin") מוגן לחלוטין מפעולות חסימה/הדחה של כל אחד -

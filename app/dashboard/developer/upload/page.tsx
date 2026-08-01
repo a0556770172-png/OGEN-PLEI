@@ -49,10 +49,26 @@ export default function UploadAppPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // גודל מקסימלי לחילוץ אייקון אוטומטי (חייב להיות זהה למה שמוגדר ב-lib/extractIcon.ts
+  // בשרת) - קבצי APK/APKS גדולים מזה כמעט אף פעם לא מספיקים לעבור חילוץ בזמן על Vercel
+  // Hobby, אז אין טעם אפילו לנסות - עדיף לבקש אייקון ידני כבר עכשיו במקום אחרי כישלון.
+  const MAX_AUTO_EXTRACT_BYTES = 35 * 1024 * 1024;
+  const isApkFile = !!file && (file.name.toLowerCase().endsWith(".apk") || file.name.toLowerCase().endsWith(".apks"));
+  const canAutoExtract = isApkFile && !!file && file.size <= MAX_AUTO_EXTRACT_BYTES;
+  const iconRequiredNow = !!file && !icon && !canAutoExtract;
+
   function openConfirm(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     if (!file) { setError("יש לבחור קובץ להעלאה"); return; }
+    if (iconRequiredNow) {
+      setError(
+        !isApkFile
+          ? "לקובץ תוכנה (לא APK) אין אפשרות לחלץ אייקון אוטומטית - חובה להעלות תמונת אייקון ידנית לפני השליחה. אפשר גם ליצור אחת בעזרת AI."
+          : "קובץ ה-APK גדול מ-35MB, ולכן חילוץ אייקון אוטומטי לא יצליח - חובה להעלות תמונת אייקון ידנית לפני השליחה. אפשר גם ליצור אחת בעזרת AI."
+      );
+      return;
+    }
     setShowConfirm(true);
   }
 
@@ -265,9 +281,23 @@ export default function UploadAppPage() {
               <input required type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[#fff]" />
             </div>
             <div>
-              <label className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-400"><ImageIcon className="h-4 w-4" /> אייקון (אופציונלי)</label>
+              <label className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-400">
+                <ImageIcon className="h-4 w-4" /> אייקון {iconRequiredNow ? <span className="text-gold">(חובה בקובץ הזה)</span> : "(אופציונלי)"}
+              </label>
               <input type="file" accept="image/*" onChange={(e) => setIcon(e.target.files?.[0] ?? null)} className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[#fff]" />
-              <p className="mt-1.5 text-xs text-gray-500">אם לא תעלו אייקון וקובץ האפליקציה הוא APK/APKS, ננסה לחלץ אותו אוטומטית מתוך הקובץ עצמו. אם גם זה לא יצליח, נבקש מכם להעלות תמונה לפני שנסיים.</p>
+              {iconRequiredNow ? (
+                <div className="mt-1.5 flex items-start gap-1.5 text-xs text-gold">
+                  <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    {!isApkFile
+                      ? "קובץ תוכנה (לא APK) - אין דרך לחלץ ממנו אייקון אוטומטית."
+                      : "קובץ ה-APK גדול מ-35MB - חילוץ אוטומטי לא יספיק לרוץ בזמן."}{" "}
+                    חובה להעלות תמונה כאן לפני השליחה. אפשר גם ליצור אייקון בעזרת AI (למשל ChatGPT/Copilot) - לא חייב להיות דווקא האייקון הרשמי.
+                  </span>
+                </div>
+              ) : (
+                <p className="mt-1.5 text-xs text-gray-500">אם לא תעלו אייקון וקובץ האפליקציה הוא APK/APKS עד 35MB, ננסה לחלץ אותו אוטומטית מתוך הקובץ עצמו.</p>
+              )}
             </div>
 
             <button type="submit" disabled={status === "uploading" || status === "extracting-icon"} className="btn-primary mt-2 w-full">

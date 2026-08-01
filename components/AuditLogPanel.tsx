@@ -14,7 +14,10 @@ const ACTION_LABELS: Record<string, string> = {
   approve_pro: "אישור שדרוג PRO",
   reject_pro: "דחיית שדרוג PRO",
   approve_deletion_request: "אישור בקשת מחיקת משתמש",
-  reject_deletion_request: "דחיית בקשת מחיקת משתמש"
+  reject_deletion_request: "דחיית בקשת מחיקת משתמש",
+  approve_app_report: "אישור דיווח על אפליקציה",
+  reject_app_report: "דחיית דיווח על אפליקציה",
+  edit_user_profile: "עריכת פרטי משתמש"
 };
 
 interface AuditItem {

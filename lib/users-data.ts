@@ -18,6 +18,8 @@ export interface PublicUserSummary {
 
 export interface PublicUserDetail extends PublicUserSummary {
   apps: AppRow[];
+  notes: string | null;
+  displayEmail: string | null;
 }
 
 export async function getUsersStats() {
@@ -62,7 +64,7 @@ export async function getPublicUserDetail(id: string): Promise<PublicUserDetail 
   const admin = createAdminSupabase();
   const { data: p } = await admin
     .from("profiles")
-    .select("id, username, role, is_moderator, is_pro, avatar_key, created_at, last_seen_at")
+    .select("id, username, role, is_moderator, is_pro, avatar_key, created_at, last_seen_at, notes, display_email, show_email_tag")
     .eq("id", id)
     .single();
   if (!p) return null;
@@ -84,6 +86,9 @@ export async function getPublicUserDetail(id: string): Promise<PublicUserDetail 
     appsCount: (appsData ?? []).length,
     createdAt: p.created_at,
     lastSeenAt: p.last_seen_at,
-    apps: (appsData as AppRow[]) ?? []
+    apps: (appsData as AppRow[]) ?? [],
+    notes: p.notes ?? null,
+    // תגית המייל מוצגת רק אם בעל החשבון בחר להציג אותה - שדה נפרד לגמרי מהמייל האמיתי שנרשם בו
+    displayEmail: p.show_email_tag && p.display_email ? p.display_email : null
   };
 }

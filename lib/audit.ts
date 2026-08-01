@@ -5,7 +5,9 @@ export type AuditAction =
   | "approve_app" | "reject_app" | "delete_app" | "change_app_category"
   | "approve_suggestion" | "reject_suggestion"
   | "approve_pro" | "reject_pro"
-  | "approve_deletion_request" | "reject_deletion_request";
+  | "approve_deletion_request" | "reject_deletion_request"
+  | "approve_app_report" | "reject_app_report"
+  | "edit_user_profile";
 
 // רושם שורה בלוג הביקורת עבור כל פעולת ניהול/פיקוח משמעותית - כדי שהמנהל יוכל לראות בדיוק
 // מי עשה מה, מתי, ולמי, ובמידה וניתן - לבטל את הפעולה. undoable מסמן אם יש כפתור "בטל" זמין.

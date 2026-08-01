@@ -7,6 +7,9 @@ import Link from "next/link";
 import { Rocket } from "lucide-react";
 import AvatarUploadForm from "@/components/AvatarUploadForm";
 import DeveloperAppsPanel from "@/components/DeveloperAppsPanel";
+import ProfileTagsEditor from "@/components/ProfileTagsEditor";
+import { getDeveloperContributionCount, DM_UNLOCK_THRESHOLD } from "@/lib/dm-eligibility";
+import { MessageSquareText } from "lucide-react";
 import type { AppRow } from "@/types/database";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +44,8 @@ export default async function ProfilePage() {
     proAdminMessage = lastProRequest?.admin_message ?? null;
   }
   const plan = profile.is_pro ? LIMITS.pro : LIMITS.free;
+  const contributionCount = await getDeveloperContributionCount(user.id);
+  const dmUnlocked = contributionCount >= DM_UNLOCK_THRESHOLD;
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-8">
@@ -51,6 +56,32 @@ export default async function ProfilePage() {
 
       <div className="card mx-auto w-full max-w-xl p-8">
         <AvatarUploadForm currentAvatarUrl={avatarUrl} username={profile.username} />
+      </div>
+
+      <div className="mx-auto w-full max-w-xl">
+        <ProfileTagsEditor
+          initialNotes={profile.notes}
+          initialDisplayEmail={profile.display_email}
+          initialShowEmailTag={profile.show_email_tag}
+        />
+      </div>
+
+      <div className="card mx-auto flex w-full max-w-xl items-center gap-4 p-6">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-light">
+          <MessageSquareText className="h-5 w-5" />
+        </div>
+        <div className="flex-1">
+          <p className="font-bold text-white">צ'אטים בין משתמשים</p>
+          {dmUnlocked ? (
+            <p className="text-sm text-gray-400">
+              פתוח לך! ({contributionCount} אפליקציות/הצעות שאושרו) - <Link href="/messages" className="text-primary-light hover:underline">מעבר לצ'אטים</Link>
+            </p>
+          ) : (
+            <p className="text-sm text-gray-400">
+              נפתח אוטומטית אחרי {DM_UNLOCK_THRESHOLD} אפליקציות/הצעות שאושרו (כרגע: {contributionCount}). פרטים בעמוד <Link href="/about" className="text-primary-light hover:underline">ההסברים</Link>.
+            </p>
+          )}
+        </div>
       </div>
 
       {profile.role === "user" && (

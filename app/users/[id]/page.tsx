@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { User as UserIcon, ShieldCheck, Crown, Package, Calendar, Clock } from "lucide-react";
+import { User as UserIcon, ShieldCheck, Crown, Package, Calendar, Clock, StickyNote, Mail } from "lucide-react";
 import { getPublicUserDetail } from "@/lib/users-data";
 import { getIconUrl } from "@/lib/apps-data";
+import { getCurrentProfile } from "@/lib/profile";
+import { isDmUnlocked } from "@/lib/dm-eligibility";
 import StatusBadge from "@/components/StatusBadge";
+import DmButton from "@/components/DmButton";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +31,9 @@ export default async function PublicUserPage({ params }: { params: { id: string 
   const appsWithIcons = await Promise.all(
     user.apps.map(async (app) => ({ app, iconUrl: await getIconUrl(app.icon_key) }))
   );
+
+  const { user: viewer } = await getCurrentProfile();
+  const canOpenDm = viewer && viewer.id !== user.id ? await isDmUnlocked(viewer.id) : false;
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -59,6 +65,23 @@ export default async function PublicUserPage({ params }: { params: { id: string 
           <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> הצטרפ/ה ב-{new Date(user.createdAt).toLocaleDateString("he-IL")}</span>
           <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {timeAgoLabel(user.lastSeenAt)}</span>
         </div>
+
+        {(user.notes || user.displayEmail) && (
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            {user.notes && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-surface2 px-3 py-1.5 text-xs text-gray-300"><StickyNote className="h-3.5 w-3.5 text-primary-light" /> {user.notes}</span>
+            )}
+            {user.displayEmail && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-surface2 px-3 py-1.5 text-xs text-gray-300"><Mail className="h-3.5 w-3.5 text-primary-light" /> {user.displayEmail}</span>
+            )}
+          </div>
+        )}
+
+        {canOpenDm && (
+          <div className="mt-4">
+            <DmButton targetUserId={user.id} />
+          </div>
+        )}
       </div>
 
       {isDeveloper && (

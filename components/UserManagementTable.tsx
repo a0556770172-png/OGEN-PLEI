@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Ban, ShieldCheck, Crown, Loader2, ShieldOff, UserCog, Trash2, Paperclip } from "lucide-react";
+import { Ban, ShieldCheck, Crown, Loader2, ShieldOff, UserCog, Trash2, Paperclip, Pencil } from "lucide-react";
 import type { Profile } from "@/types/database";
 
 const ROLE_LABEL: Record<string, string> = { user: "משתמש", developer: "מפתח", admin: "מנהל", moderator: "פיקוח" };
@@ -46,6 +46,26 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
     else {
       const j = await res.json().catch(() => ({}));
       alert(j.error || "שגיאה במחיקת המשתמש");
+    }
+  }
+
+  // עריכת שם משתמש - מנהל בפועל בלבד. הצגת prompt פשוט במקום טופס נפרד, כי זה שדה יחיד.
+  async function editUsername(id: string, currentUsername: string) {
+    const next = window.prompt("שם משתמש חדש:", currentUsername);
+    if (next === null) return;
+    const trimmed = next.trim();
+    if (!trimmed || trimmed === currentUsername) return;
+    setBusyId(id);
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "edit_profile", username: trimmed })
+    });
+    setBusyId(null);
+    if (res.ok) router.refresh();
+    else {
+      const j = await res.json().catch(() => ({}));
+      alert(j.error || "שגיאה בעדכון שם המשתמש");
     }
   }
 
@@ -108,6 +128,9 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
                     <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                   ) : (
                     <>
+                      {isAdmin && (
+                        <button title="עריכת שם משתמש" onClick={() => editUsername(p.id, p.username)} className="rounded-lg p-1.5 text-gray-400 hover:bg-surface2 hover:text-white"><Pencil className="h-4 w-4" /></button>
+                      )}
                       {/* חשבון מנהל בפועל מוגן מחסימה לגמרי (גם בשרת וגם כאן) - אין טעם להציג
                           כפתור שתמיד ייכשל, וזה בדיוק סוג הבאג שכבר תוקן פעם אחת. */}
                       {p.role !== "admin" && (

@@ -112,7 +112,7 @@ export default function Navbar() {
             משתמשים
           </Link>
           <Link href="/about" className="text-sm font-medium text-gray-300 transition hover:text-white">
-            אודות
+            הסברים
           </Link>
           {!loading && profile && (
             <div className="flex items-center gap-3">
@@ -131,6 +131,9 @@ export default function Navbar() {
                     <span className="ms-1 text-xs text-primary-light">({profile.is_pro ? "PRO" : "רגיל"})</span>
                   )}
                 </span>
+              </Link>
+              <Link href="/messages" className="text-sm font-medium text-gray-300 transition hover:text-white">
+                צ'אטים
               </Link>
               <Link
                 href="/support"
@@ -188,10 +191,11 @@ export default function Navbar() {
             ) : null}
             <Link href="/" onClick={() => setOpen(false)}>החנות</Link>
             <Link href="/users" onClick={() => setOpen(false)}>משתמשים</Link>
-            <Link href="/about" onClick={() => setOpen(false)}>אודות</Link>
+            <Link href="/about" onClick={() => setOpen(false)}>הסברים</Link>
             {profile && (
               <>
                 <Link href="/profile" onClick={() => setOpen(false)}>הפרופיל שלי</Link>
+                <Link href="/messages" onClick={() => setOpen(false)}>צ'אטים</Link>
                 <Link href="/support" onClick={() => setOpen(false)}>
                   הודעות{unread.totalUnread > 0 ? ` (${unread.totalUnread})` : ""}
                 </Link>
