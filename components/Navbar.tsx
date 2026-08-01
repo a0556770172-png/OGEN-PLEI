@@ -132,9 +132,6 @@ export default function Navbar() {
                   )}
                 </span>
               </Link>
-              <Link href="/messages" className="text-sm font-medium text-gray-300 transition hover:text-white">
-                צ'אטים
-              </Link>
               <Link
                 href="/support"
                 title={unread.conversations.map((c) => `${c.title}: ${c.unreadCount}`).join(" | ") || undefined}
@@ -195,7 +192,6 @@ export default function Navbar() {
             {profile && (
               <>
                 <Link href="/profile" onClick={() => setOpen(false)}>הפרופיל שלי</Link>
-                <Link href="/messages" onClick={() => setOpen(false)}>צ'אטים</Link>
                 <Link href="/support" onClick={() => setOpen(false)}>
                   הודעות{unread.totalUnread > 0 ? ` (${unread.totalUnread})` : ""}
                 </Link>

@@ -4,12 +4,11 @@ import { getAvatarUrl } from "@/lib/avatar";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { LIMITS } from "@/lib/constants";
 import Link from "next/link";
-import { Rocket } from "lucide-react";
+import { Rocket, MessageSquareText, History } from "lucide-react";
 import AvatarUploadForm from "@/components/AvatarUploadForm";
 import DeveloperAppsPanel from "@/components/DeveloperAppsPanel";
 import ProfileTagsEditor from "@/components/ProfileTagsEditor";
 import { getDeveloperContributionCount, DM_UNLOCK_THRESHOLD } from "@/lib/dm-eligibility";
-import { MessageSquareText } from "lucide-react";
 import type { AppRow } from "@/types/database";
 
 export const dynamic = "force-dynamic";
@@ -66,22 +65,32 @@ export default async function ProfilePage() {
         />
       </div>
 
-      <div className="card mx-auto flex w-full max-w-xl items-center gap-4 p-6">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-light">
-          <MessageSquareText className="h-5 w-5" />
+      <div className="card mx-auto flex w-full max-w-xl flex-col gap-4 p-6">
+        <div className="flex items-center gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-light">
+            <MessageSquareText className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-white">צ'אט</p>
+            {dmUnlocked ? (
+              <p className="text-sm text-gray-400">פתוח לך! ({contributionCount} אפליקציות/הצעות שאושרו)</p>
+            ) : (
+              <p className="text-sm text-gray-400">
+                נפתח אוטומטית אחרי {DM_UNLOCK_THRESHOLD} אפליקציות/הצעות שאושרו (כרגע: {contributionCount}). פרטים בעמוד <Link href="/about" className="text-primary-light hover:underline">ההסברים</Link>.
+              </p>
+            )}
+          </div>
         </div>
-        <div className="flex-1">
-          <p className="font-bold text-white">צ'אטים בין משתמשים</p>
-          {dmUnlocked ? (
-            <p className="text-sm text-gray-400">
-              פתוח לך! ({contributionCount} אפליקציות/הצעות שאושרו) - <Link href="/messages" className="text-primary-light hover:underline">מעבר לצ'אטים</Link>
-            </p>
-          ) : (
-            <p className="text-sm text-gray-400">
-              נפתח אוטומטית אחרי {DM_UNLOCK_THRESHOLD} אפליקציות/הצעות שאושרו (כרגע: {contributionCount}). פרטים בעמוד <Link href="/about" className="text-primary-light hover:underline">ההסברים</Link>.
-            </p>
-          )}
-        </div>
+        {dmUnlocked && (
+          <div className="flex flex-wrap gap-2">
+            <Link href="/users" className="btn-primary text-sm">
+              <MessageSquareText className="h-4 w-4" /> התחל צ'אט
+            </Link>
+            <Link href="/messages" className="btn-ghost text-sm">
+              <History className="h-4 w-4" /> צ'אט (היסטוריה)
+            </Link>
+          </div>
+        )}
       </div>
 
       {profile.role === "user" && (
