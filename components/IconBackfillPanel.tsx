@@ -80,8 +80,9 @@ export default function IconBackfillPanel() {
 
       setRemaining(json.remaining);
       if (json.remaining > 0 && json.processed > 0) {
-        const batchesLeft = Math.ceil(json.remaining / 8);
-        const eta = (batchesLeft * (avgBatchMsRef.current ?? batchMs)) / 1000;
+        // כל קריאה מטפלת עכשיו באפליקציה אחת בלבד (ראו הסבר ב-route.ts), אז מספר הקריאות
+        // שנותרו שווה בדיוק למספר האפליקציות שנותרו.
+        const eta = (json.remaining * (avgBatchMsRef.current ?? batchMs)) / 1000;
         setEtaSec(eta);
         pushLog(`נשארו ${json.remaining} אפליקציות בלי אייקון, ממשיך אוטומטית... (הערכה: כ-${formatSeconds(eta)})`);
         router.refresh();
@@ -125,8 +126,9 @@ export default function IconBackfillPanel() {
       </div>
       <p className="text-xs text-gray-400">
         מריץ את מנגנון חילוץ האייקון האוטומטי על כל האפליקציות (APK / APKS) שכבר פורסמו בלי אייקון. תהליך אוטומטי, אין
-        צורך להעלות מחדש שום דבר. התהליך עובד באצוות קטנות (8 בכל פעם) כדי לא לחרוג ממגבלת הזמן של Vercel, אז יכול
-        לקחת כמה דקות אם יש הרבה אפליקציות - אפשר לעקוב אחרי ההתקדמות בלוג למטה.
+        צורך להעלות מחדש שום דבר. עובד על אפליקציה אחת בכל פעם (כדי לא לחרוג ממגבלת הזמן של Vercel), אז יכול
+        לקחת כמה דקות אם יש הרבה אפליקציות - אפשר לעקוב אחרי ההתקדמות בלוג למטה. אפליקציות עם קובץ גדול מ-35MB
+        לא ניתנות לחילוץ אוטומטי (יופיע כישלון עם הסיבה "הקובץ גדול מדי") - עבורן יש להעלות אייקון ידנית.
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <button onClick={start} disabled={running} className="btn-primary text-sm">

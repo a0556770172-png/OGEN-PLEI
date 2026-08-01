@@ -13,10 +13,19 @@ export type ExtractIconResult =
   | { iconKey: string; appName?: string; versionName?: string }
   | { iconKey: null; reason: string; detail?: string };
 
-async function downloadToTempFile(url: string, destPath: string) {
-  const res = await fetch(url);
+// גודל מקסימלי לחילוץ אוטומטי - קבצים גדולים מזה כמעט תמיד לא מספיקים להוריד+לפרסר בזמן
+// (ראו הסבר מפורט למטה על מגבלת ה-10 שניות של Vercel Hobby), אז עדיף לוותר מיד ובבירור
+// במקום לנסות ולתקוע את כל הבקשה עד שהיא נהרגת בכוח בלי שום תוצאה מועילה בכלל.
+const MAX_AUTO_EXTRACT_BYTES = 35 * 1024 * 1024; // 35MB
+
+async function downloadToTempFile(url: string, destPath: string, signal: AbortSignal) {
+  const res = await fetch(url, { signal });
   if (!res.ok || !res.body) {
     throw new Error(`הורדת הקובץ מהאחסון נכשלה (קוד ${res.status})`);
+  }
+  const contentLength = Number(res.headers.get("content-length") ?? 0);
+  if (contentLength > MAX_AUTO_EXTRACT_BYTES) {
+    throw Object.assign(new Error("הקובץ גדול מדי לחילוץ אוטומטי"), { code: "TOO_LARGE" });
   }
   await pipeline(Readable.fromWeb(res.body as any), createWriteStream(destPath));
 }
@@ -37,7 +46,32 @@ function findBaseApkEntry(zip: AdmZip) {
 // לוגיקת חילוץ האייקון המשותפת - מנותקת מבדיקת הרשאות/בעלות על הקובץ, כדי שאפשר יהיה
 // להשתמש בה גם מתוך זרימות שאינן "מפתח מעלה APK משלו" (למשל: אישור הצעת אפליקציה ע"י
 // צוות, או חילוץ למפרע לאפליקציות ישנות) - הבדיקות האלה קורות בכל נתיב API בנפרד.
+// חשוב מאוד: אם האתר רץ על תוכנית Vercel Hobby (החינמית), פונקציות שרת מוגבלות שם ל-10
+// שניות בפועל בלבד - בלי קשר לגמרי לערך maxDuration בקוד. הורדה מלאה של APK גדול (אפליקציות
+// אמיתיות יכולות להגיע בקלות ל-50-150MB) ואז פענוח שלו כמעט תמיד לוקחים יותר מזה, מה שגורם
+// לכל הבקשה "להיתקע" עד ש-Vercel הורג אותה בכוח בלי שום תוצאה מועילה כלל - זה בדיוק מה שנראה
+// כמו "לא עובד בכלל / עובד לפעמים". כדי לפתור את זה בלי לשדרג תוכנית, יש כאן טיימאאוט פנימי
+// קשיח (8 שניות) שמבטיח שהפונקציה תמיד תחזיר תשובה ברורה ומהירה - הצלחה, או כישלון עם סיבה
+// מפורשת ("הקובץ גדול מדי" / "לקח יותר מדי זמן") - במקום להיתקע בלי שום מידע שימושי.
+const HARD_TIMEOUT_MS = 8000;
+
 export async function extractApkIcon(fileKey: string, ownerId: string): Promise<ExtractIconResult> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), HARD_TIMEOUT_MS);
+  try {
+    const result = await Promise.race([
+      extractApkIconInner(fileKey, ownerId, controller.signal),
+      new Promise<ExtractIconResult>((resolve) =>
+        setTimeout(() => resolve({ iconKey: null, reason: "timeout", detail: "חילוץ האייקון לקח יותר מדי זמן (מעל 8 שניות) - כנראה שהקובץ גדול מדי לחילוץ אוטומטי" }), HARD_TIMEOUT_MS)
+      )
+    ]);
+    return result;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function extractApkIconInner(fileKey: string, ownerId: string, signal: AbortSignal): Promise<ExtractIconResult> {
   const lowerKey = fileKey.toLowerCase();
   const isApks = lowerKey.endsWith(".apks");
   if (!lowerKey.endsWith(".apk") && !isApks) {
@@ -51,7 +85,7 @@ export async function extractApkIcon(fileKey: string, ownerId: string): Promise<
     const downloadUrl = await createDownloadUrl(BUCKETS.apps, fileKey);
     tempDir = await mkdtemp(path.join(tmpdir(), "ogenplay-apk-"));
     const downloadedPath = path.join(tempDir, isApks ? "bundle.apks" : "app.apk");
-    await downloadToTempFile(downloadUrl, downloadedPath);
+    await downloadToTempFile(downloadUrl, downloadedPath, signal);
 
     let apkPath = downloadedPath;
     if (isApks) {
@@ -93,6 +127,12 @@ export async function extractApkIcon(fileKey: string, ownerId: string): Promise<
 
     return { iconKey, appName: parsed.name, versionName: parsed.versionName };
   } catch (err: any) {
+    if (err?.code === "TOO_LARGE") {
+      return { iconKey: null, reason: "file-too-large", detail: "הקובץ גדול מדי לחילוץ אוטומטי (מעל 35MB) - יש להעלות אייקון ידנית" };
+    }
+    if (err?.name === "AbortError") {
+      return { iconKey: null, reason: "timeout", detail: "ההורדה מהאחסון לקחה יותר מדי זמן" };
+    }
     return { iconKey: null, reason: "parse-error", detail: `[${stage}] ${String(err?.message || err)}` };
   } finally {
     if (tempDir) {
