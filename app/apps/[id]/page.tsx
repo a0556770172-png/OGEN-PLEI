@@ -53,8 +53,13 @@ export default async function AppDetailPage({ params }: { params: { id: string }
               <span>{category}</span>
             </div>
             <div className="mt-5 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-              <DownloadButton appId={app.id} status={app.status} downloadsCount={app.downloads_count} isPaused={isPaused} />
-              <ReportAppButton appId={app.id} />
+              <DownloadButton
+                appId={app.id}
+                status={app.status}
+                downloadsCount={app.downloads_count}
+                isPaused={isPaused}
+                extra={<ReportAppButton appId={app.id} />}
+              />
             </div>
           </div>
         </div>

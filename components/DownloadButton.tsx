@@ -33,12 +33,16 @@ export default function DownloadButton({
   appId,
   status,
   downloadsCount,
-  isPaused
+  isPaused,
+  extra
 }: {
   appId: string;
   status: AppStatus;
   downloadsCount: number;
   isPaused?: boolean;
+  // כפתורים נוספים (כמו "דיווח על האפליקציה") שצריכים לשבת באותה שורה בדיוק, באותו גובה -
+  // מוצג בתוך אותו div של flex-wrap כדי שלא ייווצר קינון עקום שדוחף אותו למקום מוזר.
+  extra?: React.ReactNode;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -71,6 +75,7 @@ export default function DownloadButton({
         <div className="flex flex-wrap items-center gap-2">
           <button disabled className="btn-ghost opacity-60">האפליקציה אינה זמינה להורדה כעת</button>
           <ShareButton />
+          {extra}
         </div>
       </div>
     );
@@ -82,6 +87,7 @@ export default function DownloadButton({
         <div className="flex flex-wrap items-center gap-2">
           <button disabled className="btn-ghost opacity-60">המפתח השהה זמנית את ההורדה של האפליקציה הזו</button>
           <ShareButton />
+          {extra}
         </div>
       </div>
     );
@@ -95,6 +101,7 @@ export default function DownloadButton({
           {loading ? "מכין הורדה..." : `הורדה (${count.toLocaleString("he-IL")})`}
         </button>
         <ShareButton />
+        {extra}
       </div>
       {error && <p className="text-sm text-red-400">{error}</p>}
       <p className="flex items-center gap-1 text-xs text-gray-500"><Lock className="h-3 w-3" /> נדרשת התחברות להורדה</p>
