@@ -1,6 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
-import { Sparkles, ShieldCheck, Rocket, Gift, Download } from "lucide-react";
+import { Sparkles, ShieldCheck, Rocket, Gift, Download, Heart } from "lucide-react";
 import Link from "next/link";
 
 export default function HomeHero({ total, totalDownloads }: { total: number; totalDownloads: number }) {
@@ -44,6 +44,15 @@ export default function HomeHero({ total, totalDownloads }: { total: number; tot
             <ShieldCheck className="h-4 w-4" /> עיון בחנות
           </Link>
         </div>
+
+        <a
+          href="https://ko-fi.com/aishivsheramlumad"
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          className="group mt-1 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-1.5 text-xs font-bold text-gold transition-all duration-300 hover:border-gold/60 hover:bg-gold/15 hover:shadow-[0_0_25px_rgba(234,179,8,0.25)]"
+        >
+          <Heart className="h-3.5 w-3.5 transition-transform group-hover:scale-110" /> תמכו בפרויקט
+        </a>
       </motion.div>
     </section>
   );

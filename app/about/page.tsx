@@ -1,4 +1,5 @@
-import { ShieldCheck, Users, Layers, Star, Crown, UploadCloud, Download, Gift, MessageSquareText } from "lucide-react";
+import Link from "next/link";
+import { ShieldCheck, Users, Layers, Star, Crown, UploadCloud, Download, Gift, MessageSquareText, LifeBuoy, ArrowLeft, Heart } from "lucide-react";
 
 export const metadata = { title: "הסברים — עוגן פליי" };
 
@@ -15,6 +16,19 @@ export default function AboutPage() {
           מראש ועומדות בסטנדרט הצניעות המקובל, כך שניתן להוריד אותן דרך סינוני הרשת השונים ללא צורך
           בבדיקה נוספת בזמן ההורדה עצמה.
         </p>
+      </section>
+
+      <section className="card flex flex-col items-center gap-4 border-2 border-primary/50 bg-gradient-to-br from-primary/15 via-surface to-surface p-8 text-center shadow-glow">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/20 text-primary-light">
+          <LifeBuoy className="h-7 w-7" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-black text-white">יש לכם שאלה, בעיה, או פנייה לתמיכה?</h2>
+          <p className="mt-2 max-w-md text-sm text-gray-400">כל הפניות והשיחות עם הצוות שלנו נמצאות במקום אחד - לחצו על הכפתור ותועברו לשם ישירות.</p>
+        </div>
+        <Link href="/support" className="btn-primary px-8 py-3.5 text-base">
+          <MessageSquareText className="h-5 w-5" /> לחצו כאן לפנייה לתמיכה <ArrowLeft className="h-5 w-5" />
+        </Link>
       </section>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -77,6 +91,25 @@ export default function AboutPage() {
           (אחסון, תעבורה ותחזוקה) כרוכה בעלות, ולכן קיימים תנאים וקריטריונים למתן שדרוג, וכל בקשה
           נבדקת בהתאם.
         </p>
+
+        <div className="mt-6 flex flex-col items-center gap-3 rounded-2xl border-2 border-gold/40 bg-gradient-to-br from-gold/15 via-surface to-surface p-6 text-center shadow-glow">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold/20 text-gold"><Heart className="h-5 w-5" /></div>
+          <p className="text-lg font-black text-white">דרך שלישית, המהירה מכולן - תמיכה בפרויקט</p>
+          <p className="max-w-md text-sm text-gray-300">
+            מי שתורם/ת 3$ ומעלה לטובת החזקת האתר, מקבל/ת חשבון PRO ישירות - בלי קשר לכמות
+            האפליקציות שהעליתם ובלי לחכות לצבירת נקודות. זו הדרך הכי פשוטה לעזור לנו להמשיך
+            להחזיק את השרתים דלוקים, ולקבל בתמורה את כל היתרונות של PRO באופן מיידי.
+          </p>
+          <a
+            href="https://ko-fi.com/aishivsheramlumad"
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            className="btn-primary bg-gold text-[#111] hover:bg-gold/90"
+          >
+            <Heart className="h-4 w-4" /> תמכו בפרויקט וקבלו PRO
+          </a>
+          <p className="text-xs text-gray-500">לאחר התרומה, שלחו לנו הודעה עם אישור התרומה דרך כפתור התמיכה למעלה בעמוד הזה, ונשדרג את החשבון שלכם ל-PRO בהקדם.</p>
+        </div>
       </section>
 
       <section className="card p-8">
@@ -108,7 +141,7 @@ export default function AboutPage() {
           >
             לחצו כאן לפתיחת נושא בפורום
           </a>{" "}
-          או פשוט לשלוח הודעה לצוות הניהול דרך עמוד ה"הודעות" באתר.
+          או פשוט לשלוח הודעה לצוות הניהול דרך <Link href="/support" className="text-primary-light hover:underline">כפתור הפנייה לתמיכה</Link> למעלה בעמוד הזה.
         </p>
       </section>
     </div>
