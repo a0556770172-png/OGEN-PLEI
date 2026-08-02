@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ShieldCheck, Users, Layers, Star, Crown, UploadCloud, Download, Gift, MessageSquareText, LifeBuoy, ArrowLeft, Heart } from "lucide-react";
+import { ShieldCheck, Users, Layers, Star, Crown, UploadCloud, Download, Gift, MessageSquareText, LifeBuoy, ArrowLeft, Heart, ThumbsUp } from "lucide-react";
 
 export const metadata = { title: "הסברים — עוגן פליי" };
 
@@ -128,6 +128,23 @@ export default function AboutPage() {
         <p className="mt-3 text-sm text-gray-400">
           חשוב לדעת: הצ'אט בין משתמשים מיועד אך ורק לצורך טכני בנושא האפליקציות והתוכנות שהמפתח
           העלה למאגר (למשל שאלות תמיכה, תיאום עדכון גרסה וכדומה) - ולא לשיחה כללית.
+        </p>
+      </section>
+
+      <section className="card p-8">
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent"><ThumbsUp className="h-4 w-4" /></div>
+          <h2 className="text-2xl font-black">דירוגים, תגובות ולייקים</h2>
+        </div>
+        <p className="text-sm text-gray-400">
+          כל משתמש מחובר יכול לדרג כל אפליקציה או תוכנה בכוכבים (1 עד 5) בעמוד האפליקציה, בלי שום
+          תנאי מקדים. כתיבת תגובת טקסט לצד הדירוג נפתחת אוטומטית אחרי שהעליתם 5 אפליקציות/תוכנות
+          משלכם למאגר.
+        </p>
+        <p className="mt-3 text-sm text-gray-400">
+          לייק על אפליקציה (שמוסיף נקודה אחת למפתח שלה) נפתח אוטומטית אחרי שהעליתם 15
+          אפליקציות/תוכנות משלכם למאגר - כדי לשמור על כך שהלייקים משקפים חברי קהילה פעילים
+          ומוכרים. אי אפשר לתת לייק לאפליקציה של עצמכם.
         </p>
       </section>
 

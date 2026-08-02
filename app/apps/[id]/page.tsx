@@ -5,6 +5,8 @@ import { formatFileSize } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
 import DownloadButton from "@/components/DownloadButton";
 import ReportAppButton from "@/components/ReportAppButton";
+import AppLikeButton from "@/components/AppLikeButton";
+import AppReviews from "@/components/AppReviews";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { Package, User, Calendar, HardDrive, Flag } from "lucide-react";
 
@@ -58,7 +60,12 @@ export default async function AppDetailPage({ params }: { params: { id: string }
                 status={app.status}
                 downloadsCount={app.downloads_count}
                 isPaused={isPaused}
-                extra={<ReportAppButton appId={app.id} />}
+                extra={
+                  <>
+                    <ReportAppButton appId={app.id} />
+                    <AppLikeButton appId={app.id} />
+                  </>
+                }
               />
             </div>
           </div>
@@ -85,6 +92,8 @@ export default async function AppDetailPage({ params }: { params: { id: string }
             </div>
           </div>
         )}
+
+        <AppReviews appId={app.id} />
       </div>
     </div>
   );

@@ -13,7 +13,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (!isStaff(profile)) return NextResponse.json({ error: "אין הרשאה" }, { status: 403 });
 
   const { action } = await request.json().catch(() => ({}));
-  if (action !== "approve" && action !== "reject") {
+  // "revert" - מחזיר דיווח שכבר אושר (גלוי לציבור) בחזרה למצב "ממתין" (פרטי, לא מוצג
+  // יותר בעמוד האפליקציה) - בלי למחוק אותו, כך שאפשר לאשר אותו שוב בעתיד אם צריך.
+  const validActions = ["approve", "reject", "revert"];
+  if (!validActions.includes(action)) {
     return NextResponse.json({ error: "פעולה לא חוקית" }, { status: 400 });
   }
 
@@ -26,23 +29,43 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   const { data: app } = await admin.from("apps").select("id, name").eq("id", report.app_id).maybeSingle();
 
-  const status = action === "approve" ? "approved" : "rejected";
+  const status = action === "approve" ? "approved" : action === "reject" ? "rejected" : "pending";
   const { error: updateError } = await admin
     .from("app_reports")
     .update({ status, reviewed_by: user.id, reviewed_at: new Date().toISOString() })
     .eq("id", params.id);
   if (updateError) return NextResponse.json({ error: `שגיאה בעדכון הדיווח: ${updateError.message}` }, { status: 500 });
 
-  await logAudit({
-    actorId: user.id,
-    action: action === "approve" ? "approve_app_report" : "reject_app_report",
-    targetType: "app_report",
-    targetId: params.id,
-    targetLabel: app?.name ?? null,
-    undoable: false
-  });
+  if (action === "approve" || action === "reject") {
+    await logAudit({
+      actorId: user.id,
+      action: action === "approve" ? "approve_app_report" : "reject_app_report",
+      targetType: "app_report",
+      targetId: params.id,
+      targetLabel: app?.name ?? null,
+      undoable: false
+    });
+  }
 
   if (app?.id) revalidatePath(`/apps/${app.id}`);
+
+  return NextResponse.json({ ok: true });
+}
+
+// מחיקה מוחלטת של דיווח (כל סטטוס) - צוות פיקוח/מנהל. לא ניתנת לביטול.
+export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+  const result = await requireProfile();
+  if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+  const { profile } = result;
+  if (!isStaff(profile)) return NextResponse.json({ error: "אין הרשאה" }, { status: 403 });
+
+  const admin = createAdminSupabase();
+  const { data: report } = await admin.from("app_reports").select("app_id").eq("id", params.id).maybeSingle();
+
+  const { error } = await admin.from("app_reports").delete().eq("id", params.id);
+  if (error) return NextResponse.json({ error: `שגיאה במחיקת הדיווח: ${error.message}` }, { status: 500 });
+
+  if (report?.app_id) revalidatePath(`/apps/${report.app_id}`);
 
   return NextResponse.json({ ok: true });
 }
