@@ -5,11 +5,22 @@ import { Search, Smartphone, Monitor } from "lucide-react";
 import AppCard from "./AppCard";
 import type { AppRow, Category } from "@/types/database";
 
-// אפליקציות מובייל (קובץ APK) לעומת תוכנות מחשב (כל שאר סוגי הקבצים - EXE, MSI, ZIP וכו') -
+// אפליקציות מובייל (APK/APKS) לעומת תוכנות מחשב (כל שאר סוגי הקבצים - EXE, MSI, ZIP וכו') -
 // השיוך נקבע לפי סיומת הקובץ בפועל שהמפתח העלה, לא לפי הקטגוריה שנבחרה, כדי שהחלוקה
-// תמיד תהיה מדויקת בלי תלות בבחירת קטגוריה שגויה.
+// תמיד תהיה מדויקת בלי תלות בבחירת קטגוריה שגויה. בודקים גם file_name וגם file_key (מפתח
+// האחסון ב-R2) - כדי שקובץ יסווג נכון גם אם אחד מהשדות חסר/לא מעודכן מסיבה כלשהי.
+// באג שתוקן: קבצי .apks (חבילת APK מפוצלת) לא זוהו כי הבדיקה חיפשה ".apk" בלבד -
+// הם נפלו בטעות ל"תוכנות" והנפיחו את הספירה שם.
+const APK_EXTENSIONS = [".apk", ".apks", ".xapk"];
+
+function endsWithAny(value: string | null | undefined, suffixes: string[]) {
+  const v = value?.toLowerCase().trim();
+  if (!v) return false;
+  return suffixes.some((s) => v.endsWith(s));
+}
+
 function isApk(app: AppRow) {
-  return app.file_name?.toLowerCase().endsWith(".apk");
+  return endsWithAny(app.file_name, APK_EXTENSIONS) || endsWithAny(app.file_key, APK_EXTENSIONS);
 }
 
 export default function AppGrid({
