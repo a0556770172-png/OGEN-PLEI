@@ -52,7 +52,9 @@ export default function HomeHero({
           <Sparkles className="h-3.5 w-3.5" /> {total.toLocaleString("he-IL")} אפליקציות ותוכנות בחנות
         </span>
         <h1 className="text-4xl font-black leading-tight sm:text-5xl">
-          חנות האפליקציות והתוכנות <span className="text-gradient">עוגן פליי</span>
+          חנות האפליקציות והתוכנות
+          <br />
+          <span className="text-gradient whitespace-nowrap">עוגן פליי</span>
         </h1>
         <p className="max-w-xl text-lg text-gray-400">
           כל אפליקציה ותוכנה עוברת בדיקה ידנית ומוקפדת לפני פרסום. הורידו בביטחון, פרסמו בקלות.
@@ -80,9 +82,9 @@ export default function HomeHero({
           href="https://ko-fi.com/aishivsheramlumad"
           target="_blank"
           rel="noopener noreferrer nofollow"
-          className="group mt-1 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-1.5 text-xs font-bold text-gold transition-all duration-300 hover:border-gold/60 hover:bg-gold/15 hover:shadow-[0_0_25px_rgba(234,179,8,0.25)]"
+          className="group mt-2 inline-flex items-center gap-2 rounded-full border-2 border-gold/50 bg-gold/15 px-5 py-2 text-sm font-bold text-gold shadow-[0_0_20px_rgba(234,179,8,0.2)] transition-all duration-300 hover:border-gold/80 hover:bg-gold/25 hover:shadow-[0_0_30px_rgba(234,179,8,0.35)]"
         >
-          <Heart className="h-3.5 w-3.5 transition-transform group-hover:scale-110" /> תמכו בפרויקט
+          <Heart className="h-4 w-4 transition-transform group-hover:scale-110" /> תמכו בפרויקט
         </a>
       </motion.div>
     </section>
