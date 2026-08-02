@@ -42,6 +42,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `הגעת למכסת האפליקציות המקסימלית (${plan.maxApps})` }, { status: 400 });
   }
 
+  // מנהל בפועל שמעלה אפליקציה/תוכנה בעצמו לא צריך לעבור תור בדיקה נפרד - הוא כבר הסמכות
+  // העליונה באתר, ואין טעם שיאשר לעצמו את מה שהוא כבר בדק לפני ההעלאה. מפתחים רגילים
+  // (וגם צוות פיקוח שהוא לא מנהל בפועל) עדיין עוברים את תור הבדיקה הרגיל כרגיל.
+  const initialStatus = profile.role === "admin" ? "approved" : "pending";
+
   const { data: app, error } = await admin
     .from("apps")
     .insert({
@@ -55,7 +60,8 @@ export async function POST(request: Request) {
       file_key: fileKey,
       file_name: fileName,
       file_size_bytes: fileSize,
-      status: "pending"
+      status: initialStatus,
+      ...(initialStatus === "approved" ? { reviewed_by: user.id, reviewed_at: new Date().toISOString() } : {})
     })
     .select()
     .single();

@@ -8,7 +8,7 @@ import { Rocket, MessageSquareText, History } from "lucide-react";
 import AvatarUploadForm from "@/components/AvatarUploadForm";
 import DeveloperAppsPanel from "@/components/DeveloperAppsPanel";
 import ProfileTagsEditor from "@/components/ProfileTagsEditor";
-import { getDeveloperContributionCount, DM_UNLOCK_THRESHOLD } from "@/lib/dm-eligibility";
+import { getDeveloperContributionCount, isDmUnlocked, DM_UNLOCK_THRESHOLD } from "@/lib/dm-eligibility";
 import type { AppRow } from "@/types/database";
 
 export const dynamic = "force-dynamic";
@@ -44,7 +44,8 @@ export default async function ProfilePage() {
   }
   const plan = profile.is_pro ? LIMITS.pro : LIMITS.free;
   const contributionCount = await getDeveloperContributionCount(user.id);
-  const dmUnlocked = contributionCount >= DM_UNLOCK_THRESHOLD;
+  const dmUnlocked = await isDmUnlocked(user.id);
+  const dmUnlockedByRole = profile.role === "admin" || profile.is_moderator || profile.is_pro;
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-8">
@@ -73,7 +74,9 @@ export default async function ProfilePage() {
           <div className="flex-1">
             <p className="font-bold text-white">צ'אט</p>
             {dmUnlocked ? (
-              <p className="text-sm text-gray-400">פתוח לך! ({contributionCount} אפליקציות/הצעות שאושרו)</p>
+              <p className="text-sm text-gray-400">
+                {dmUnlockedByRole ? "פתוח לך תמיד (PRO/צוות)" : `פתוח לך! (${contributionCount} אפליקציות/הצעות שאושרו)`}
+              </p>
             ) : (
               <p className="text-sm text-gray-400">
                 נפתח אוטומטית אחרי {DM_UNLOCK_THRESHOLD} אפליקציות/הצעות שאושרו (כרגע: {contributionCount}). פרטים בעמוד <Link href="/about" className="text-primary-light hover:underline">ההסברים</Link>.

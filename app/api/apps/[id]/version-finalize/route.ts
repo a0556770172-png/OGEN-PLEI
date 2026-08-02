@@ -9,7 +9,7 @@ import { deleteObject, BUCKETS } from "@/lib/r2";
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const result = await requireProfile();
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
-  const { user } = result;
+  const { user, profile } = result;
 
   const admin = createAdminSupabase();
   const { data: app } = await admin.from("apps").select("*").eq("id", params.id).single();
@@ -25,6 +25,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   const previousFileKey = app.file_key as string;
 
+  // מנהל בפועל שמעדכן גרסה לאפליקציה שלו לא צריך לחזור לתור בדיקה - כמו בהעלאה ראשונית
+  const isAdminUpload = profile.role === "admin";
+
   const { error } = await admin
     .from("apps")
     .update({
@@ -32,10 +35,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
       file_name: fileName,
       file_size_bytes: fileSize,
       version: version?.trim() || app.version,
-      status: "pending",
+      status: isAdminUpload ? "approved" : "pending",
       review_note: null,
-      reviewed_by: null,
-      reviewed_at: null,
+      reviewed_by: isAdminUpload ? user.id : null,
+      reviewed_at: isAdminUpload ? new Date().toISOString() : null,
       updated_at: new Date().toISOString()
     })
     .eq("id", app.id);
