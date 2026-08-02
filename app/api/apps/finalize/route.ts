@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { addPoints } from "@/lib/points";
@@ -78,6 +79,15 @@ export async function POST(request: Request) {
   const UPLOAD_POINTS = 5;
   await admin.from("points_log").insert({ profile_id: user.id, delta: UPLOAD_POINTS, reason: "upload", app_id: app.id });
   await addPoints(user.id, UPLOAD_POINTS);
+
+  // חשוב במיוחד כשמנהל מעלה ומאושר מיידית: בלי זה, הפרופיל הציבורי שלו (/users/[id]) יכול
+  // להציג עותק ישן מה-Router Cache של Next.js ולא להראות את מה שהוא בדיוק העלה.
+  if (initialStatus === "approved") {
+    revalidatePath("/");
+    revalidatePath(`/apps/${app.id}`);
+    revalidatePath("/users");
+    revalidatePath(`/users/${user.id}`);
+  }
 
   return NextResponse.json({ app });
 }

@@ -35,7 +35,14 @@ export async function POST(request: Request, { params }: { params: { id: string 
     reported_by: user.id,
     reason: reason.trim().slice(0, 500)
   });
-  if (error) return NextResponse.json({ error: "שליחת הדיווח נכשלה" }, { status: 500 });
+  if (error) {
+    // חושפים את השגיאה האמיתית מ-Supabase (למשל טבלה שחסרה כי מיגרציית 0020 לא הורצה) -
+    // כדי שאפשר יהיה לאבחן ישירות מהמסך במקום הודעה גנרית.
+    return NextResponse.json(
+      { error: `שליחת הדיווח נכשלה: ${error.message}`, code: (error as any)?.code },
+      { status: 500 }
+    );
+  }
 
   const staff = isStaff(profile);
   if (!staff) {

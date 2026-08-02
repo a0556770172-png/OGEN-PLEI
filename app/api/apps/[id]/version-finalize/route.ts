@@ -54,6 +54,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   revalidatePath("/");
   revalidatePath(`/apps/${app.id}`);
+  revalidatePath("/users");
+  revalidatePath(`/users/${app.developer_id}`);
 
   return NextResponse.json({ ok: true });
 }

@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   const { error } = await admin
     .from("push_subscriptions")
     .upsert({ user_id: user.id, endpoint, p256dh, auth }, { onConflict: "endpoint" });
-  if (error) return NextResponse.json({ error: "שמירת המנוי נכשלה" }, { status: 500 });
+  if (error) return NextResponse.json({ error: `שמירת המנוי נכשלה: ${error.message}` }, { status: 500 });
 
   return NextResponse.json({ ok: true });
 }

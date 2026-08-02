@@ -17,6 +17,7 @@ export default function PushNotificationsSetup() {
   const [supported, setSupported] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
@@ -30,6 +31,7 @@ export default function PushNotificationsSetup() {
   async function toggle() {
     if (!supported || busy) return;
     setBusy(true);
+    setError("");
     try {
       const reg = await navigator.serviceWorker.ready;
       if (subscribed) {
@@ -45,23 +47,40 @@ export default function PushNotificationsSetup() {
         setSubscribed(false);
       } else {
         const permission = await Notification.requestPermission();
+        if (permission === "denied") {
+          setError("ההרשאה נחסמה בדפדפן - יש לאשר התראות באתר דרך הגדרות הדפדפן (ליד שורת הכתובת).");
+          setBusy(false);
+          return;
+        }
         if (permission !== "granted") { setBusy(false); return; }
+        // תוקן: קודם זה נכשל בשקט לגמרי בלי שום הודעה אם המפתח לא הוגדר בסביבת Vercel -
+        // עכשיו יש הודעה מפורשת כדי שאפשר לאבחן שזו בדיוק הבעיה.
         const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-        if (!vapidKey) { setBusy(false); return; }
+        if (!vapidKey) {
+          setError("התראות דפדפן לא מוגדרות באתר (חסר NEXT_PUBLIC_VAPID_PUBLIC_KEY במשתני הסביבה ב-Vercel).");
+          setBusy(false);
+          return;
+        }
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(vapidKey)
         });
-        await fetch("/api/push/subscribe", {
+        const res = await fetch("/api/push/subscribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(sub.toJSON())
         });
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          setError(json?.error || "שמירת ההרשמה להתראות נכשלה בשרת.");
+          await sub.unsubscribe().catch(() => {});
+          setBusy(false);
+          return;
+        }
         setSubscribed(true);
       }
-    } catch {
-      // אם ההרשמה נכשלת מסיבה כלשהי (הרשאה נדחתה, דפדפן לא תומך וכו') - פשוט לא מפעילים,
-      // בלי לשבור את שאר האתר
+    } catch (err: any) {
+      setError(err?.message || "הפעלת ההתראות נכשלה. ודאו שהאתר נגיש דרך HTTPS.");
     } finally {
       setBusy(false);
     }
@@ -70,15 +89,22 @@ export default function PushNotificationsSetup() {
   if (!supported) return null;
 
   return (
-    <button
-      onClick={toggle}
-      disabled={busy}
-      title={subscribed ? "כיבוי התראות דפדפן" : "הפעלת התראות דפדפן (גם כשלא נמצאים באתר)"}
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition ${
-        subscribed ? "border-accent/50 bg-accent/10 text-accent" : "border-border bg-surface text-gray-300 hover:border-primary/50 hover:text-white"
-      }`}
-    >
-      {subscribed ? <BellRing className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
-    </button>
+    <div className="relative flex items-center">
+      <button
+        onClick={toggle}
+        disabled={busy}
+        title={subscribed ? "כיבוי התראות דפדפן" : "הפעלת התראות דפדפן (גם כשלא נמצאים באתר)"}
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition ${
+          subscribed ? "border-accent/50 bg-accent/10 text-accent" : "border-border bg-surface text-gray-300 hover:border-primary/50 hover:text-white"
+        }`}
+      >
+        {subscribed ? <BellRing className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+      </button>
+      {error && (
+        <div className="absolute top-11 z-50 w-64 rounded-xl border border-red-500/30 bg-surface p-3 text-xs text-red-400 shadow-card">
+          {error}
+        </div>
+      )}
+    </div>
   );
 }

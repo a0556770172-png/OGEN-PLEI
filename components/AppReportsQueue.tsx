@@ -16,11 +16,14 @@ export default function AppReportsQueue() {
   const [items, setItems] = useState<ReportItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   async function load() {
     setLoading(true);
+    setError("");
     const res = await fetch("/api/admin/app-reports");
     const json = await res.json().catch(() => ({ reports: [] }));
+    if (!res.ok) setError(json?.error || "שגיאה בטעינת הדיווחים");
     setItems(json.reports ?? []);
     setLoading(false);
   }
@@ -47,6 +50,10 @@ export default function AppReportsQueue() {
         <Loader2 className="h-5 w-5 animate-spin" /> טוען דיווחים...
       </div>
     );
+  }
+
+  if (error) {
+    return <div className="card p-6 text-center text-sm text-red-400">{error}</div>;
   }
 
   if (items.length === 0) {

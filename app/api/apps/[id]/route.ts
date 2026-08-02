@@ -72,6 +72,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   revalidatePath("/");
   revalidatePath(`/apps/${app.id}`);
+  revalidatePath(`/users/${app.developer_id}`);
 
   return NextResponse.json({ ok: true, iconUploadUrl, iconKey });
 }
@@ -109,6 +110,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
   revalidatePath("/");
   revalidatePath(`/apps/${app.id}`);
+  revalidatePath(`/users/${app.developer_id}`);
 
   return NextResponse.json({ ok: true });
 }
