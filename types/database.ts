@@ -21,6 +21,8 @@ export interface Profile {
   notes: string | null;
   display_email: string | null;
   show_email_tag: boolean;
+  can_like_override: boolean;
+  can_comment_override: boolean;
   can_send_attachments: boolean;
   created_at: string;
 }

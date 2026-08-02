@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Ban, ShieldCheck, Crown, Loader2, ShieldOff, UserCog, Trash2, Paperclip, Pencil } from "lucide-react";
+import { Ban, ShieldCheck, Crown, Loader2, ShieldOff, UserCog, Trash2, Paperclip, Pencil, ThumbsUp, MessageSquare } from "lucide-react";
 import type { Profile } from "@/types/database";
 
 const ROLE_LABEL: Record<string, string> = { user: "משתמש", developer: "מפתח", admin: "מנהל", moderator: "פיקוח" };
@@ -117,6 +117,8 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
                 {p.is_moderator && p.can_send_attachments && (
                   <span className="ms-1 rounded-full bg-accent/15 px-2 py-1 text-xs font-bold text-accent">הרשאת קבצים</span>
                 )}
+                {p.can_like_override && <span className="ms-1 rounded-full bg-accent/15 px-2 py-1 text-xs font-bold text-accent">לייק ידני</span>}
+                {p.can_comment_override && <span className="ms-1 rounded-full bg-accent/15 px-2 py-1 text-xs font-bold text-accent">תגובה ידנית</span>}
               </td>
               <td className="px-4 py-3">{p.points.toLocaleString("he-IL")}</td>
               <td className="px-4 py-3">
@@ -147,6 +149,26 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
                           className={`rounded-lg p-1.5 hover:bg-surface2 ${p.can_send_attachments ? "text-accent" : "text-gray-400"}`}
                         >
                           <Paperclip className="h-4 w-4" />
+                        </button>
+                      )}
+                      {/* מתן/שלילה ידניים של הרשאת לייק/תגובה למשתמש ספציפי, גם בלי שהגיע לסף
+                          האפליקציות הרגיל (מנהל/פיקוח/PRO כבר מקבלים את זה אוטומטית ממילא). */}
+                      {isAdmin && (
+                        <button
+                          title={p.can_like_override ? "שלילת הרשאת לייק ידנית" : "מתן הרשאת לייק ידנית (גם בלי מספיק אפליקציות)"}
+                          onClick={() => act(p.id, p.can_like_override ? "revoke_like" : "grant_like")}
+                          className={`rounded-lg p-1.5 hover:bg-surface2 ${p.can_like_override ? "text-accent" : "text-gray-400"}`}
+                        >
+                          <ThumbsUp className="h-4 w-4" />
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          title={p.can_comment_override ? "שלילת הרשאת תגובה ידנית" : "מתן הרשאת תגובה ידנית (גם בלי מספיק אפליקציות)"}
+                          onClick={() => act(p.id, p.can_comment_override ? "revoke_comment" : "grant_comment")}
+                          className={`rounded-lg p-1.5 hover:bg-surface2 ${p.can_comment_override ? "text-accent" : "text-gray-400"}`}
+                        >
+                          <MessageSquare className="h-4 w-4" />
                         </button>
                       )}
                       {isAdmin && (

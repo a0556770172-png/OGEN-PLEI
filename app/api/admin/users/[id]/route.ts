@@ -20,7 +20,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   // פעולות אלה (מינוי/הדחה מפיקוח, מתן/הסרת PRO, מתן הרשאת קבצים, עריכת פרטי משתמש) הן
   // בסמכות מנהל בפועל בלבד - גם חבר צוות פיקוח שרואה את המסך הזה לא יכול לבצע אותן.
-  const adminOnlyActions = ["promote_moderator", "demote_moderator", "make_pro", "remove_pro", "grant_attachments", "revoke_attachments", "edit_profile"];
+  const adminOnlyActions = [
+    "promote_moderator", "demote_moderator", "make_pro", "remove_pro", "grant_attachments", "revoke_attachments", "edit_profile",
+    "grant_like", "revoke_like", "grant_comment", "revoke_comment"
+  ];
   if (adminOnlyActions.includes(action) && profile.role !== "admin") {
     return NextResponse.json({ error: "רק מנהל בפועל יכול לבצע פעולה זו" }, { status: 403 });
   }
@@ -79,6 +82,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     case "remove_pro": patch.is_pro = false; patch.pro_status = "none"; break;
     case "grant_attachments": patch.can_send_attachments = true; break;
     case "revoke_attachments": patch.can_send_attachments = false; break;
+    // מתן/שלילה ידניים של הרשאת לייק/תגובה למשתמש ספציפי, גם אם עוד לא הגיע לסף
+    // האפליקציות שדרוש בדרך כלל (ראו lib/engagement-eligibility.ts).
+    case "grant_like": patch.can_like_override = true; break;
+    case "revoke_like": patch.can_like_override = false; break;
+    case "grant_comment": patch.can_comment_override = true; break;
+    case "revoke_comment": patch.can_comment_override = false; break;
     default:
       return NextResponse.json({ error: "פעולה לא חוקית" }, { status: 400 });
   }
