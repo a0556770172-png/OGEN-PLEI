@@ -1,4 +1,10 @@
-importScripts("config.js");
+// ההגדרות מוטמעות כאן ישירות (ולא נטענות עם importScripts("config.js")) כי ה-service
+// worker של כרום נכשל אצל חלק מהמשתמשים בטעינת קובץ נפרד עם importScripts (שגיאת
+// "failed to load" גם כשהקובץ קיים בפועל בתיקייה) - זו בעיה ידועה של כרום בהרצת
+// service worker על חלק מהמערכות. הטמעה ישירה כאן פותרת את זה לגמרי.
+const SUPABASE_URL = "https://ipflzyjbhfqktnjjjsyg.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_wH5MS_iGTl9c7HlN-y7GTg_5v49mZcW";
+const DEFAULT_SITE_URL = "https://ogen-plei-qype.vercel.app";
 
 const ALARM_NAME = "ogen-play-poll";
 // חשוב: כרום (Manifest V3) לא מאפשר ל-alarm חוזר לפעול יותר מפעם בדקה - זו מגבלה טכנית
@@ -49,13 +55,19 @@ async function fetchSummary(siteUrl, accessToken) {
   return { ok: res.status === 200, status: res.status, json };
 }
 
+// עוטפים את כל הפעולה ב-try/catch כדי שחריגה בלתי-צפויה (למשל שגיאת רשת חד-פעמית) לעולם
+// לא תשאיר את poll-now "תקוע" בלי תשובה - זה בדיוק סוג הבאג שגרם לפופאפ להציג נתונים
+// ישנים בלי שום סימן לכך שהרענון בעצם נכשל בשקט.
 async function poll() {
-  const { accessToken, siteUrl, lastCounts, notifDismissedUntil } = await getStored([
-    "accessToken",
-    "siteUrl",
-    "lastCounts",
-    "notifDismissedUntil"
-  ]);
+  try {
+    await pollInner();
+  } catch (e) {
+    await setStored({ lastPollError: String(e?.message || e), lastFetchedAt: Date.now() });
+  }
+}
+
+async function pollInner() {
+  const { accessToken, siteUrl, lastCounts } = await getStored(["accessToken", "siteUrl", "lastCounts"]);
   const url = siteUrl || DEFAULT_SITE_URL;
 
   if (!accessToken) {
@@ -78,11 +90,15 @@ async function poll() {
       await setStored({ accessToken: null, refreshToken: null, loginError: json?.error || null });
       chrome.action.setBadgeText({ text: "!" });
       chrome.action.setBadgeBackgroundColor({ color: "#dc2626" });
+    } else {
+      // שגיאת רשת/שרת זמנית - לא מנתקים, רק מסמנים שהרענון האחרון נכשל כדי שנדע למה
+      // המספרים לא התעדכנו, במקום שזה ייראה כאילו התוסף "תקוע" בלי הסבר.
+      await setStored({ lastPollError: json?.error || `שגיאת שרת (${status})`, lastFetchedAt: Date.now() });
     }
     return;
   }
 
-  await setStored({ lastSummary: json, lastFetchedAt: Date.now() });
+  await setStored({ lastSummary: json, lastFetchedAt: Date.now(), lastPollError: null });
 
   const total = json.total ?? 0;
   chrome.action.setBadgeText({ text: total > 0 ? String(total) : "" });

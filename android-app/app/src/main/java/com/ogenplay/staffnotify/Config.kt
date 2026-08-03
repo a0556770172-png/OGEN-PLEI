@@ -6,7 +6,7 @@ package com.ogenplay.staffnotify
 object Config {
     const val SUPABASE_URL = "https://ipflzyjbhfqktnjjjsyg.supabase.co"
     const val SUPABASE_ANON_KEY = "sb_publishable_wH5MS_iGTl9c7HlN-y7GTg_5v49mZcW"
-    const val DEFAULT_SITE_URL = "https://ogen-play.vercel.app"
+    const val DEFAULT_SITE_URL = "https://ogen-plei-qype.vercel.app"
 
     // מרווח הסריקה בפועל - 30 שניות, כמו שביקשת. בניגוד לתוסף הכרום, כאן זה אפשרי במלואו כי
     // מדובר בשירות חזית (Foreground Service) עם התראה קבועה - זו הדרך התקנית של אנדרואיד

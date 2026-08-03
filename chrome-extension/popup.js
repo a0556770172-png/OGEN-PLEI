@@ -33,10 +33,14 @@ function renderSummary(summary) {
 async function showSummaryView() {
   el("loginView").style.display = "none";
   el("summaryView").style.display = "block";
-  const { lastSummary, lastFetchedAt } = await getStored(["lastSummary", "lastFetchedAt"]);
+  const { lastSummary, lastFetchedAt, lastPollError } = await getStored(["lastSummary", "lastFetchedAt", "lastPollError"]);
   if (lastSummary) renderSummary(lastSummary);
   if (lastFetchedAt) {
-    el("lastUpdated").textContent = `עדכון אחרון: ${new Date(lastFetchedAt).toLocaleTimeString("he-IL")}`;
+    const time = new Date(lastFetchedAt).toLocaleTimeString("he-IL");
+    el("lastUpdated").textContent = lastPollError
+      ? `הרענון האחרון (${time}) נכשל: ${lastPollError}`
+      : `עדכון אחרון: ${time}`;
+    el("lastUpdated").style.color = lastPollError ? "#f87171" : "";
   }
 }
 
