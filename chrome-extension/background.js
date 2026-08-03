@@ -136,6 +136,16 @@ async function pollInner() {
       // נעלמת לבד אחרי כמה שניות כמו התראה רגילה, בדיוק כדי שלא תפספס אותה.
       requireInteraction: true
     });
+
+    // בנוסף להתראת המערכת - פותחים גם חלון קטן וממש בולט (לא רק "טוסט" קטן שאפשר לפספס),
+    // כמו שביקשת: "מסך או ריבוע" עם כל הפרטים, שקופץ ממש מעל הדפדפן.
+    chrome.windows.create({
+      url: chrome.runtime.getURL(`alert.html?data=${encodeURIComponent(JSON.stringify(increases))}`),
+      type: "popup",
+      width: 420,
+      height: 480,
+      focused: true
+    });
   }
 
   await setStored({ lastCounts: newItems });

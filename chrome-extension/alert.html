@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<title>התראה - עוגן פליי</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: Arial, sans-serif; background: linear-gradient(160deg, #2a0f0f, #14141c);
+    color: #fff; height: 100vh; display: flex; flex-direction: column; padding: 20px;
+  }
+  .icon { font-size: 40px; text-align: center; margin-bottom: 4px; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+  h1 { font-size: 19px; text-align: center; margin: 4px 0 14px; color: #f87171; }
+  .list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .row {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(220,38,38,0.4); border-radius: 10px;
+    padding: 10px 12px; font-size: 14px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .row b { color: #fbbf24; }
+  button {
+    margin-top: 14px; padding: 12px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 14px;
+  }
+  #openBtn { background: #6d5bd0; color: #fff; }
+  #closeBtn { background: #2a2a35; color: #ccc; margin-top: 8px; }
+</style>
+</head>
+<body>
+  <div class="icon">🚨</div>
+  <h1>יש התראות חדשות בעוגן פליי!</h1>
+  <div id="list" class="list"></div>
+  <button id="openBtn">פתיחת האתר</button>
+  <button id="closeBtn">סגירה</button>
+  <script src="config.js"></script>
+  <script src="alert.js"></script>
+</body>
+</html>

@@ -20,14 +20,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "חסרים פרטי קובץ" }, { status: 400 });
   }
 
-  // אותה הרשאת גודל חד-פעמית שמנהל נותן ב"הרשאות גודל" (ראו app/api/admin/users/[id]/route.ts)
-  // תקפה גם כאן, בהצעת אפליקציה ציבורית - לא רק בהעלאה פרטית. אם קיימת וגדולה מהמכסה
-  // הרגילה (200MB), היא זו שקובעת את התקרה האפקטיבית להעלאה הזו.
-  const sizeOverrideMb = profile.size_override_mb ?? null;
-  const effectiveMaxMb = sizeOverrideMb && sizeOverrideMb > MAX_SUGGESTION_MB ? sizeOverrideMb : MAX_SUGGESTION_MB;
-  const maxBytes = effectiveMaxMb * 1024 * 1024;
-  if (fileSize > maxBytes) {
-    return NextResponse.json({ error: `גודל הקובץ חורג מהמותר (מקסימום ${effectiveMaxMb}MB)` }, { status: 400 });
+  // הרשאה זמנית (מוגבלת בשעות) שמנהל נתן ב"הרשאות גודל" - כל עוד לא פגה, אין שום הגבלת
+  // גודל בהצעה ציבורית בכלל (בניגוד להרשאת הגודל החד-פעמית, זו לא מוגבלת למספר מגה מסוים).
+  const unlimitedUntil = profile.unlimited_public_upload_until ? new Date(profile.unlimited_public_upload_until).getTime() : 0;
+  const hasUnlimitedWindow = unlimitedUntil > Date.now();
+
+  if (!hasUnlimitedWindow) {
+    // אותה הרשאת גודל חד-פעמית שמנהל נותן ב"הרשאות גודל" (ראו app/api/admin/users/[id]/route.ts)
+    // תקפה גם כאן, בהצעת אפליקציה ציבורית - לא רק בהעלאה פרטית. אם קיימת וגדולה מהמכסה
+    // הרגילה (200MB), היא זו שקובעת את התקרה האפקטיבית להעלאה הזו.
+    const sizeOverrideMb = profile.size_override_mb ?? null;
+    const effectiveMaxMb = sizeOverrideMb && sizeOverrideMb > MAX_SUGGESTION_MB ? sizeOverrideMb : MAX_SUGGESTION_MB;
+    const maxBytes = effectiveMaxMb * 1024 * 1024;
+    if (fileSize > maxBytes) {
+      return NextResponse.json({ error: `גודל הקובץ חורג מהמותר (מקסימום ${effectiveMaxMb}MB)` }, { status: 400 });
+    }
   }
 
   const fileKey = `suggestions/${user.id}/${crypto.randomUUID()}-${sanitize(fileName)}`;

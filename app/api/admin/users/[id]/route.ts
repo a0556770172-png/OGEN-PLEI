@@ -16,7 +16,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: "לא ניתן לבצע פעולה זו על החשבון שלך" }, { status: 400 });
   }
 
-  const { action, username, sizeOverrideMb } = await request.json();
+  const { action, username, sizeOverrideMb, hours } = await request.json();
 
   // פעולות אלה (מינוי/הדחה מפיקוח, מתן/הסרת PRO, מתן הרשאת קבצים, עריכת פרטי משתמש) הן
   // בסמכות מנהל בפועל בלבד - גם חבר צוות פיקוח שרואה את המסך הזה לא יכול לבצע אותן.
@@ -24,7 +24,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   // תקרה נמוכה יותר (1GB), שנאכפת בהמשך למטה. מנהל בפועל ללא הגבלה.
   const adminOnlyActions = [
     "promote_moderator", "demote_moderator", "make_pro", "remove_pro", "grant_attachments", "revoke_attachments", "edit_profile",
-    "grant_like", "revoke_like", "grant_comment", "revoke_comment"
+    "grant_like", "revoke_like", "grant_comment", "revoke_comment",
+    "set_unlimited_public_upload", "clear_unlimited_public_upload"
   ];
   if (adminOnlyActions.includes(action) && profile.role !== "admin") {
     return NextResponse.json({ error: "רק מנהל בפועל יכול לבצע פעולה זו" }, { status: 403 });
@@ -100,6 +101,48 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     await logAudit({
       actorId: profile.id,
       action: "revoke_size_override",
+      targetType: "user",
+      targetId: params.id,
+      targetLabel: targetForLabel?.username ?? null,
+      undoable: false
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  // הרשאה זמנית (מוגבלת בשעות, לא חד-פעמית): מנהל בפועל בלבד קובע למשתמש ספציפי אפשרות
+  // להעלות הצעת אפליקציה ציבורית (suggest-app) בכל גודל שהוא, ללא שום הגבלת מגה-בייט,
+  // למשך מספר שעות שהוא בוחר - נבדק ב-app/api/suggestions/upload-init/route.ts. בניגוד
+  // ל-size_override_mb זו לא חד-פעמית וגם לא רלוונטית להעלאה הפרטית מדשבורד המפתח.
+  if (action === "set_unlimited_public_upload") {
+    const h = Number(hours);
+    if (!Number.isFinite(h) || h <= 0 || h > 24 * 30) {
+      return NextResponse.json({ error: "יש להזין מספר שעות תקין (עד 720, כלומר חודש)" }, { status: 400 });
+    }
+    const until = new Date(Date.now() + h * 60 * 60 * 1000).toISOString();
+    const { data: targetForLabel } = await admin.from("profiles").select("username").eq("id", params.id).single();
+    const { error: updateError } = await admin.from("profiles").update({ unlimited_public_upload_until: until }).eq("id", params.id);
+    if (updateError) return NextResponse.json({ error: "שגיאה בעדכון ההרשאה" }, { status: 500 });
+
+    await logAudit({
+      actorId: profile.id,
+      action: "grant_unlimited_public_upload",
+      targetType: "user",
+      targetId: params.id,
+      targetLabel: targetForLabel?.username ?? null,
+      meta: { hours: h, until },
+      undoable: false
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "clear_unlimited_public_upload") {
+    const { data: targetForLabel } = await admin.from("profiles").select("username").eq("id", params.id).single();
+    const { error: updateError } = await admin.from("profiles").update({ unlimited_public_upload_until: null }).eq("id", params.id);
+    if (updateError) return NextResponse.json({ error: "שגיאה בביטול ההרשאה" }, { status: 500 });
+
+    await logAudit({
+      actorId: profile.id,
+      action: "revoke_unlimited_public_upload",
       targetType: "user",
       targetId: params.id,
       targetLabel: targetForLabel?.username ?? null,

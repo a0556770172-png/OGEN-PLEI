@@ -24,6 +24,7 @@ export interface Profile {
   can_like_override: boolean;
   can_comment_override: boolean;
   size_override_mb: number | null;
+  unlimited_public_upload_until: string | null;
   can_send_attachments: boolean;
   created_at: string;
 }

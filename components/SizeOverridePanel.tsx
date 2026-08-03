@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Loader2, HardDrive, X } from "lucide-react";
+import { Search, Loader2, HardDrive, X, Infinity as InfinityIcon } from "lucide-react";
 import type { Profile } from "@/types/database";
 
 // טאב "הרשאות גודל" - מנהל בפועל וגם צוות פיקוח יכולים לתת למשתמש ספציפי הרשאה חד-פעמית
@@ -71,6 +71,47 @@ export default function SizeOverridePanel({ profiles, isAdmin = true }: { profil
     }
   }
 
+  // הרשאה זמנית (מוגבלת בשעות) - העלאה ציבורית (הצעת אפליקציה) ללא הגבלת גודל בכלל, למספר
+  // שעות שהמנהל בוחר. מנהל בפועל בלבד (לא צוות פיקוח) - ראו app/api/admin/users/[id]/route.ts.
+  async function setUnlimitedPublicUpload(id: string, username: string) {
+    const input = window.prompt(`לכמה שעות לאשר ל"${username}" להעלות הצעת אפליקציה ציבורית ללא הגבלת גודל בכלל?\nלדוגמה: 24`);
+    if (input === null) return;
+    const h = Number(input.trim());
+    if (!Number.isFinite(h) || h <= 0 || h > 720) {
+      alert("יש להזין מספר שעות תקין (עד 720, כלומר חודש)");
+      return;
+    }
+    setBusyId(id);
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "set_unlimited_public_upload", hours: h })
+    });
+    setBusyId(null);
+    if (res.ok) router.refresh();
+    else {
+      const j = await res.json().catch(() => ({}));
+      alert(j.error || "שגיאה במתן ההרשאה");
+    }
+  }
+
+  async function clearUnlimitedPublicUpload(id: string, username: string) {
+    const ok = window.confirm(`לבטל את ההרשאה להעלאה ציבורית ללא הגבלה של "${username}"?`);
+    if (!ok) return;
+    setBusyId(id);
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "clear_unlimited_public_upload" })
+    });
+    setBusyId(null);
+    if (res.ok) router.refresh();
+    else {
+      const j = await res.json().catch(() => ({}));
+      alert(j.error || "שגיאה בביטול ההרשאה");
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="card p-4">
@@ -84,6 +125,13 @@ export default function SizeOverridePanel({ profiles, isAdmin = true }: { profil
         </p>
         {!isAdmin && (
           <p className="mt-2 text-sm font-bold text-gold">כצוות פיקוח, אתה יכול לאשר עד 1024MB (1GB) בלבד - מעל זה נדרש אישור מנהל בפועל.</p>
+        )}
+        {isAdmin && (
+          <p className="mt-2 text-sm text-gray-400">
+            בנוסף, כמנהל בפועל אתה יכול לאשר למשתמש ספציפי <b className="text-white">העלאת הצעת אפליקציה ציבורית ללא הגבלת גודל בכלל</b>,
+            למספר שעות שתבחר - זו הרשאה זמנית (לא חד-פעמית) שתקפה לכל ההעלאות הציבוריות שלו עד שהזמן פג, ולא רלוונטית להעלאה
+            הפרטית מהדשבורד.
+          </p>
         )}
       </div>
 
@@ -104,6 +152,7 @@ export default function SizeOverridePanel({ profiles, isAdmin = true }: { profil
               <th className="px-4 py-3">משתמש</th>
               <th className="px-4 py-3">תוכנית</th>
               <th className="px-4 py-3">הרשאת גודל פעילה</th>
+              {isAdmin && <th className="px-4 py-3">העלאה ציבורית ללא הגבלה</th>}
               <th className="px-4 py-3">פעולות</th>
             </tr>
           </thead>
@@ -124,6 +173,17 @@ export default function SizeOverridePanel({ profiles, isAdmin = true }: { profil
                     <span className="text-xs text-gray-600">אין</span>
                   )}
                 </td>
+                {isAdmin && (
+                  <td className="px-4 py-3">
+                    {p.unlimited_public_upload_until && new Date(p.unlimited_public_upload_until).getTime() > Date.now() ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2.5 py-1 text-xs font-bold text-accent">
+                        <InfinityIcon className="h-3 w-3" /> עד {new Date(p.unlimited_public_upload_until).toLocaleString("he-IL")}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-600">אין</span>
+                    )}
+                  </td>
+                )}
                 <td className="px-4 py-3">
                   {busyId === p.id ? (
                     <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
@@ -137,6 +197,19 @@ export default function SizeOverridePanel({ profiles, isAdmin = true }: { profil
                           <X className="h-4 w-4" />
                         </button>
                       )}
+                      {isAdmin && (
+                        <>
+                          <button onClick={() => setUnlimitedPublicUpload(p.id, p.username)} className="btn-ghost text-xs">
+                            <InfinityIcon className="h-3.5 w-3.5" />
+                            {p.unlimited_public_upload_until && new Date(p.unlimited_public_upload_until).getTime() > Date.now() ? "עדכון" : "העלאה ציבורית ללא הגבלה"}
+                          </button>
+                          {p.unlimited_public_upload_until && new Date(p.unlimited_public_upload_until).getTime() > Date.now() && (
+                            <button onClick={() => clearUnlimitedPublicUpload(p.id, p.username)} title="ביטול ההרשאה" className="rounded-lg p-1.5 text-red-400 hover:bg-red-500/10">
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </>
+                      )}
                     </div>
                   )}
                 </td>
@@ -144,7 +217,7 @@ export default function SizeOverridePanel({ profiles, isAdmin = true }: { profil
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">לא נמצאו משתמשים</td>
+                <td colSpan={isAdmin ? 5 : 4} className="px-4 py-8 text-center text-sm text-gray-500">לא נמצאו משתמשים</td>
               </tr>
             )}
           </tbody>
