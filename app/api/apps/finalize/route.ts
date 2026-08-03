@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { name, shortDescription, descriptionHtml, version, category, fileKey, fileName, fileSize, iconKey } = body;
+  const { name, shortDescription, descriptionHtml, version, category, fileKey, fileName, fileSize, iconKey, minAndroidVersion } = body;
 
   if (!name || !fileKey || !fileName || !fileSize) {
     return NextResponse.json({ error: "חסרים שדות חובה" }, { status: 400 });
@@ -25,12 +25,24 @@ export async function POST(request: Request) {
   if (!version || !String(version).trim()) {
     return NextResponse.json({ error: "חובה למלא את מספר הגרסה" }, { status: 400 });
   }
+  // חובה לציין גרסת אנדרואיד מינימלית נדרשת בכל העלאה - כדי שמשתמשים ידעו מראש אם
+  // המכשיר שלהם תואם, לפני שהם מורידים.
+  if (!minAndroidVersion || !String(minAndroidVersion).trim()) {
+    return NextResponse.json({ error: "חובה לציין גרסת אנדרואיד מינימלית נדרשת" }, { status: 400 });
+  }
 
   const plan = profile.is_pro ? LIMITS.pro : LIMITS.free;
-  const maxBytes = plan.maxFileMb * 1024 * 1024;
+  // הרשאת גודל חד-פעמית שמנהל נתן למשתמש הזה (ראו app/api/admin/users/[id]/route.ts) -
+  // אם קיימת וגדולה מהמכסה הרגילה שלו, היא זו שקובעת את התקרה האפקטיבית להעלאה הזו בלבד.
+  const sizeOverrideMb = profile.size_override_mb ?? null;
+  const effectiveMaxMb = sizeOverrideMb && sizeOverrideMb > plan.maxFileMb ? sizeOverrideMb : plan.maxFileMb;
+  const maxBytes = effectiveMaxMb * 1024 * 1024;
   if (fileSize > maxBytes) {
-    return NextResponse.json({ error: `גודל הקובץ חורג מהמותר (מקסימום ${plan.maxFileMb}MB)` }, { status: 400 });
+    return NextResponse.json({ error: `גודל הקובץ חורג מהמותר (מקסימום ${effectiveMaxMb}MB)` }, { status: 400 });
   }
+  // ההרשאה נוצלת בפועל רק אם הקובץ שהועלה באמת חרג מהמכסה הרגילה - אם המשתמש מעלה בכל
+  // זאת קובץ בתוך המכסה הרגילה שלו, ההרשאה החד-פעמית נשארת זמינה לשימוש הבא.
+  const usedSizeOverride = sizeOverrideMb && sizeOverrideMb > plan.maxFileMb && fileSize > plan.maxFileMb * 1024 * 1024;
 
   const admin = createAdminSupabase();
   const { count } = await admin
@@ -61,6 +73,7 @@ export async function POST(request: Request) {
       file_key: fileKey,
       file_name: fileName,
       file_size_bytes: fileSize,
+      min_android_version: String(minAndroidVersion).trim(),
       status: initialStatus,
       ...(initialStatus === "approved" ? { reviewed_by: user.id, reviewed_at: new Date().toISOString() } : {})
     })
@@ -79,6 +92,12 @@ export async function POST(request: Request) {
   const UPLOAD_POINTS = 5;
   await admin.from("points_log").insert({ profile_id: user.id, delta: UPLOAD_POINTS, reason: "upload", app_id: app.id });
   await addPoints(user.id, UPLOAD_POINTS);
+
+  // ההעלאה הזו ניצלה בפועל את הרשאת הגודל החד-פעמית - מבטלים אותה כדי שלא ניתן יהיה
+  // להשתמש בה שוב בלי אישור ידני חדש מהמנהל.
+  if (usedSizeOverride) {
+    await admin.from("profiles").update({ size_override_mb: null }).eq("id", user.id);
+  }
 
   // חשוב במיוחד כשמנהל מעלה ומאושר מיידית: בלי זה, הפרופיל הציבורי שלו (/users/[id]) יכול
   // להציג עותק ישן מה-Router Cache של Next.js ולא להראות את מה שהוא בדיוק העלה.

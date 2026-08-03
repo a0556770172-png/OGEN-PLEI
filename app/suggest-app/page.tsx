@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Gift, Send, Loader2, AlertCircle, CheckCircle2, FileArchive } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { putToR2 } from "@/lib/uploadHelpers";
+import { MIN_ANDROID_VERSIONS } from "@/lib/androidVersions";
 import type { AppSuggestion } from "@/types/database";
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
@@ -16,6 +17,7 @@ export default function SuggestAppPage() {
   const supabase = createClient();
   const [appName, setAppName] = useState("");
   const [version, setVersion] = useState("");
+  const [minAndroidVersion, setMinAndroidVersion] = useState(MIN_ANDROID_VERSIONS[1]);
   const [file, setFile] = useState<File | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -61,7 +63,8 @@ export default function SuggestAppPage() {
           note,
           fileKey: initJson.fileKey,
           fileName: file.name,
-          fileSize: file.size
+          fileSize: file.size,
+          minAndroidVersion
         })
       });
       const json = await res.json().catch(() => null);
@@ -114,6 +117,12 @@ export default function SuggestAppPage() {
             <label className="mb-1.5 block text-sm text-gray-400">מספר גרסה</label>
             <input required value={version} onChange={(e) => setVersion(e.target.value)} className="input-field" placeholder="למשל: 5.2.1" />
           </div>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm text-gray-400">גרסת אנדרואיד מינימלית נדרשת <span className="text-gold">(חובה)</span></label>
+          <select required value={minAndroidVersion} onChange={(e) => setMinAndroidVersion(e.target.value)} className="input-field">
+            {MIN_ANDROID_VERSIONS.map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
         </div>
         <div>
           <label className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-400"><FileArchive className="h-4 w-4" /> קובץ ההתקנה (APK לאפליקציה, או קובץ ההתקנה של התוכנה)</label>

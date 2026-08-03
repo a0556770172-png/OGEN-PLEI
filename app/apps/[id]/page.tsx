@@ -8,7 +8,7 @@ import ReportAppButton from "@/components/ReportAppButton";
 import AppLikeButton from "@/components/AppLikeButton";
 import AppReviews from "@/components/AppReviews";
 import { createAdminSupabase } from "@/lib/supabase/admin";
-import { Package, User, Calendar, HardDrive, Flag } from "lucide-react";
+import { Package, User, Calendar, HardDrive, Flag, Smartphone } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +53,9 @@ export default async function AppDetailPage({ params }: { params: { id: string }
               <span className="inline-flex items-center gap-1"><HardDrive className="h-3.5 w-3.5" /> {formatFileSize(app.file_size_bytes)}</span>
               <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> גרסה {app.version}</span>
               <span>{category}</span>
+              {app.min_android_version && (
+                <span className="inline-flex items-center gap-1"><Smartphone className="h-3.5 w-3.5" /> {app.min_android_version}</span>
+              )}
             </div>
             <div className="mt-5 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               <DownloadButton

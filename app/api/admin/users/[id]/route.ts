@@ -16,13 +16,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: "לא ניתן לבצע פעולה זו על החשבון שלך" }, { status: 400 });
   }
 
-  const { action, username } = await request.json();
+  const { action, username, sizeOverrideMb } = await request.json();
 
   // פעולות אלה (מינוי/הדחה מפיקוח, מתן/הסרת PRO, מתן הרשאת קבצים, עריכת פרטי משתמש) הן
   // בסמכות מנהל בפועל בלבד - גם חבר צוות פיקוח שרואה את המסך הזה לא יכול לבצע אותן.
   const adminOnlyActions = [
     "promote_moderator", "demote_moderator", "make_pro", "remove_pro", "grant_attachments", "revoke_attachments", "edit_profile",
-    "grant_like", "revoke_like", "grant_comment", "revoke_comment"
+    "grant_like", "revoke_like", "grant_comment", "revoke_comment",
+    "set_size_override", "clear_size_override"
   ];
   if (adminOnlyActions.includes(action) && profile.role !== "admin") {
     return NextResponse.json({ error: "רק מנהל בפועל יכול לבצע פעולה זו" }, { status: 403 });
@@ -54,6 +55,46 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       targetId: params.id,
       targetLabel: trimmed,
       meta: { from: before?.username ?? null, to: trimmed },
+      undoable: false
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  // הרשאת גודל חד-פעמית: מנהל קובע למשתמש ספציפי מכסת קובץ חריגה לפעם אחת בלבד (למשל
+  // 300 או 500 מגה) - זה נבדק ומנוצל/מתבטל אוטומטית ב-app/api/apps/finalize/route.ts
+  // ברגע שהמשתמש בפועל מעלה קובץ שחורג מהמכסה הרגילה שלו.
+  if (action === "set_size_override") {
+    const mb = Number(sizeOverrideMb);
+    if (!Number.isFinite(mb) || mb <= 0 || mb > 2000) {
+      return NextResponse.json({ error: "יש להזין גודל תקין במגה-בייט (עד 2000)" }, { status: 400 });
+    }
+    const { data: targetForLabel } = await admin.from("profiles").select("username").eq("id", params.id).single();
+    const { error: updateError } = await admin.from("profiles").update({ size_override_mb: Math.round(mb) }).eq("id", params.id);
+    if (updateError) return NextResponse.json({ error: "שגיאה בעדכון הרשאת הגודל" }, { status: 500 });
+
+    await logAudit({
+      actorId: profile.id,
+      action: "grant_size_override",
+      targetType: "user",
+      targetId: params.id,
+      targetLabel: targetForLabel?.username ?? null,
+      meta: { sizeOverrideMb: Math.round(mb) },
+      undoable: false
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "clear_size_override") {
+    const { data: targetForLabel } = await admin.from("profiles").select("username").eq("id", params.id).single();
+    const { error: updateError } = await admin.from("profiles").update({ size_override_mb: null }).eq("id", params.id);
+    if (updateError) return NextResponse.json({ error: "שגיאה בביטול הרשאת הגודל" }, { status: 500 });
+
+    await logAudit({
+      actorId: profile.id,
+      action: "revoke_size_override",
+      targetType: "user",
+      targetId: params.id,
+      targetLabel: targetForLabel?.username ?? null,
       undoable: false
     });
     return NextResponse.json({ ok: true });

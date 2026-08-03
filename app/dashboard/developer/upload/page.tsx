@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { UploadCloud, Loader2, AlertCircle, CheckCircle2, FileArchive, Image as ImageIcon, Sparkles, ShieldAlert } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import { putToR2, extractIconFailureReason } from "@/lib/uploadHelpers";
+import { MIN_ANDROID_VERSIONS } from "@/lib/androidVersions";
 import type { Category } from "@/types/database";
 
 // מונע רינדור סטטי בזמן ה-build (ראו הסבר מפורט ב-app/login/page.tsx)
@@ -16,6 +17,7 @@ export default function UploadAppPage() {
   const [shortDescription, setShortDescription] = useState("");
   const [descriptionHtml, setDescriptionHtml] = useState("");
   const [version, setVersion] = useState("");
+  const [minAndroidVersion, setMinAndroidVersion] = useState(MIN_ANDROID_VERSIONS[1]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [category, setCategory] = useState("general");
   const [file, setFile] = useState<File | null>(null);
@@ -137,7 +139,8 @@ export default function UploadAppPage() {
           fileKey: initJson.fileKey,
           fileName: file.name,
           fileSize: file.size,
-          iconKey: uploadedIconKey
+          iconKey: uploadedIconKey,
+          minAndroidVersion
         })
       });
       const finalizeJson = await finalizeRes.json();
@@ -277,6 +280,13 @@ export default function UploadAppPage() {
               </div>
             </div>
             <div>
+              <label className="mb-1.5 block text-sm text-gray-400">גרסת אנדרואיד מינימלית נדרשת <span className="text-gold">(חובה)</span></label>
+              <select required value={minAndroidVersion} onChange={(e) => setMinAndroidVersion(e.target.value)} className="input-field">
+                {MIN_ANDROID_VERSIONS.map((v) => <option key={v} value={v}>{v}</option>)}
+              </select>
+              <p className="mt-1.5 text-xs text-gray-500">כדי שמשתמשים יידעו מראש אם המכשיר שלהם תואם, לפני שהם מורידים.</p>
+            </div>
+            <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-400"><FileArchive className="h-4 w-4" /> קובץ ההתקנה (APK לאפליקציה, או קובץ ההתקנה של התוכנה)</label>
               <input required type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[#fff]" />
             </div>
@@ -337,6 +347,10 @@ export default function UploadAppPage() {
                 <span className="font-bold text-white">
                   {netfreeAdapted ? "מותאם נטפרי" : categories.find((c) => c.value === category)?.label ?? category}
                 </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">גרסת אנדרואיד מינימלית</span>
+                <span className="font-bold text-white">{minAndroidVersion}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-500">קובץ</span>

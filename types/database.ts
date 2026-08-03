@@ -23,6 +23,7 @@ export interface Profile {
   show_email_tag: boolean;
   can_like_override: boolean;
   can_comment_override: boolean;
+  size_override_mb: number | null;
   can_send_attachments: boolean;
   created_at: string;
 }
@@ -54,6 +55,7 @@ export interface AppRow {
   file_key: string;
   file_name: string;
   file_size_bytes: number;
+  min_android_version: string | null;
   status: AppStatus;
   review_note: string | null;
   reviewed_by: string | null;
@@ -127,6 +129,7 @@ export interface AppSuggestion {
   file_key: string | null;
   file_name: string | null;
   file_size_bytes: number | null;
+  min_android_version: string | null;
   status: SuggestionStatus;
   points_awarded: boolean;
   reviewed_by: string | null;

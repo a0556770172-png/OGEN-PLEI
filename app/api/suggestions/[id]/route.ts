@@ -82,6 +82,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         file_key: suggestion.file_key,
         file_name: suggestion.file_name,
         file_size_bytes: suggestion.file_size_bytes,
+        min_android_version: suggestion.min_android_version ?? null,
         status: "approved",
         reviewed_by: user.id,
         reviewed_at: new Date().toISOString()

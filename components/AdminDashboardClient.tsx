@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag } from "lucide-react";
+import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import UserManagementTable from "./UserManagementTable";
 import ProRequestsQueue from "./ProRequestsQueue";
@@ -14,9 +14,10 @@ import DeletionRequestsPanel from "./DeletionRequestsPanel";
 import CouncilPanel from "./CouncilPanel";
 import AuditLogPanel from "./AuditLogPanel";
 import AppReportsQueue from "./AppReportsQueue";
+import SizeOverridePanel from "./SizeOverridePanel";
 import type { AppRow, Profile, ProRequest, UserDeletionRequest } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "settings";
+type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "settings";
 
 export default function AdminDashboardClient({
   apps,
@@ -59,6 +60,7 @@ export default function AdminDashboardClient({
     { key: "council", label: "ועדה", icon: Siren },
     { key: "auditLog", label: "מעקב פיקוח", icon: History },
     { key: "reports", label: "דיווחים על אפליקציות", icon: Flag },
+    { key: "sizeOverrides", label: "הרשאות גודל", icon: HardDrive },
     { key: "settings", label: "הגדרות", icon: Settings }
   ] as const;
 
@@ -104,6 +106,7 @@ export default function AdminDashboardClient({
       {tab === "council" && <CouncilPanel currentProfile={currentProfile} />}
       {tab === "auditLog" && <AuditLogPanel />}
       {tab === "reports" && <AppReportsQueue />}
+      {tab === "sizeOverrides" && <SizeOverridePanel profiles={profiles} />}
       {tab === "settings" && <SiteSettingsPanel requireEmailVerification={requireEmailVerification} />}
     </div>
   );

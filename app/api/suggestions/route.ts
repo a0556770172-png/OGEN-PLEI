@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
   const { user } = result;
 
-  const { appName, version, note, fileKey, fileName, fileSize } = await request.json().catch(() => ({}));
+  const { appName, version, note, fileKey, fileName, fileSize, minAndroidVersion } = await request.json().catch(() => ({}));
   if (!appName?.trim()) {
     return NextResponse.json({ error: "חובה למלא את שם האפליקציה/התוכנה" }, { status: 400 });
   }
@@ -18,6 +18,11 @@ export async function POST(request: Request) {
   }
   if (!fileKey || !fileName || !fileSize) {
     return NextResponse.json({ error: "חובה להעלות את קובץ ההתקנה של האפליקציה/התוכנה" }, { status: 400 });
+  }
+  // חובה לציין גרסת אנדרואיד מינימלית נדרשת גם בהצעת אפליקציה ציבורית, בדיוק כמו בהעלאה
+  // פרטית של מפתח - כדי שמשתמשים ידעו מראש אם המכשיר שלהם תואם.
+  if (!minAndroidVersion?.trim()) {
+    return NextResponse.json({ error: "חובה לציין גרסת אנדרואיד מינימלית נדרשת" }, { status: 400 });
   }
 
   const admin = createAdminSupabase();
@@ -28,7 +33,8 @@ export async function POST(request: Request) {
     note: note?.trim() || null,
     file_key: fileKey,
     file_name: fileName,
-    file_size_bytes: fileSize
+    file_size_bytes: fileSize,
+    min_android_version: minAndroidVersion.trim()
   });
 
   if (error) {

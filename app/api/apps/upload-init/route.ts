@@ -27,9 +27,14 @@ export async function POST(request: Request) {
   }
 
   const plan = profile.is_pro ? LIMITS.pro : LIMITS.free;
-  const maxBytes = plan.maxFileMb * 1024 * 1024;
+  // הרשאת גודל חד-פעמית שמנהל נתן למשתמש הזה (ראו app/api/admin/users/[id]/route.ts) -
+  // חייבים לבדוק אותה כבר כאן, לפני שנוצר קישור ההעלאה, אחרת קובץ חריג ייחסם עוד לפני
+  // שמגיע ל-finalize.
+  const sizeOverrideMb = profile.size_override_mb ?? null;
+  const effectiveMaxMb = sizeOverrideMb && sizeOverrideMb > plan.maxFileMb ? sizeOverrideMb : plan.maxFileMb;
+  const maxBytes = effectiveMaxMb * 1024 * 1024;
   if (fileSize > maxBytes) {
-    return NextResponse.json({ error: `גודל הקובץ חורג מהמותר (מקסימום ${plan.maxFileMb}MB)` }, { status: 400 });
+    return NextResponse.json({ error: `גודל הקובץ חורג מהמותר (מקסימום ${effectiveMaxMb}MB)` }, { status: 400 });
   }
 
   const admin = createAdminSupabase();
