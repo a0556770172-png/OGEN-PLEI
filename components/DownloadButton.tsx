@@ -1,7 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Loader2, Lock, Share2, Check } from "lucide-react";
+import { Download, Loader2, Lock, Share2, Check, AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { AppStatus } from "@/types/database";
 
@@ -49,14 +49,18 @@ export default function DownloadButton({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [count, setCount] = useState(downloadsCount);
+  const [alreadyDownloaded, setAlreadyDownloaded] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  async function handleDownload() {
+  useEffect(() => {
+    fetch(`/api/apps/${appId}/download-status`)
+      .then((r) => r.json())
+      .then((json) => setAlreadyDownloaded(!!json.alreadyDownloaded))
+      .catch(() => {});
+  }, [appId]);
+
+  async function actuallyDownload() {
     setError("");
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.push(`/login?redirect=/apps/${appId}`);
-      return;
-    }
     setLoading(true);
     const res = await fetch(`/api/download/${appId}`, { method: "POST" });
     const json = await res.json();
@@ -66,7 +70,24 @@ export default function DownloadButton({
       return;
     }
     setCount((c) => c + 1);
+    setAlreadyDownloaded(true);
     window.location.href = json.url;
+  }
+
+  async function handleDownload() {
+    setError("");
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      router.push(`/login?redirect=/apps/${appId}`);
+      return;
+    }
+    // אם המשתמש כבר הוריד את האפליקציה הזו בעבר - שואלים לפני שממשיכים, כדי למנוע הורדה
+    // כפולה בטעות (למשל לחיצה שוב על אותה אפליקציה מבלי לשים לב).
+    if (alreadyDownloaded) {
+      setConfirmOpen(true);
+      return;
+    }
+    await actuallyDownload();
   }
 
   if (status !== "approved") {
@@ -105,6 +126,29 @@ export default function DownloadButton({
       </div>
       {error && <p className="text-sm text-red-400">{error}</p>}
       <p className="flex items-center gap-1 text-xs text-gray-500"><Lock className="h-3 w-3" /> נדרשת התחברות להורדה</p>
+
+      {confirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-gold/30 bg-surface p-6 text-center">
+            <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-gold/15 text-gold">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <p className="font-bold text-white">כבר הורדתם את האפליקציה הזו בעבר</p>
+            <p className="mt-1 text-sm text-gray-400">רוצים להוריד אותה שוב בכל זאת?</p>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <button onClick={() => setConfirmOpen(false)} className="flex-1 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-gray-400 hover:text-white">
+                אל תוריד
+              </button>
+              <button
+                onClick={() => { setConfirmOpen(false); actuallyDownload(); }}
+                className="btn-primary flex-1 justify-center"
+              >
+                הורד בכל זאת
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
