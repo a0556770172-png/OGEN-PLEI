@@ -13,6 +13,18 @@ import {
 } from "@/lib/admin-data";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+
+// עוזר קטן - כל תשובה מה-endpoint הזה חייבת לצאת עם no-store מפורש, כי זהו endpoint
+// שנסרק שוב ושוב (כל דקה מהתוסף/האפליקציה) ואסור בשום מקרה שדפדפן/CDN יגיש תשובה ישנה
+// מהמטמון במקום לפנות בפועל לשרת - בדיוק זה גרם לבאג "המספרים לא מתעדכנים".
+function json(body: unknown, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: { "Cache-Control": "no-store, no-cache, must-revalidate" }
+  });
+}
 
 // endpoint ייעודי לתוסף הכרום ולאפליקציית האנדרואיד של צוות פיקוח/ניהול - לא לשימוש
 // מהאתר עצמו (שם ההתראות כבר מחושבות ישירות ב-Server Component). ההתחברות כאן היא
@@ -23,7 +35,7 @@ export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization") || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length).trim() : "";
   if (!token) {
-    return NextResponse.json({ error: "נדרש טוקן התחברות" }, { status: 401 });
+    return json({ error: "נדרש טוקן התחברות" }, 401);
   }
 
   // מאמתים את הטוקן מול Supabase (בלי צורך ב-cookies) - זה בודק שהטוקן תקף ומחזיר את
@@ -31,24 +43,20 @@ export async function GET(request: Request) {
   const anon = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
   const { data: userData, error: userError } = await anon.auth.getUser(token);
   if (userError || !userData?.user) {
-    return NextResponse.json({ error: "טוקן לא תקף - יש להתחבר מחדש" }, { status: 401 });
+    return json({ error: "טוקן לא תקף - יש להתחבר מחדש" }, 401);
   }
 
   const admin = createAdminSupabase();
   const { data: profile, error: profileError } = await admin.from("profiles").select("*").eq("id", userData.user.id).single();
   if (!profile) {
-    // דיבאג זמני: מחזירים גם את הסיבה המדויקת שהפרופיל לא נמצא, ואת ה-id שחיפשנו לפיו -
-    // כדי לאבחן במקום לנחש (יוסר אחרי שנפתור את הבעיה).
-    return NextResponse.json(
+    return json(
       { error: "פרופיל לא נמצא", debugUserId: userData.user.id, debugUserEmail: userData.user.email, debugDbError: profileError?.message ?? null },
-      { status: 404 }
+      404
     );
   }
-  if (profile.banned) return NextResponse.json({ error: "החשבון חסום" }, { status: 403 });
+  if (profile.banned) return json({ error: "החשבון חסום" }, 403);
   if (!isStaff(profile)) {
-    // דיבאג זמני: מחזירים גם את הערכים בפועל שנקראו מה-DB, כדי להבין למה isStaff() החזיר
-    // false גם כשבממשק הניהול רואים תג "מנהל" (יוסר אחרי שנפתור את הבעיה).
-    return NextResponse.json(
+    return json(
       {
         error: "רק צוות פיקוח או ניהול יכולים להתחבר כאן",
         debugUserId: userData.user.id,
@@ -57,7 +65,7 @@ export async function GET(request: Request) {
         debugIsModerator: profile.is_moderator,
         debugUsername: profile.username
       },
-      { status: 403 }
+      403
     );
   }
 
@@ -74,9 +82,10 @@ export async function GET(request: Request) {
   const items = { review, pro, suggestions, tickets, deletionRequests, council, reports };
   const total = review + pro + suggestions + tickets + deletionRequests + council + reports;
 
-  return NextResponse.json({
+  return json({
     total,
     items,
-    profile: { username: profile.username, role: profile.role, is_moderator: profile.is_moderator }
+    profile: { username: profile.username, role: profile.role, is_moderator: profile.is_moderator },
+    fetchedAt: Date.now()
   });
 }

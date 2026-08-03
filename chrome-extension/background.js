@@ -48,8 +48,12 @@ async function refreshAccessToken(siteUrl) {
 }
 
 async function fetchSummary(siteUrl, accessToken) {
-  const res = await fetch(`${siteUrl.replace(/\/$/, "")}/api/staff/notifications-summary`, {
-    headers: { Authorization: `Bearer ${accessToken}` }
+  // cache: "no-store" + פרמטר "_t" משתנה - הגנה כפולה נגד מטמון דפדפן/CDN שיגיש תשובה
+  // ישנה במקום לפנות בפועל לשרת בכל סריקה (זה בדיוק מה שגרם למספרים "להיתקע").
+  const url = `${siteUrl.replace(/\/$/, "")}/api/staff/notifications-summary?_t=${Date.now()}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    cache: "no-store"
   });
   const json = await res.json().catch(() => ({}));
   return { ok: res.status === 200, status: res.status, json };

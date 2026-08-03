@@ -84,8 +84,9 @@ async function init() {
       // מוודאים מיד שהמשתמש הזה בכלל צוות פיקוח/ניהול - אם לא, ה-endpoint יחזיר 403 והתוסף
       // ינקה את הטוקן וידרוש התחברות מחדש עם החשבון הנכון.
       const url = (siteUrl || DEFAULT_SITE_URL).replace(/\/$/, "");
-      const checkRes = await fetch(`${url}/api/staff/notifications-summary`, {
-        headers: { Authorization: `Bearer ${json.access_token}` }
+      const checkRes = await fetch(`${url}/api/staff/notifications-summary?_t=${Date.now()}`, {
+        headers: { Authorization: `Bearer ${json.access_token}` },
+        cache: "no-store"
       });
       if (!checkRes.ok) {
         const checkJson = await checkRes.json().catch(() => ({}));
