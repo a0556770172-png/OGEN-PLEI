@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
@@ -38,6 +39,16 @@ class NotificationForegroundService : Service() {
 
     private val scope = CoroutineScope(Dispatchers.Default + Job())
     private lateinit var prefs: Prefs
+
+    // getSystemService(Class<T>) הטיפוסי קיים רק מ-API 23 ומעלה - כאן חייבים את הגרסה הישנה
+    // (getSystemService(String) + הטלת טיפוס) כדי שזה יעבוד גם על אנדרואיד 4.4 (API 19).
+    private val notificationManager: NotificationManager
+        get() = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+    // FLAG_IMMUTABLE קיים רק מ-API 23 ומעלה - על גרסאות ישנות יותר לא מוסיפים את הביט הזה בכלל.
+    private val pendingIntentFlags: Int
+        get() = PendingIntent.FLAG_UPDATE_CURRENT or
+            (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
 
     override fun onCreate() {
         super.onCreate()
@@ -117,11 +128,10 @@ class NotificationForegroundService : Service() {
 
     private fun createChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val nm = getSystemService(NotificationManager::class.java)
-            nm.createNotificationChannel(
+            notificationManager.createNotificationChannel(
                 NotificationChannel(CHANNEL_ID_STATUS, "סטטוס ניטור", NotificationManager.IMPORTANCE_LOW)
             )
-            nm.createNotificationChannel(
+            notificationManager.createNotificationChannel(
                 NotificationChannel(CHANNEL_ID_ALERTS, "התראות חדשות", NotificationManager.IMPORTANCE_HIGH)
             )
         }
@@ -129,10 +139,7 @@ class NotificationForegroundService : Service() {
 
     private fun buildStatusNotification(text: String): Notification {
         val openIntent = Intent(this, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, openIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val pendingIntent = PendingIntent.getActivity(this, 0, openIntent, pendingIntentFlags)
         return NotificationCompat.Builder(this, CHANNEL_ID_STATUS)
             .setContentTitle("עוגן פליי - צוות")
             .setContentText(text)
@@ -143,16 +150,12 @@ class NotificationForegroundService : Service() {
     }
 
     private fun updateStatusNotification(text: String) {
-        val nm = getSystemService(NotificationManager::class.java)
-        nm.notify(STATUS_NOTIFICATION_ID, buildStatusNotification(text))
+        notificationManager.notify(STATUS_NOTIFICATION_ID, buildStatusNotification(text))
     }
 
     private fun showAlertNotification(title: String, message: String) {
         val openIntent = Intent(this, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(
-            this, 1, openIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val pendingIntent = PendingIntent.getActivity(this, 1, openIntent, pendingIntentFlags)
         val notification = NotificationCompat.Builder(this, CHANNEL_ID_ALERTS)
             .setContentTitle(title)
             .setContentText(message)
@@ -162,7 +165,6 @@ class NotificationForegroundService : Service() {
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()
-        val nm = getSystemService(NotificationManager::class.java)
-        nm.notify(System.currentTimeMillis().toInt(), notification)
+        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
     }
 }

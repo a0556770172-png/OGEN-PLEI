@@ -9,7 +9,11 @@ android {
 
     defaultConfig {
         applicationId "com.ogenplay.staffnotify"
-        minSdk 24
+        // דרישה מפורשת: תמיכה באנדרואיד 4.4 (KitKat, API 19) ומעלה. בגלל זה כל ספריות
+        // ה-AndroidX/OkHttp למטה נעולות בכוונה לגרסאות ישנות יותר שעדיין תומכות ב-API 19 -
+        // גרסאות חדשות יותר (למשל Material Components, OkHttp 4.x) דרשו לפחות API 21
+        // ומעלה ולא היו מתקמפלות בכלל מול minSdk 19.
+        minSdk 19
         targetSdk 34
         versionCode 1
         versionName "1.0"
@@ -23,11 +27,11 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "1.8"
     }
     buildFeatures {
         viewBinding true
@@ -35,12 +39,13 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.core:core-ktx:1.12.0'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.11.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-    implementation 'androidx.activity:activity-ktx:1.8.2'
-    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+    // כל הגרסאות כאן נבחרו בכוונה כ"אחרונה שעדיין תומכת ב-API 19" - לא הגרסה הכי חדשה.
+    implementation 'androidx.core:core-ktx:1.6.0'
+    implementation 'androidx.appcompat:appcompat:1.4.2'
+    implementation 'androidx.activity:activity-ktx:1.2.4'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.3.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
+    // OkHttp 4.x דורש minSdk 21 ומעלה (מודול Kotlin) - 3.12.x היא הגרסה האחרונה הרשמית
+    // שגוגל/Square עדיין תומכת בה עבור אנדרואיד ישן יותר (עד API 15).
+    implementation 'com.squareup.okhttp3:okhttp:3.12.13'
 }
