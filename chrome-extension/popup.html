@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<title>עוגן פליי - התראות צוות</title>
+<style>
+  body { width: 320px; font-family: Arial, sans-serif; background: #14141c; color: #eee; margin: 0; padding: 16px; }
+  h1 { font-size: 16px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+  h1 img { width: 22px; height: 22px; border-radius: 6px; }
+  .row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #2a2a35; font-size: 13px; }
+  .row:last-child { border-bottom: none; }
+  .count { background: #c99b3f; color: #14141c; font-weight: bold; border-radius: 999px; padding: 2px 8px; font-size: 12px; min-width: 18px; text-align: center; }
+  .count.zero { background: #2a2a35; color: #888; }
+  input { width: 100%; box-sizing: border-box; padding: 8px; margin: 5px 0; border-radius: 8px; border: 1px solid #333; background: #1b1b26; color: #fff; }
+  button { width: 100%; padding: 9px; border-radius: 8px; border: none; background: #6d5bd0; color: #fff; font-weight: bold; cursor: pointer; margin-top: 8px; }
+  button.secondary { background: #2a2a35; color: #ccc; }
+  .error { color: #f87171; font-size: 12px; margin-top: 6px; }
+  .muted { color: #888; font-size: 11px; margin-top: 10px; text-align: center; }
+  a { color: #a78bfa; }
+</style>
+</head>
+<body>
+  <h1><img src="icons/icon48.png" alt=""> עוגן פליי - צוות</h1>
+
+  <div id="loginView" style="display:none">
+    <input id="email" type="email" placeholder="אימייל" autocomplete="username">
+    <input id="password" type="password" placeholder="סיסמה" autocomplete="current-password">
+    <button id="loginBtn">התחברות</button>
+    <div id="loginError" class="error"></div>
+    <p class="muted">מסך זה מיועד לצוות פיקוח וניהול בלבד. יש להשתמש באותם פרטי ההתחברות של האתר.</p>
+  </div>
+
+  <div id="summaryView" style="display:none">
+    <div id="rows"></div>
+    <button id="refreshBtn" class="secondary">רענון עכשיו</button>
+    <button id="logoutBtn" class="secondary">התנתקות</button>
+    <p id="lastUpdated" class="muted"></p>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

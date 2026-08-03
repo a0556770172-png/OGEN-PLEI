@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<title>הגדרות - עוגן פליי התראות צוות</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #14141c; color: #eee; padding: 24px; max-width: 480px; }
+  h1 { font-size: 18px; }
+  label { display: block; margin-top: 12px; font-size: 13px; color: #aaa; }
+  input { width: 100%; box-sizing: border-box; padding: 9px; margin-top: 4px; border-radius: 8px; border: 1px solid #333; background: #1b1b26; color: #fff; }
+  button { margin-top: 16px; padding: 9px 18px; border-radius: 8px; border: none; background: #6d5bd0; color: #fff; font-weight: bold; cursor: pointer; }
+  .saved { color: #4ade80; font-size: 13px; margin-top: 8px; }
+  p.hint { font-size: 12px; color: #888; }
+</style>
+</head>
+<body>
+  <h1>הגדרות תוסף ההתראות</h1>
+  <label>כתובת האתר (עוגן פליי)</label>
+  <input id="siteUrl" placeholder="https://your-site.vercel.app">
+  <p class="hint">בדרך כלל אין צורך לשנות - רק אם כתובת האתר השתנתה (דומיין חדש וכו').</p>
+  <button id="saveBtn">שמירה</button>
+  <div id="saved" class="saved" style="display:none">נשמר!</div>
+  <script src="config.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

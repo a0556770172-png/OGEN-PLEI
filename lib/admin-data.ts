@@ -97,3 +97,33 @@ export async function getPendingDeletionRequestsCount(): Promise<number> {
     .eq("status", "pending");
   return count ?? 0;
 }
+
+// שלוש הפונקציות הבאות הן גרסאות "ספירה בלבד" (בלי לשלוף שורות מלאות) - נועדו לשימוש
+// ב-endpoint קליל שנסרק לעיתים קרובות (כל דקה) ע"י תוסף הכרום/אפליקציית האנדרואיד של
+// הצוות, כדי שלא נשלוף כל פעם כמויות מיותרות של דאטה רק כדי לספור.
+export async function getPendingReviewCount(): Promise<number> {
+  const admin = createAdminSupabase();
+  const { count } = await admin
+    .from("apps")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending");
+  return count ?? 0;
+}
+
+export async function getPendingProRequestsCount(): Promise<number> {
+  const admin = createAdminSupabase();
+  const { count } = await admin
+    .from("pro_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending");
+  return count ?? 0;
+}
+
+export async function getPendingAppReportsCount(): Promise<number> {
+  const admin = createAdminSupabase();
+  const { count } = await admin
+    .from("app_reports")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending");
+  return count ?? 0;
+}
