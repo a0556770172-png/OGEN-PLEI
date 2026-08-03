@@ -20,10 +20,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   // פעולות אלה (מינוי/הדחה מפיקוח, מתן/הסרת PRO, מתן הרשאת קבצים, עריכת פרטי משתמש) הן
   // בסמכות מנהל בפועל בלבד - גם חבר צוות פיקוח שרואה את המסך הזה לא יכול לבצע אותן.
+  // הרשאת גודל (set_size_override/clear_size_override) פתוחה גם לצוות פיקוח - אבל עם
+  // תקרה נמוכה יותר (1GB), שנאכפת בהמשך למטה. מנהל בפועל ללא הגבלה.
   const adminOnlyActions = [
     "promote_moderator", "demote_moderator", "make_pro", "remove_pro", "grant_attachments", "revoke_attachments", "edit_profile",
-    "grant_like", "revoke_like", "grant_comment", "revoke_comment",
-    "set_size_override", "clear_size_override"
+    "grant_like", "revoke_like", "grant_comment", "revoke_comment"
   ];
   if (adminOnlyActions.includes(action) && profile.role !== "admin") {
     return NextResponse.json({ error: "רק מנהל בפועל יכול לבצע פעולה זו" }, { status: 403 });
@@ -60,13 +61,20 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ ok: true });
   }
 
-  // הרשאת גודל חד-פעמית: מנהל קובע למשתמש ספציפי מכסת קובץ חריגה לפעם אחת בלבד (למשל
-  // 300 או 500 מגה) - זה נבדק ומנוצל/מתבטל אוטומטית ב-app/api/apps/finalize/route.ts
-  // ברגע שהמשתמש בפועל מעלה קובץ שחורג מהמכסה הרגילה שלו.
+  // הרשאת גודל חד-פעמית: מנהל/צוות פיקוח קובעים למשתמש ספציפי מכסת קובץ חריגה לפעם אחת
+  // בלבד (למשל 300 או 500 מגה) - זה נבדק ומנוצל/מתבטל אוטומטית ב-app/api/apps/finalize/route.ts
+  // וב-app/api/suggestions/route.ts, ברגע שהמשתמש בפועל מעלה קובץ שחורג מהמכסה הרגילה שלו.
+  // צוות פיקוח מוגבל לתקרה של 1GB (1024MB) - מנהל בפועל ללא הגבלה (רק בדיקת שפיות בסיסית).
   if (action === "set_size_override") {
     const mb = Number(sizeOverrideMb);
-    if (!Number.isFinite(mb) || mb <= 0 || mb > 2000) {
-      return NextResponse.json({ error: "יש להזין גודל תקין במגה-בייט (עד 2000)" }, { status: 400 });
+    const staffCapMb = 1024;
+    // 1,000,000MB (כ-1TB) זה לא באמת "הגבלה" למנהל - רק הגנה בסיסית מפני הקלדה שגויה/עמודת
+    // מספרים שלמים שתתפוצץ.
+    if (!Number.isFinite(mb) || mb <= 0 || mb > 1_000_000) {
+      return NextResponse.json({ error: "יש להזין גודל תקין במגה-בייט" }, { status: 400 });
+    }
+    if (profile.role !== "admin" && mb > staffCapMb) {
+      return NextResponse.json({ error: `צוות פיקוח יכול לאשר עד ${staffCapMb}MB (1GB) בלבד - מעל זה נדרש אישור מנהל בפועל` }, { status: 403 });
     }
     const { data: targetForLabel } = await admin.from("profiles").select("username").eq("id", params.id).single();
     const { error: updateError } = await admin.from("profiles").update({ size_override_mb: Math.round(mb) }).eq("id", params.id);

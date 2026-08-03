@@ -106,7 +106,7 @@ export default function AdminDashboardClient({
       {tab === "council" && <CouncilPanel currentProfile={currentProfile} />}
       {tab === "auditLog" && <AuditLogPanel />}
       {tab === "reports" && <AppReportsQueue />}
-      {tab === "sizeOverrides" && <SizeOverridePanel profiles={profiles} />}
+      {tab === "sizeOverrides" && <SizeOverridePanel profiles={profiles} isAdmin={true} />}
       {tab === "settings" && <SiteSettingsPanel requireEmailVerification={requireEmailVerification} />}
     </div>
   );

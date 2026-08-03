@@ -4,14 +4,18 @@ import { useRouter } from "next/navigation";
 import { Search, Loader2, HardDrive, X } from "lucide-react";
 import type { Profile } from "@/types/database";
 
-// טאב "הרשאות גודל" - מנהל בפועל בלבד יכול לתת למשתמש ספציפי הרשאה חד-פעמית להעלות
-// אפליקציה/תוכנה אחת בגודל חריג (מעבר למכסה הרגילה - 30MB בחשבון רגיל, 100MB ב-PRO).
+// טאב "הרשאות גודל" - מנהל בפועל וגם צוות פיקוח יכולים לתת למשתמש ספציפי הרשאה חד-פעמית
+// להעלות אפליקציה/תוכנה אחת בגודל חריג (מעבר למכסה הרגילה - 30MB בחשבון רגיל, 100MB ב-PRO).
+// צוות פיקוח מוגבל לתקרה של 1GB (1024MB) - מנהל בפועל ללא הגבלה (נאכף גם בשרת ב-
+// app/api/admin/users/[id]/route.ts, זה כאן רק כדי לתת פידבק מיידי בטופס עצמו).
 // ברגע שהמשתמש בפועל מנצל את זה (מעלה קובץ שחורג מהמכסה הרגילה שלו), ההרשאה מתבטלת
-// אוטומטית לבד - ראו app/api/apps/finalize/route.ts ו-app/api/apps/upload-init/route.ts.
-export default function SizeOverridePanel({ profiles }: { profiles: Profile[] }) {
+// אוטומטית לבד - ראו app/api/apps/finalize/route.ts, app/api/apps/upload-init/route.ts
+// ו-app/api/suggestions/route.ts.
+export default function SizeOverridePanel({ profiles, isAdmin = true }: { profiles: Profile[]; isAdmin?: boolean }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const staffCapMb = 1024;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -23,12 +27,17 @@ export default function SizeOverridePanel({ profiles }: { profiles: Profile[] })
 
   async function setOverride(id: string, username: string) {
     const input = window.prompt(
-      `כמה מגה-בייט לאשר ל"${username}" להעלות בפעם הבאה (חד-פעמי בלבד)?\nלדוגמה: 300 או 500`
+      `כמה מגה-בייט לאשר ל"${username}" להעלות בפעם הבאה (חד-פעמי בלבד)?\nלדוגמה: 300 או 500` +
+        (isAdmin ? "" : `\n(צוות פיקוח מוגבל עד ${staffCapMb}MB - 1GB)`)
     );
     if (input === null) return;
     const mb = Number(input.trim());
-    if (!Number.isFinite(mb) || mb <= 0 || mb > 2000) {
-      alert("יש להזין מספר תקין בין 1 ל-2000 מגה");
+    if (!Number.isFinite(mb) || mb <= 0) {
+      alert("יש להזין מספר תקין");
+      return;
+    }
+    if (!isAdmin && mb > staffCapMb) {
+      alert(`צוות פיקוח יכול לאשר עד ${staffCapMb}MB (1GB) בלבד - מעל זה נדרש אישור מנהל בפועל`);
       return;
     }
     setBusyId(id);
@@ -73,6 +82,9 @@ export default function SizeOverridePanel({ profiles }: { profiles: Profile[] })
           לנצל אותה שוב בלי אישור חדש. אם הוא מעלה בינתיים קובץ בתוך המכסה הרגילה, ההרשאה
           נשארת שמורה.
         </p>
+        {!isAdmin && (
+          <p className="mt-2 text-sm font-bold text-gold">כצוות פיקוח, אתה יכול לאשר עד 1024MB (1GB) בלבד - מעל זה נדרש אישור מנהל בפועל.</p>
+        )}
       </div>
 
       <div className="relative">

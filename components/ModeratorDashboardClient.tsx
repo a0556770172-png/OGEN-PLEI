@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag } from "lucide-react";
+import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import TicketsPanel from "./TicketsPanel";
 import SuggestionsQueue from "./SuggestionsQueue";
@@ -10,9 +10,10 @@ import UserManagementTable from "./UserManagementTable";
 import IconBackfillPanel from "./IconBackfillPanel";
 import CouncilPanel from "./CouncilPanel";
 import AppReportsQueue from "./AppReportsQueue";
+import SizeOverridePanel from "./SizeOverridePanel";
 import type { AppRow, Profile } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "tickets" | "suggestions" | "categories" | "users" | "council" | "reports";
+type TabKey = "notifications" | "review" | "allApps" | "tickets" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides";
 
 export default function ModeratorDashboardClient({
   apps,
@@ -42,7 +43,8 @@ export default function ModeratorDashboardClient({
     { key: "categories", label: "קטגוריות", icon: Tag },
     { key: "users", label: "ניהול משתמשים", icon: Users },
     { key: "council", label: "ועדה", icon: Siren },
-    { key: "reports", label: "דיווחים על אפליקציות", icon: Flag }
+    { key: "reports", label: "דיווחים על אפליקציות", icon: Flag },
+    { key: "sizeOverrides", label: "הרשאות גודל", icon: HardDrive }
   ] as const;
 
   const notificationItems = [
@@ -83,6 +85,7 @@ export default function ModeratorDashboardClient({
       {tab === "users" && <UserManagementTable profiles={profiles} />}
       {tab === "council" && <CouncilPanel currentProfile={currentProfile} />}
       {tab === "reports" && <AppReportsQueue />}
+      {tab === "sizeOverrides" && <SizeOverridePanel profiles={profiles} isAdmin={false} />}
     </div>
   );
 }
