@@ -48,4 +48,9 @@ dependencies {
     // OkHttp 4.x דורש minSdk 21 ומעלה (מודול Kotlin) - 3.12.x היא הגרסה האחרונה הרשמית
     // שגוגל/Square עדיין תומכת בה עבור אנדרואיד ישן יותר (עד API 15).
     implementation 'com.squareup.okhttp3:okhttp:3.12.13'
+    // Conscrypt - ספריית TLS עדכנית שגוגל ממליצה להתקין כ-Security Provider על מכשירים ישנים
+    // (כמו אנדרואיד 4.4). בלי זה, מכשירים ישנים נכשלים בהתחברות לשרתים מודרניים (כמו
+    // Supabase/Vercel) עם שגיאת "SSL handshake aborted... sslv3 alert handshake failure",
+    // כי ספריית ה-SSL המובנית שלהם לא תומכת בפרוטוקולי/צפני-הצפנה שהשרתים דורשים היום.
+    implementation 'org.conscrypt:conscrypt-android:2.5.2'
 }
