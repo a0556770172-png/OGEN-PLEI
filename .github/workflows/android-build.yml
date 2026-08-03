@@ -1,13 +1,14 @@
 name: Build Android APK
 
 # בונה את אפליקציית ההתראות לצוות (android-app) ישירות בגיטהאב - אין צורך באנדרואיד סטודיו
-# מקומי בשביל זה. רץ אוטומטית בכל push שמשנה משהו בתוך android-app/, וגם ידנית מהטאב
-# "Actions" בגיטהאב (כפתור "Run workflow").
+# מקומי בשביל זה. רץ אוטומטית בכל push ל-main שמשנה משהו בתוך android-app/ או בקובץ
+# ה-workflow הזה עצמו (גם ידנית אפשר, מהטאב "Actions" בגיטהאב, כפתור "Run workflow").
 on:
   push:
     branches: [main]
     paths:
       - "android-app/**"
+      - ".github/workflows/android-build.yml"
   workflow_dispatch: {}
 
 permissions:
