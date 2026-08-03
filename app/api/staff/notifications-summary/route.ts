@@ -35,11 +35,30 @@ export async function GET(request: Request) {
   }
 
   const admin = createAdminSupabase();
-  const { data: profile } = await admin.from("profiles").select("*").eq("id", userData.user.id).single();
-  if (!profile) return NextResponse.json({ error: "פרופיל לא נמצא" }, { status: 404 });
+  const { data: profile, error: profileError } = await admin.from("profiles").select("*").eq("id", userData.user.id).single();
+  if (!profile) {
+    // דיבאג זמני: מחזירים גם את הסיבה המדויקת שהפרופיל לא נמצא, ואת ה-id שחיפשנו לפיו -
+    // כדי לאבחן במקום לנחש (יוסר אחרי שנפתור את הבעיה).
+    return NextResponse.json(
+      { error: "פרופיל לא נמצא", debugUserId: userData.user.id, debugUserEmail: userData.user.email, debugDbError: profileError?.message ?? null },
+      { status: 404 }
+    );
+  }
   if (profile.banned) return NextResponse.json({ error: "החשבון חסום" }, { status: 403 });
   if (!isStaff(profile)) {
-    return NextResponse.json({ error: "רק צוות פיקוח או ניהול יכולים להתחבר כאן" }, { status: 403 });
+    // דיבאג זמני: מחזירים גם את הערכים בפועל שנקראו מה-DB, כדי להבין למה isStaff() החזיר
+    // false גם כשבממשק הניהול רואים תג "מנהל" (יוסר אחרי שנפתור את הבעיה).
+    return NextResponse.json(
+      {
+        error: "רק צוות פיקוח או ניהול יכולים להתחבר כאן",
+        debugUserId: userData.user.id,
+        debugProfileId: profile.id,
+        debugRole: profile.role,
+        debugIsModerator: profile.is_moderator,
+        debugUsername: profile.username
+      },
+      { status: 403 }
+    );
   }
 
   const [review, pro, suggestions, tickets, deletionRequests, council, reports] = await Promise.all([

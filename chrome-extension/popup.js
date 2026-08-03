@@ -86,7 +86,12 @@ async function init() {
       if (!checkRes.ok) {
         const checkJson = await checkRes.json().catch(() => ({}));
         await setStored({ accessToken: null, refreshToken: null });
-        throw new Error(checkJson.error || "החשבון הזה אינו צוות פיקוח/ניהול");
+        // מצב דיבאג זמני: מציגים גם את השדות debug* אם קיימים בתשובה, כדי לאבחן במקום לנחש
+        const debugParts = Object.keys(checkJson)
+          .filter((k) => k.startsWith("debug"))
+          .map((k) => `${k}=${checkJson[k]}`)
+          .join(", ");
+        throw new Error((checkJson.error || "החשבון הזה אינו צוות פיקוח/ניהול") + (debugParts ? ` [${debugParts}]` : ""));
       }
 
       showSummaryView();
