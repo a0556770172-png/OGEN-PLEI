@@ -24,12 +24,16 @@ export default function AppCard({
       <div className="absolute inset-x-0 top-0 h-px shimmer-border opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
       <Link href={`/apps/${app.id}`} className="flex flex-col gap-4">
         <div className="flex items-center gap-4">
+          {/* h-16 w-16 קבוע לכל כרטיס - הריבוע עצמו תמיד באותו גודל בדיוק בכל האפליקציות.
+              אם עדיין נראה "לא ישר", זה בגלל תוכן האייקון עצמו (שוליים שקופים/לבנים בתוך
+              קובץ האייקון של אפליקציה מסוימת) ולא בגלל גודל הריבוע - זה לא ניתן לתיקון
+              מה-CSS בלי לעבד מחדש את קובץ האייקון עצמו. */}
           <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-surface2 ring-1 ring-border">
             {iconUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={iconUrl} alt={app.name} className="h-full w-full object-cover" />
             ) : (
-              <Package className="h-7 w-7 text-primary-light" />
+              <Package className="h-8 w-8 text-primary-light" />
             )}
           </div>
           <div className="min-w-0 flex-1">

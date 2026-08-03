@@ -29,11 +29,13 @@ export default function SuggestionsQueue() {
     setVerifyingId(null);
   }
 
+  // מציג רק הצעות שממתינות לאישור - הצעות שכבר אושרו נמצאות עכשיו בטאב "כל האפליקציות"
+  // (הן הפכו לאפליקציה רגילה שם), ואין טעם שיישארו כאן גם כן וידחסו את התור.
   async function load() {
     const { data } = await supabase
       .from("app_suggestions")
       .select("*, suggester:profiles!app_suggestions_suggested_by_fkey(username, email, points)")
-      .order("status", { ascending: true })
+      .eq("status", "pending")
       .order("created_at", { ascending: true });
     setSuggestions((data as unknown as AppSuggestion[]) ?? []);
     setLoading(false);

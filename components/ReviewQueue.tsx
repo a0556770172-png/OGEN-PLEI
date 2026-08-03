@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Check, X, Archive, Trash2, Loader2, User, HardDrive, ShieldQuestion, CheckCircle2, XCircle, ImageOff, MessageSquarePlus, FolderInput } from "lucide-react";
+import { Download, Check, X, Archive, Trash2, Loader2, User, HardDrive, ShieldQuestion, CheckCircle2, XCircle, ImageOff, MessageSquarePlus, FolderInput, Search } from "lucide-react";
 import type { AppRow, Category } from "@/types/database";
 import StatusBadge from "./StatusBadge";
 import { formatFileSize } from "@/lib/format";
@@ -22,6 +22,7 @@ export default function ReviewQueue({
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [verifyResults, setVerifyResults] = useState<Record<string, VerifyResult>>({});
   const [categories, setCategories] = useState<Category[]>([]);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     fetch("/api/categories").then((r) => r.json()).then((json) => setCategories(json.categories ?? [])).catch(() => {});
@@ -105,13 +106,36 @@ export default function ReviewQueue({
     else alert("שגיאה בשליחת ההודעה");
   }
 
+  const trimmedQuery = query.trim().toLowerCase();
+  const filteredApps = trimmedQuery
+    ? apps.filter(
+        (app) =>
+          app.name.toLowerCase().includes(trimmedQuery) ||
+          (app.developer?.username ?? "").toLowerCase().includes(trimmedQuery)
+      )
+    : apps;
+
   if (apps.length === 0) {
     return <div className="card p-10 text-center text-gray-500">{emptyMessage ?? "אין אפליקציות הממתינות לבדיקה כרגע 🎉"}</div>;
   }
 
   return (
     <div className="flex flex-col gap-3">
-      {apps.map((app) => (
+      <div className="relative w-full sm:max-w-xs">
+        <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-gray-500" />
+        <input
+          dir="rtl"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="חיפוש לפי שם אפליקציה/תוכנה או מפתח..."
+          className="input-field pl-10"
+        />
+      </div>
+
+      {filteredApps.length === 0 ? (
+        <div className="card p-10 text-center text-gray-500">לא נמצאו תוצאות התואמות לחיפוש.</div>
+      ) : (
+      filteredApps.map((app) => (
         <div key={app.id} className="card flex flex-col gap-3 p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -201,7 +225,8 @@ export default function ReviewQueue({
             )
           )}
         </div>
-      ))}
+      ))
+      )}
     </div>
   );
 }

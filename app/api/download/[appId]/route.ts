@@ -39,23 +39,20 @@ export async function POST(request: Request, { params }: { params: { appId: stri
     }
   }
 
-  // הגבלת 15 הורדות ביום למשתמש (על כל האפליקציות יחד) - מונע זיוף נקודות ע"י הורדות
-  // חוזרות ונשנות. צוות ובעלי אפליקציה על האפליקציה שלהם לא מוגבלים - הם לא מקבלים
-  // נקודות מהורדה כזו ממילא (רק מהורדה של משתמשים אחרים).
-  const DAILY_DOWNLOAD_LIMIT = 15;
-  if (!isOwnerOrStaff) {
+  // ההורדה עצמה אינה מוגבלת יותר - כל משתמש יכול להוריד כמה שהוא רוצה. ההגבלה היחידה
+  // היא על מתן הנקודות: רק 10 ההורדות הראשונות של המשתמש בכל 24 שעות מזכות בנקודות
+  // (למפתח, ובעתיד גם למוריד אם יתווסף) - כדי למנוע זיוף נקודות ע"י הורדות חוזרות
+  // ונשנות, בלי לחסום את היכולת להמשיך ולהוריד אפליקציות מעבר לזה.
+  const DAILY_POINTS_DOWNLOAD_LIMIT = 10;
+  let pointsEligible = isOwnerOrStaff ? false : true;
+  if (pointsEligible) {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { count: recentDownloads } = await admin
       .from("download_events")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
       .gte("created_at", since);
-    if ((recentDownloads ?? 0) >= DAILY_DOWNLOAD_LIMIT) {
-      return NextResponse.json(
-        { error: `הגעת למכסת ${DAILY_DOWNLOAD_LIMIT} ההורדות היומית. נסו שוב מחר.` },
-        { status: 429 }
-      );
-    }
+    pointsEligible = (recentDownloads ?? 0) < DAILY_POINTS_DOWNLOAD_LIMIT;
   }
 
   const url = await createDownloadUrl(BUCKETS.apps, app.file_key, app.file_name);
@@ -63,7 +60,7 @@ export async function POST(request: Request, { params }: { params: { appId: stri
   await admin.from("apps").update({ downloads_count: app.downloads_count + 1 }).eq("id", app.id);
   await admin.from("download_events").insert({ user_id: user.id, app_id: app.id });
 
-  if (app.status === "approved" && !isOwnerOrStaff) {
+  if (app.status === "approved" && !isOwnerOrStaff && pointsEligible) {
     const POINTS_PER_DOWNLOAD = 2;
     await admin.from("points_log").insert({
       profile_id: app.developer_id,
