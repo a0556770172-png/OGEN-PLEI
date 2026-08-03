@@ -132,7 +132,7 @@ export default function SuggestAppPage() {
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[#fff]"
           />
-          <p className="mt-1.5 text-xs text-gray-500">יש להעלות בעצמכם את קובץ ההתקנה (עד 100MB) כדי שהצוות יוכל לבדוק ולפרסם אותו.</p>
+          <p className="mt-1.5 text-xs text-gray-500">יש להעלות בעצמכם את קובץ ההתקנה (עד 200MB) כדי שהצוות יוכל לבדוק ולפרסם אותו.</p>
         </div>
         <div>
           <label className="mb-1.5 block text-sm text-gray-400">הערה (אופציונלי)</label>

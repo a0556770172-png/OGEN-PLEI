@@ -4,7 +4,7 @@ import { getAvatarUrl } from "@/lib/avatar";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { LIMITS } from "@/lib/constants";
 import Link from "next/link";
-import { Rocket, MessageSquareText, History } from "lucide-react";
+import { Rocket, MessageSquareText, History, Star } from "lucide-react";
 import AvatarUploadForm from "@/components/AvatarUploadForm";
 import DeveloperAppsPanel from "@/components/DeveloperAppsPanel";
 import ProfileTagsEditor from "@/components/ProfileTagsEditor";
@@ -53,6 +53,26 @@ export default async function ProfilePage() {
         <h1 className="text-2xl font-black">הפרופיל שלי</h1>
         <p className="text-sm text-gray-400">שלום {profile.username}, כאן תוכלו לנהל את הפרטים שלכם{isDeveloper ? " ואת האפליקציות שלכם" : ""}.</p>
       </div>
+
+      {/* "ג'וקר" - תג ויזואלי שמוצג רק למי שקיבל מהמנהל הרשאת גודל חד-פעמית (ראו טאב "הרשאות
+          גודל" בניהול). המטרה: שהמשתמש עצמו ידע בבירור שיש לו את זה פעיל, ומה בדיוק מותר לו,
+          לפני שהוא ניגש להעלות אפליקציה/תוכנה או להציע הצעה ציבורית. */}
+      {profile.size_override_mb && (
+        <div className="card mx-auto flex w-full max-w-xl items-center gap-4 border border-gold/40 bg-gold/5 p-6">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gold/15 text-gold">
+            <Star className="h-5 w-5 fill-gold" />
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-gold">יש לך ג'וקר! 🃏</p>
+            <p className="text-sm text-gray-400">
+              המנהל נתן לך אפשרות חד-פעמית להעלות אפליקציה או תוכנה אחת בגודל של עד{" "}
+              <b className="text-white">{profile.size_override_mb}MB</b> - גם בהעלאה פרטית מהדשבורד וגם בהצעת
+              אפליקציה ציבורית, מעבר למכסה הרגילה שלך. ברגע שתעלה קובץ שחורג מהמכסה הרגילה, הג'וקר ינוצל
+              ויתבטל אוטומטית - כך שכדאי לנצל אותו על האפליקציה/התוכנה הגדולה שבאמת צריך.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="card mx-auto w-full max-w-xl p-8">
         <AvatarUploadForm currentAvatarUrl={avatarUrl} username={profile.username} />

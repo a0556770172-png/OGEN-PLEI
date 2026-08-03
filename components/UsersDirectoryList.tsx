@@ -1,12 +1,13 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Search, ShieldCheck, Package, Crown, User as UserIcon, Wifi } from "lucide-react";
 import type { PublicUserSummary } from "@/lib/users-data";
 
 const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
+const POLL_MS = 20 * 1000;
 
-function isOnline(lastSeenAt: string | null) {
+function isOnlineByTimestamp(lastSeenAt: string | null) {
   if (!lastSeenAt) return false;
   return Date.now() - new Date(lastSeenAt).getTime() < ONLINE_THRESHOLD_MS;
 }
@@ -29,15 +30,42 @@ function timeAgoLabel(dateStr: string | null) {
 export default function UsersDirectoryList({ users }: { users: PublicUserSummary[] }) {
   const [query, setQuery] = useState("");
   const [onlyOnline, setOnlyOnline] = useState(false);
+  // רשימת המשתמשים נטענת פעם אחת בצד השרת בזמן הניווט לעמוד, אבל "ביקור אחרון" מתעדכן
+  // בצד הלקוח (heartbeat) - כך שהתמונה הראשונית לא בהכרח תואמת את מי שמחובר ממש עכשיו,
+  // ולא הייתה מתעדכנת בלי רענון ידני של הדף. לכן שולפים בנוסף, בפולינג קליינטי, רשימת
+  // מזהים "מחוברים כרגע" עדכנית מהשרת - וזו המקור האמיתי לתג/למונה, לא תמונת ה-SSR הישנה.
+  const [onlineIds, setOnlineIds] = useState<Set<string> | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    async function poll() {
+      try {
+        const res = await fetch("/api/users/online-status");
+        const json = await res.json();
+        if (active && Array.isArray(json.onlineIds)) setOnlineIds(new Set(json.onlineIds));
+      } catch {
+        // אם השליפה נכשלת - ממשיכים עם המידע הקיים (או עם ההערכה לפי חותמת הזמן)
+      }
+    }
+    poll();
+    const interval = setInterval(poll, POLL_MS);
+    return () => { active = false; clearInterval(interval); };
+  }, []);
+
+  function isOnline(u: PublicUserSummary) {
+    if (onlineIds) return onlineIds.has(u.id);
+    return isOnlineByTimestamp(u.lastSeenAt);
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return users
-      .filter((u) => (!q || u.username.toLowerCase().includes(q)) && (!onlyOnline || isOnline(u.lastSeenAt)))
+      .filter((u) => (!q || u.username.toLowerCase().includes(q)) && (!onlyOnline || isOnline(u)))
       .sort((a, b) => a.username.localeCompare(b.username, "he"));
-  }, [users, query, onlyOnline]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [users, query, onlyOnline, onlineIds]);
 
-  const onlineCount = useMemo(() => users.filter((u) => isOnline(u.lastSeenAt)).length, [users]);
+  const onlineCount = useMemo(() => users.filter((u) => isOnline(u)).length, [users, onlineIds]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -79,7 +107,7 @@ export default function UsersDirectoryList({ users }: { users: PublicUserSummary
                 ) : (
                   <UserIcon className="h-5 w-5 text-primary-light" />
                 )}
-                {isOnline(u.lastSeenAt) && (
+                {isOnline(u) && (
                   <span className="absolute bottom-0 left-0 h-3 w-3 rounded-full border-2 border-surface bg-accent" title="מחובר כרגע" />
                 )}
               </div>

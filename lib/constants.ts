@@ -5,6 +5,10 @@ export const LIMITS = {
   pro: { maxApps: 50, maxFileMb: 100 }
 };
 
+// מכסת גודל קובץ להעלאת "הצעת אפליקציה" ציבורית (app/api/suggestions/upload-init) -
+// נפרד מ-LIMITS כי הצעה ציבורית לא נספרת במכסת האפליקציות של המשתמש בכלל.
+export const MAX_SUGGESTION_MB = 200;
+
 // הקטגוריות עברו לטבלת categories ב-DB (ניתנות לניהול מהאדמין) - ראו lib/categories.ts
 // ואת ה-API הציבורי ב-app/api/categories/route.ts. הרשימה הקבועה הוסרה מכאן בכוונה.
 
