@@ -106,7 +106,9 @@ async function pollInner() {
 
   const total = json.total ?? 0;
   chrome.action.setBadgeText({ text: total > 0 ? String(total) : "" });
-  chrome.action.setBadgeBackgroundColor({ color: "#c99b3f" });
+  // אדום כל עוד יש משהו ממתין לטיפול - כדי שזה יבלוט מיד באייקון גם בלי לפתוח כלום,
+  // ולא רק צבע "רגיל" שקל לפספס.
+  chrome.action.setBadgeBackgroundColor({ color: total > 0 ? "#dc2626" : "#c99b3f" });
 
   // משווים לכל קטגוריה בנפרד מול הפעם האחרונה - כדי להודיע ספציפית "יש X חדש" ולא רק
   // "המספר הכללי עלה" בלי לדעת על מה בדיוק.
@@ -122,14 +124,17 @@ async function pollInner() {
   }
 
   if (increases.length > 0) {
-    const title = increases.length === 1 ? increases[0].label : "יש התראות חדשות בעוגן פליי";
+    const title = increases.length === 1 ? `❗ ${increases[0].label}` : "❗ יש התראות חדשות בעוגן פליי";
     const message = increases.map((i) => `${i.label}: ${i.now} (חדש: +${i.delta})`).join("\n");
     chrome.notifications.create(`ogen-play-${Date.now()}`, {
       type: "basic",
       iconUrl: "icons/icon128.png",
       title,
       message,
-      priority: 2
+      priority: 2,
+      // requireInteraction: ההתראה נשארת על המסך עד שלוחצים עליה/סוגרים אותה בפועל - לא
+      // נעלמת לבד אחרי כמה שניות כמו התראה רגילה, בדיוק כדי שלא תפספס אותה.
+      requireInteraction: true
     });
   }
 
