@@ -137,6 +137,7 @@ export default async function ProfilePage() {
           proStatus={profile.pro_status}
           proAdminMessage={proAdminMessage}
           maxApps={plan.maxApps}
+          developerUsername={profile.username}
         />
       )}
     </div>

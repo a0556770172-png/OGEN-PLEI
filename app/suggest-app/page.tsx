@@ -17,7 +17,9 @@ export default function SuggestAppPage() {
   const supabase = createClient();
   const [appName, setAppName] = useState("");
   const [version, setVersion] = useState("");
-  const [minAndroidVersion, setMinAndroidVersion] = useState(MIN_ANDROID_VERSIONS[1]);
+  // בכוונה בלי ברירת מחדל - חובה לבחור בעצמו את גרסת האנדרואיד המינימלית, כדי שלא תישלח
+  // בטעות גרסה שגויה שרק "נשארה מסומנת" מברירת המחדל.
+  const [minAndroidVersion, setMinAndroidVersion] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -38,6 +40,10 @@ export default function SuggestAppPage() {
     e.preventDefault();
     if (!file) {
       setError("יש להעלות את קובץ ההתקנה של האפליקציה/התוכנה");
+      return;
+    }
+    if (!minAndroidVersion) {
+      setError("חובה לבחור גרסת אנדרואיד מינימלית נדרשת");
       return;
     }
     setBusy(true);
@@ -72,6 +78,7 @@ export default function SuggestAppPage() {
 
       setAppName("");
       setVersion("");
+      setMinAndroidVersion("");
       setFile(null);
       setNote("");
       setSuccess(true);
@@ -121,6 +128,7 @@ export default function SuggestAppPage() {
         <div>
           <label className="mb-1.5 block text-sm text-gray-400">גרסת אנדרואיד מינימלית נדרשת <span className="text-gold">(חובה)</span></label>
           <select required value={minAndroidVersion} onChange={(e) => setMinAndroidVersion(e.target.value)} className="input-field">
+            <option value="" disabled>בחרו גרסה...</option>
             {MIN_ANDROID_VERSIONS.map((v) => <option key={v} value={v}>{v}</option>)}
           </select>
         </div>

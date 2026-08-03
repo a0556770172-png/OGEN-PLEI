@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Star, LayoutGrid, Crown, Pencil, PauseCircle, PlayCircle, Loader2 } from "lucide-react";
+import { Plus, Star, LayoutGrid, Crown, Pencil, PauseCircle, PlayCircle, Loader2, User } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import ProRequestButton from "@/components/ProRequestButton";
 import DeleteAppButton from "@/components/DeleteAppButton";
@@ -99,7 +99,8 @@ export default function DeveloperAppsPanel({
   isPro,
   proStatus,
   proAdminMessage,
-  maxApps
+  maxApps,
+  developerUsername
 }: {
   apps: AppRow[];
   points: number;
@@ -107,6 +108,7 @@ export default function DeveloperAppsPanel({
   proStatus: ProStatus;
   proAdminMessage?: string | null;
   maxApps: number;
+  developerUsername?: string | null;
 }) {
   const router = useRouter();
 
@@ -180,6 +182,9 @@ export default function DeveloperAppsPanel({
                   )}
                   <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
                     <span>{app.downloads_count.toLocaleString("he-IL")} הורדות</span>
+                    {developerUsername && (
+                      <span className="inline-flex items-center gap-1"><User className="h-3.5 w-3.5" /> {developerUsername}</span>
+                    )}
                     <Link href={`/dashboard/developer/apps/${app.id}/edit`} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-primary-light transition hover:bg-primary/10">
                       <Pencil className="h-3.5 w-3.5" /> עריכה / גרסה חדשה
                     </Link>

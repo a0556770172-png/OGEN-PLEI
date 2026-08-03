@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Download, Package } from "lucide-react";
+import { Download, Package, User } from "lucide-react";
 import type { AppRow, Category } from "@/types/database";
 import { formatFileSize } from "@/lib/format";
 
@@ -45,6 +45,12 @@ export default function AppCard({
         <div className="flex items-center justify-between text-xs text-gray-500">
           <span className="inline-flex items-center gap-1">
             <Download className="h-3.5 w-3.5" /> {app.downloads_count.toLocaleString("he-IL")} הורדות
+            {app.developer?.username && (
+              <>
+                <span className="text-gray-700">·</span>
+                <User className="h-3.5 w-3.5" /> {app.developer.username}
+              </>
+            )}
           </span>
           <span>{formatFileSize(app.file_size_bytes)}</span>
         </div>

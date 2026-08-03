@@ -17,7 +17,9 @@ export default function UploadAppPage() {
   const [shortDescription, setShortDescription] = useState("");
   const [descriptionHtml, setDescriptionHtml] = useState("");
   const [version, setVersion] = useState("");
-  const [minAndroidVersion, setMinAndroidVersion] = useState(MIN_ANDROID_VERSIONS[1]);
+  // בכוונה בלי ברירת מחדל - חובה על המפתח לבחור בעצמו את גרסת האנדרואיד המינימלית, כדי
+  // שלא תתפרסם בטעות גרסה שגויה שרק "נשארה מסומנת" מברירת המחדל.
+  const [minAndroidVersion, setMinAndroidVersion] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [category, setCategory] = useState("general");
   const [file, setFile] = useState<File | null>(null);
@@ -63,6 +65,7 @@ export default function UploadAppPage() {
     e.preventDefault();
     setError("");
     if (!file) { setError("יש לבחור קובץ להעלאה"); return; }
+    if (!minAndroidVersion) { setError("חובה לבחור גרסת אנדרואיד מינימלית נדרשת"); return; }
     if (iconRequiredNow) {
       setError(
         !isApkFile
@@ -282,6 +285,7 @@ export default function UploadAppPage() {
             <div>
               <label className="mb-1.5 block text-sm text-gray-400">גרסת אנדרואיד מינימלית נדרשת <span className="text-gold">(חובה)</span></label>
               <select required value={minAndroidVersion} onChange={(e) => setMinAndroidVersion(e.target.value)} className="input-field">
+                <option value="" disabled>בחרו גרסה...</option>
                 {MIN_ANDROID_VERSIONS.map((v) => <option key={v} value={v}>{v}</option>)}
               </select>
               <p className="mt-1.5 text-xs text-gray-500">כדי שמשתמשים יידעו מראש אם המכשיר שלהם תואם, לפני שהם מורידים.</p>
