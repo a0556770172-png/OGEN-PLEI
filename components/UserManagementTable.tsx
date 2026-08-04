@@ -1,10 +1,27 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Ban, ShieldCheck, Crown, Loader2, ShieldOff, UserCog, Trash2, Paperclip, Pencil, ThumbsUp, MessageSquare, Star } from "lucide-react";
+import { Ban, ShieldCheck, Crown, Loader2, ShieldOff, UserCog, Trash2, Paperclip, Pencil, ThumbsUp, MessageSquare, Star, Clock } from "lucide-react";
 import type { Profile } from "@/types/database";
 
 const ROLE_LABEL: Record<string, string> = { user: "משתמש", developer: "מפתח", admin: "מנהל", moderator: "פיקוח" };
+
+// "מתי התחברתי לאחרונה" - מבוסס על last_seen_at, שכבר מתעדכן בכל טעינת עמוד/ניווט דרך
+// ה-heartbeat (ראו app/api/profile/heartbeat/route.ts, נקרא מה-Navbar) - אין צורך בעמודה
+// נפרדת "התחברות אחרונה" כי זה כבר בפועל מייצג את הפעילות/הכניסה האחרונה של המשתמש.
+// אותה לוגיקה בדיוק כמו components/UsersDirectoryList.tsx, כדי שהתצוגה תהיה עקבית באתר.
+function lastSeenLabel(dateStr: string | null) {
+  if (!dateStr) return "מעולם לא נכנס/ה";
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 5) return "מחובר/ת עכשיו";
+  if (mins < 60) return `לפני ${mins} דקות`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `לפני ${hours} שעות`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `לפני ${days} ימים`;
+  return new Date(dateStr).toLocaleDateString("he-IL");
+}
 
 // isAdmin - מגיע מהשרת לפי הפרופיל האמיתי של הצופה (profile.role === "admin"), ולא לפי
 // איזה עמוד הוא צופה בו. משפיע על: מחיקת משתמש (ישירה למנהל, בקשה בלבד לצוות פיקוח)
@@ -115,6 +132,7 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
             <th className="px-4 py-3">משתמש</th>
             <th className="px-4 py-3">תפקיד</th>
             <th className="px-4 py-3">מוניטין</th>
+            <th className="px-4 py-3">כניסה אחרונה</th>
             <th className="px-4 py-3">סטטוס</th>
             <th className="px-4 py-3">פעולות</th>
           </tr>
@@ -141,6 +159,11 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
               <td className="px-4 py-3">
                 <div className={`flex items-center gap-1 text-base font-black ${p.points >= 300 ? "text-gold" : "text-white"}`}>
                   <Star className="h-4 w-4" /> {p.points.toLocaleString("he-IL")}
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-1 text-xs text-gray-400">
+                  <Clock className="h-3.5 w-3.5" /> {lastSeenLabel(p.last_seen_at)}
                 </div>
               </td>
               <td className="px-4 py-3">
