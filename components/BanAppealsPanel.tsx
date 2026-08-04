@@ -18,7 +18,7 @@ export default function BanAppealsPanel({ appeals }: { appeals: BanAppeal[] }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
 
-  async function respond(id: string, status: "resolved" | "rejected") {
+  async function respond(id: string, status: "resolved" | "rejected" | "pending") {
     const adminReply = (replyDrafts[id] ?? "").trim();
     setBusyId(id);
     const res = await fetch(`/api/admin/ban-appeals/${id}`, {
