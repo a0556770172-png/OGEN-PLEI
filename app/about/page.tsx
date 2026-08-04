@@ -50,27 +50,27 @@ export default function AboutPage() {
       </section>
 
       <section className="card p-8">
-        <h2 className="mb-4 text-2xl font-black">איך צוברים נקודות?</h2>
+        <h2 className="mb-4 text-2xl font-black">איך צוברים מוניטין?</h2>
         <div className="flex flex-col gap-4">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-light"><UploadCloud className="h-4 w-4" /></div>
             <div>
-              <p className="font-bold text-white">העלאת אפליקציה או תוכנה חדשה — 5 נקודות</p>
-              <p className="text-sm text-gray-400">כל אפליקציה או תוכנה חדשה שמפתח מעלה ונשמרת בהצלחה מזכה ב-5 נקודות.</p>
+              <p className="font-bold text-white">העלאת אפליקציה או תוכנה חדשה — 5 מוניטין</p>
+              <p className="text-sm text-gray-400">כל אפליקציה או תוכנה חדשה שמפתח מעלה ונשמרת בהצלחה מזכה ב-5 מוניטין.</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent"><Download className="h-4 w-4" /></div>
             <div>
-              <p className="font-bold text-white">כל הורדה של אפליקציה או תוכנה שלכם — 2 נקודות</p>
-              <p className="text-sm text-gray-400">ככל שיותר משתמשים מורידים את האפליקציות והתוכנות שלכם, כך אתם צוברים יותר נקודות.</p>
+              <p className="font-bold text-white">כל הורדה של אפליקציה או תוכנה שלכם — 2 מוניטין</p>
+              <p className="text-sm text-gray-400">ככל שיותר משתמשים מורידים את האפליקציות והתוכנות שלכם, כך אתם צוברים יותר מוניטין.</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gold/15 text-gold"><Gift className="h-4 w-4" /></div>
             <div>
-              <p className="font-bold text-white">הצעת אפליקציה או תוכנה פופולרית שאושרה — 5 נקודות</p>
-              <p className="text-sm text-gray-400">כל משתמש (גם ללא חשבון מפתח) יכול להציע אפליקציה או תוכנה למאגר. אישור ההצעה מזכה ב-5 נקודות.</p>
+              <p className="font-bold text-white">הצעת אפליקציה או תוכנה פופולרית שאושרה — 5 מוניטין</p>
+              <p className="text-sm text-gray-400">כל משתמש (גם ללא חשבון מפתח) יכול להציע אפליקציה או תוכנה למאגר. אישור ההצעה מזכה ב-5 מוניטין.</p>
             </div>
           </div>
         </div>
@@ -86,7 +86,7 @@ export default function AboutPage() {
           <li className="flex items-center gap-2"><Star className="h-3.5 w-3.5 text-gold" /> עד 100MB לקובץ (במקום 30MB בחשבון רגיל)</li>
         </ul>
         <p className="mt-4 text-sm text-gray-400">
-          מגיעים ל-PRO בשתי דרכים: בקשת שדרוג ואישור מנהל, או צבירה עצמאית של 300 נקודות (מכל מקור
+          מגיעים ל-PRO בשתי דרכים: בקשת שדרוג ואישור מנהל, או צבירה עצמאית של 300 מוניטין (מכל מקור
           יחד) - ואז השדרוג ניתן אוטומטית. שדרוג PRO אינו אוטומטי מיידי בבקשה - הפעלת המערכת
           (אחסון, תעבורה ותחזוקה) כרוכה בעלות, ולכן קיימים תנאים וקריטריונים למתן שדרוג, וכל בקשה
           נבדקת בהתאם.
@@ -97,7 +97,7 @@ export default function AboutPage() {
           <p className="text-lg font-black text-white">דרך שלישית, המהירה מכולן - תמיכה בפרויקט</p>
           <p className="max-w-md text-sm text-gray-300">
             מי שתורם/ת 3$ ומעלה לטובת החזקת האתר, מקבל/ת חשבון PRO ישירות - בלי קשר לכמות
-            האפליקציות שהעליתם ובלי לחכות לצבירת נקודות. זו הדרך הכי פשוטה לעזור לנו להמשיך
+            האפליקציות שהעליתם ובלי לחכות לצבירת מוניטין. זו הדרך הכי פשוטה לעזור לנו להמשיך
             להחזיק את השרתים דלוקים, ולקבל בתמורה את כל היתרונות של PRO באופן מיידי.
           </p>
           <a

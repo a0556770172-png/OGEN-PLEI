@@ -8,9 +8,16 @@ import ReportAppButton from "@/components/ReportAppButton";
 import AppLikeButton from "@/components/AppLikeButton";
 import AppReviews from "@/components/AppReviews";
 import { createAdminSupabase } from "@/lib/supabase/admin";
-import { Package, User, Calendar, HardDrive, Flag, Smartphone } from "lucide-react";
+import { Package, User, Calendar, HardDrive, Flag, Smartphone, Wifi, WifiOff, HelpCircle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+
+// תגית "אופליין/אונליין" - אותו לוגיקה גם ל-badge בדף הפרטים וגם לכל מקום דומה שירצה להשתמש בה.
+const OFFLINE_SUPPORT_LABEL: Record<string, { label: string; icon: typeof Wifi }> = {
+  offline: { label: "פועלת גם אופליין", icon: WifiOff },
+  online: { label: "חייבת אינטרנט", icon: Wifi },
+  unknown: { label: "תמיכה באופליין לא ידועה", icon: HelpCircle }
+};
 
 export default async function AppDetailPage({ params }: { params: { id: string } }) {
   const app = await getAppById(params.id);
@@ -55,6 +62,15 @@ export default async function AppDetailPage({ params }: { params: { id: string }
               <span>{category}</span>
               {app.min_android_version && (
                 <span className="inline-flex items-center gap-1"><Smartphone className="h-3.5 w-3.5" /> {app.min_android_version}</span>
+              )}
+              {app.offline_support && OFFLINE_SUPPORT_LABEL[app.offline_support] && (
+                <span className="inline-flex items-center gap-1">
+                  {(() => {
+                    const Icon = OFFLINE_SUPPORT_LABEL[app.offline_support].icon;
+                    return <Icon className="h-3.5 w-3.5" />;
+                  })()}
+                  {OFFLINE_SUPPORT_LABEL[app.offline_support].label}
+                </span>
               )}
             </div>
             {app.developer_name && (

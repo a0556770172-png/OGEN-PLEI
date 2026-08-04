@@ -11,7 +11,7 @@ import type { AppSuggestion, Category } from "@/types/database";
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   pending: { label: "ממתינה לבדיקה", cls: "bg-gold/15 text-gold" },
-  approved: { label: "אושרה! +5 נק'", cls: "bg-accent/15 text-accent" },
+  approved: { label: "אושרה! +5 מוניטין", cls: "bg-accent/15 text-accent" },
   rejected: { label: "נדחתה", cls: "bg-red-500/15 text-red-400" }
 };
 
@@ -34,6 +34,12 @@ export default function SuggestAppPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [mySuggestions, setMySuggestions] = useState<AppSuggestion[]>([]);
+  // בדיוק כמו בהעלאה הפרטית (app/dashboard/developer/upload/page.tsx) - לפני שליחה בפועל
+  // מציגים חלונית אישור עם שאלת הנטפרי ושאלת האופליין/אונליין, כדי שהתשובות יילקחו במודעות
+  // וגם כדי לתת עוד רגע לוודא שהפרטים נכונים.
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [netfreeAdapted, setNetfreeAdapted] = useState(false);
+  const [offlineSupport, setOfflineSupport] = useState<"offline" | "online" | "unknown">("unknown");
 
   async function loadMine() {
     const { data } = await supabase.from("app_suggestions").select("*").order("created_at", { ascending: false });
@@ -53,8 +59,9 @@ export default function SuggestAppPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
+  function openConfirm(e: React.FormEvent) {
     e.preventDefault();
+    setError("");
     if (!file) {
       setError("יש להעלות את קובץ ההתקנה של האפליקציה/התוכנה");
       return;
@@ -67,6 +74,18 @@ export default function SuggestAppPage() {
       setError("חובה לציין את שם המפתח/חברת הפיתוח האמיתית של האפליקציה");
       return;
     }
+    setShowConfirm(true);
+  }
+
+  async function handleSubmit() {
+    // תיאורטית לא אמור לקרות (openConfirm כבר בדק), אבל שומר על TypeScript מרוצה ועל בטיחות
+    // אם משום מה הקובץ התאפס בין הפתיחה של החלונית לאישור שלה.
+    if (!file) {
+      setError("יש להעלות את קובץ ההתקנה של האפליקציה/התוכנה");
+      setShowConfirm(false);
+      return;
+    }
+    setShowConfirm(false);
     setBusy(true);
     setError("");
     setSuccess(false);
@@ -106,13 +125,14 @@ export default function SuggestAppPage() {
           note,
           shortDescription,
           descriptionHtml,
-          category,
+          category: netfreeAdapted ? "netfree" : category,
           iconKey: uploadedIconKey,
           developerName,
           fileKey: initJson.fileKey,
           fileName: file.name,
           fileSize: file.size,
-          minAndroidVersion
+          minAndroidVersion,
+          offlineSupport
         })
       });
       const json = await res.json().catch(() => null);
@@ -127,6 +147,8 @@ export default function SuggestAppPage() {
       setMinAndroidVersion("");
       setFile(null);
       setNote("");
+      setNetfreeAdapted(false);
+      setOfflineSupport("unknown");
       setSuccess(true);
       await loadMine();
     } catch (err: any) {
@@ -142,10 +164,10 @@ export default function SuggestAppPage() {
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-gold to-primary shadow-glow">
           <Gift className="h-6 w-6 text-[#fff]" />
         </div>
-        <h1 className="text-3xl font-black">הוספה למאגר וצבירת נקודות</h1>
+        <h1 className="text-3xl font-black">הוספה למאגר וצבירת מוניטין</h1>
         <p className="mx-auto mt-2 max-w-lg text-gray-400">
           מכירים אפליקציה או תוכנה פופולרית ומאושרת (כמו Waze, WhatsApp וכו') שכדאי שתהיה זמינה בחנות? הציעו אותה כאן.
-          כשההצעה שלכם תאושר ותתפרסם, תקבלו 5 נקודות. הגעה ל-300 נקודות מזכה בשדרוג PRO אוטומטי.
+          כשההצעה שלכם תאושר ותתפרסם, תקבלו 5 מוניטין. הגעה ל-300 מוניטין מזכה בשדרוג PRO אוטומטי.
         </p>
         <p className="mx-auto mt-3 max-w-lg text-xs text-gray-500">
           שימו לב: זו הצעה ציבורית - הצוות בודק ומפרסם אותה בעצמו, ואחרי הפרסום היא לא תהיה ניתנת לעריכה על ידכם (לא
@@ -155,7 +177,7 @@ export default function SuggestAppPage() {
         </p>
       </div>
 
-      <motion.form initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} onSubmit={handleSubmit} className="card flex flex-col gap-4 p-6">
+      <motion.form initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} onSubmit={openConfirm} className="card flex flex-col gap-4 p-6">
         {error && (
           <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
             <AlertCircle className="h-4 w-4 shrink-0" /> {error}
@@ -244,6 +266,71 @@ export default function SuggestAppPage() {
           שליחת ההצעה
         </button>
       </motion.form>
+
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md rounded-2xl border border-white/10 bg-surface p-6"
+          >
+            <div className="mb-4 flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-gold" />
+              <h2 className="text-lg font-bold text-white">רגע לפני שליחה - שתי שאלות אחרונות</h2>
+            </div>
+
+            <label className="mb-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-white/10 bg-surface2 p-4 text-sm">
+              <input
+                type="checkbox"
+                checked={netfreeAdapted}
+                onChange={(e) => setNetfreeAdapted(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+              />
+              <span className="text-gray-300">
+                האם האפליקציה מותאמת/מוכרת כתואמת לגלישה מסוננת בנטפרי?
+                <span className="mt-1 block text-xs text-gray-500">
+                  אם מסמנים כן - האפליקציה תפורסם (אחרי אישור הצוות) בקטגוריה הייעודית "מותאם נטפרי" במקום הקטגוריה
+                  שנבחרה למעלה.
+                </span>
+              </span>
+            </label>
+
+            <div className="mb-5 rounded-xl border border-white/10 bg-surface2 p-4 text-sm">
+              <p className="mb-2 text-gray-300">האם האפליקציה/התוכנה פועלת אופליין (בלי אינטרנט)?</p>
+              <div className="flex flex-col gap-1.5">
+                {([
+                  ["offline", "כן, פועלת גם אופליין"],
+                  ["online", "לא, חייבת חיבור אינטרנט"],
+                  ["unknown", "לא ידוע"]
+                ] as const).map(([val, label]) => (
+                  <label key={val} className="flex cursor-pointer items-center gap-2 text-gray-300">
+                    <input
+                      type="radio"
+                      name="offlineSupportSuggest"
+                      checked={offlineSupport === val}
+                      onChange={() => setOfflineSupport(val)}
+                      className="h-4 w-4 shrink-0 accent-primary"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button onClick={handleSubmit} className="btn-primary flex-1">
+                <Send className="h-4 w-4" /> כן, שליחת ההצעה
+              </button>
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-gray-400 hover:text-white"
+              >
+                לא, אני רוצה לתקן
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {mySuggestions.length > 0 && (
         <div className="flex flex-col gap-3">

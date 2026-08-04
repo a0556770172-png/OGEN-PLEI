@@ -23,8 +23,11 @@ export async function POST(request: Request) {
     fileKey,
     fileName,
     fileSize,
-    minAndroidVersion
+    minAndroidVersion,
+    offlineSupport
   } = await request.json().catch(() => ({}));
+  // ראו הסבר זהה ב-app/api/apps/finalize/route.ts
+  const validOfflineSupport = ["offline", "online", "unknown"].includes(offlineSupport) ? offlineSupport : "unknown";
 
   if (!appName?.trim()) {
     return NextResponse.json({ error: "חובה למלא את שם האפליקציה/התוכנה" }, { status: 400 });
@@ -63,7 +66,8 @@ export async function POST(request: Request) {
     file_key: fileKey,
     file_name: fileName,
     file_size_bytes: fileSize,
-    min_android_version: minAndroidVersion.trim()
+    min_android_version: minAndroidVersion.trim(),
+    offline_support: validOfflineSupport
   });
 
   if (error) {

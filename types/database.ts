@@ -82,6 +82,9 @@ export interface AppRow {
   source: "developer_upload" | "public_suggestion";
   // שם המפתח/חברת הפיתוח האמיתית (קרדיט) - בעיקר רלוונטי לאפליקציות שמקורן בהצעה ציבורית.
   developer_name: string | null;
+  // האם האפליקציה/התוכנה פועלת אופליין, חייבת חיבור אינטרנט, או שהמעלה לא יודע - נשאל
+  // באותה חלונית אישור שבה נשאלת שאלת "נטפרי" בזמן ההעלאה.
+  offline_support: "offline" | "online" | "unknown";
   created_at: string;
   updated_at: string;
   developer?: Profile;
@@ -154,6 +157,8 @@ export interface AppSuggestion {
   icon_key: string | null;
   // שם המפתח/חברת הפיתוח האמיתית - שדה חובה בטופס (קרדיט חובה למפתח המקורי).
   developer_name: string | null;
+  // ראו הסבר זהה ב-AppRow למעלה.
+  offline_support: "offline" | "online" | "unknown";
   status: SuggestionStatus;
   points_awarded: boolean;
   reviewed_by: string | null;

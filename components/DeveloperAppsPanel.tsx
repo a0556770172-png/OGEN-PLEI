@@ -141,7 +141,7 @@ export default function DeveloperAppsPanel({
         <div className="card flex items-center gap-4 p-5">
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold/15 text-gold"><Star className="h-5 w-5" /></div>
           <div>
-            <p className="text-xs text-gray-500">נקודות</p>
+            <p className="text-xs text-gray-500">מוניטין</p>
             <p className="text-xl font-black">{points.toLocaleString("he-IL")}</p>
           </div>
         </div>

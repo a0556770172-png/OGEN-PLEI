@@ -17,7 +17,11 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { name, shortDescription, descriptionHtml, version, category, fileKey, fileName, fileSize, iconKey, minAndroidVersion } = body;
+  const { name, shortDescription, descriptionHtml, version, category, fileKey, fileName, fileSize, iconKey, minAndroidVersion, offlineSupport } = body;
+  // "אופליין / אונליין / לא ידוע" - נשאל תמיד באותה חלונית אישור כמו שאלת הנטפרי; אם משום
+  // מה לא הגיע ערך תקין (למשל מטופס ישן שעוד לא עודכן), נופלים חזרה ל"לא ידוע" בלי להכשיל
+  // את ההעלאה כולה בגלל זה.
+  const validOfflineSupport = ["offline", "online", "unknown"].includes(offlineSupport) ? offlineSupport : "unknown";
 
   if (!name || !fileKey || !fileName || !fileSize) {
     return NextResponse.json({ error: "חסרים שדות חובה" }, { status: 400 });
@@ -74,6 +78,7 @@ export async function POST(request: Request) {
       file_name: fileName,
       file_size_bytes: fileSize,
       min_android_version: String(minAndroidVersion).trim(),
+      offline_support: validOfflineSupport,
       status: initialStatus,
       ...(initialStatus === "approved" ? { reviewed_by: user.id, reviewed_at: new Date().toISOString() } : {})
     })

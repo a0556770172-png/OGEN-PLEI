@@ -92,6 +92,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         file_name: suggestion.file_name,
         file_size_bytes: suggestion.file_size_bytes,
         min_android_version: suggestion.min_android_version ?? null,
+        offline_support: suggestion.offline_support ?? "unknown",
         // מקור: הצעה ציבורית - לא ניתנת לעריכה ע"י המציע (ראו app/api/apps/[id]/route.ts).
         source: "public_suggestion",
         developer_name: suggestion.developer_name?.trim() || null,

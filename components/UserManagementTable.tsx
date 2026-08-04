@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Ban, ShieldCheck, Crown, Loader2, ShieldOff, UserCog, Trash2, Paperclip, Pencil, ThumbsUp, MessageSquare } from "lucide-react";
+import { Ban, ShieldCheck, Crown, Loader2, ShieldOff, UserCog, Trash2, Paperclip, Pencil, ThumbsUp, MessageSquare, Star } from "lucide-react";
 import type { Profile } from "@/types/database";
 
 const ROLE_LABEL: Record<string, string> = { user: "משתמש", developer: "מפתח", admin: "מנהל", moderator: "פיקוח" };
@@ -46,7 +46,7 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
 
   async function deleteUser(id: string, username: string) {
     const first = window.confirm(
-      `למחוק לגמרי את המשתמש "${username}"?\n\nפעולה זו תמחק אותו מכל מקום באתר - כולל כל האפליקציות/תוכנות שהעלה, קבצים, נקודות, פניות תמיכה, בקשות PRO וחשבון ההתחברות. הפעולה בלתי הפיכה!`
+      `למחוק לגמרי את המשתמש "${username}"?\n\nפעולה זו תמחק אותו מכל מקום באתר - כולל כל האפליקציות/תוכנות שהעלה, קבצים, מוניטין, פניות תמיכה, בקשות PRO וחשבון ההתחברות. הפעולה בלתי הפיכה!`
     );
     if (!first) return;
     const typed = window.prompt(`כדי לאשר סופית, הקלידו את שם המשתמש "${username}" במדויק:`);
@@ -114,7 +114,7 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
           <tr className="border-b border-border text-right text-xs text-gray-500">
             <th className="px-4 py-3">משתמש</th>
             <th className="px-4 py-3">תפקיד</th>
-            <th className="px-4 py-3">נקודות</th>
+            <th className="px-4 py-3">מוניטין</th>
             <th className="px-4 py-3">סטטוס</th>
             <th className="px-4 py-3">פעולות</th>
           </tr>
@@ -136,7 +136,13 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
                 {p.can_like_override && <span className="ms-1 rounded-full bg-accent/15 px-2 py-1 text-xs font-bold text-accent">לייק ידני</span>}
                 {p.can_comment_override && <span className="ms-1 rounded-full bg-accent/15 px-2 py-1 text-xs font-bold text-accent">תגובה ידנית</span>}
               </td>
-              <td className="px-4 py-3">{p.points.toLocaleString("he-IL")}</td>
+              {/* מוניטין (נקודות) - מוצג באופן בולט וברור, כדי שיהיה קל לראות מיד כמה יש למשתמש
+                  בלי לחפש עמודה קטנה. גם צובע בזהב אם המשתמש כבר עבר את סף ה-PRO (300). */}
+              <td className="px-4 py-3">
+                <div className={`flex items-center gap-1 text-base font-black ${p.points >= 300 ? "text-gold" : "text-white"}`}>
+                  <Star className="h-4 w-4" /> {p.points.toLocaleString("he-IL")}
+                </div>
+              </td>
               <td className="px-4 py-3">
                 {p.banned ? (
                   <div>

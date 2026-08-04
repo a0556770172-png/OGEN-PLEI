@@ -32,7 +32,7 @@ export default function ProRequestsQueue({ requests }: { requests: ProRequest[] 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-bold text-white">{r.developer?.username}</p>
-              <p className="text-xs text-gray-500">{r.developer?.email} · {r.developer?.points ?? 0} נקודות</p>
+              <p className="text-xs text-gray-500">{r.developer?.email} · {r.developer?.points ?? 0} מוניטין</p>
               {r.message && <p className="mt-1 text-sm text-gray-400">"{r.message}"</p>}
             </div>
             <div className="flex items-center gap-2">

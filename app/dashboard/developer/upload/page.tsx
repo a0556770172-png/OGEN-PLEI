@@ -34,6 +34,9 @@ export default function UploadAppPage() {
   // אם המפתח מסמן שהאפליקציה עברה עריכה להמעטת פרסומות עבור נטפרי, מפרסמים אותה
   // בקטגוריה הייעודית "מותאם נטפרי" במקום הקטגוריה הרגילה שנבחרה בטופס.
   const [netfreeAdapted, setNetfreeAdapted] = useState(false);
+  // האם האפליקציה/התוכנה פועלת אופליין, חייבת חיבור אינטרנט, או לא ידוע - נשאל באותה
+  // חלונית אישור כמו שאלת הנטפרי, כדי שמשתמשים יידעו מראש מה לצפות.
+  const [offlineSupport, setOfflineSupport] = useState<"offline" | "online" | "unknown">("unknown");
 
   // אחרי שהאפליקציה כבר נשמרה בהצלחה (ונשלחה לבדיקה) אבל בלי אייקון - שומרים את המזהה שלה
   // כדי לאפשר להשלים אייקון בשלב נפרד, בלי לבנות מחדש את כל שאר הטופס.
@@ -143,7 +146,8 @@ export default function UploadAppPage() {
           fileName: file.name,
           fileSize: file.size,
           iconKey: uploadedIconKey,
-          minAndroidVersion
+          minAndroidVersion,
+          offlineSupport
         })
       });
       const finalizeJson = await finalizeRes.json();
@@ -366,7 +370,7 @@ export default function UploadAppPage() {
               </div>
             </div>
 
-            <label className="mb-5 flex cursor-pointer items-start gap-2.5 rounded-xl border border-white/10 bg-surface2 p-4 text-sm">
+            <label className="mb-3 flex cursor-pointer items-start gap-2.5 rounded-xl border border-white/10 bg-surface2 p-4 text-sm">
               <input
                 type="checkbox"
                 checked={netfreeAdapted}
@@ -381,6 +385,28 @@ export default function UploadAppPage() {
                 </span>
               </span>
             </label>
+
+            <div className="mb-5 rounded-xl border border-white/10 bg-surface2 p-4 text-sm">
+              <p className="mb-2 text-gray-300">האם האפליקציה/התוכנה פועלת אופליין (בלי אינטרנט)?</p>
+              <div className="flex flex-col gap-1.5">
+                {([
+                  ["offline", "כן, פועלת גם אופליין"],
+                  ["online", "לא, חייבת חיבור אינטרנט"],
+                  ["unknown", "לא ידוע"]
+                ] as const).map(([val, label]) => (
+                  <label key={val} className="flex cursor-pointer items-center gap-2 text-gray-300">
+                    <input
+                      type="radio"
+                      name="offlineSupport"
+                      checked={offlineSupport === val}
+                      onChange={() => setOfflineSupport(val)}
+                      className="h-4 w-4 shrink-0 accent-primary"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
 
             <div className="flex flex-col gap-2 sm:flex-row">
               <button onClick={doUpload} className="btn-primary flex-1">
