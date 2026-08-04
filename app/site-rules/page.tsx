@@ -1,13 +1,17 @@
 import { ScrollText } from "lucide-react";
 import SiteRulesContent from "@/components/SiteRulesContent";
+import { getSiteSettingsServer } from "@/lib/settings";
 
 export const metadata = {
   title: "חוקי האתר"
 };
 
+export const dynamic = "force-dynamic";
+
 // עמוד קבוע שנגיש בכל עת דרך תפריט הניווט (למחוברים ולא-מחוברים כאחד) - אותו תוכן בדיוק
 // שמוצג בשער החובה החד-פעמי (components/SiteRulesGate.tsx), דרך SiteRulesContent המשותף.
-export default function SiteRulesPage() {
+export default async function SiteRulesPage() {
+  const settings = await getSiteSettingsServer();
   return (
     <div className="mx-auto max-w-3xl">
       <div className="card p-6 sm:p-8">
@@ -21,7 +25,7 @@ export default function SiteRulesPage() {
           </div>
         </div>
         <div className="text-sm leading-relaxed text-gray-300">
-          <SiteRulesContent />
+          <SiteRulesContent html={settings.site_rules_html} />
         </div>
       </div>
     </div>

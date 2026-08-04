@@ -15,6 +15,9 @@ export default function SiteRulesGate() {
   const pathname = usePathname();
   const supabase = createClient();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [rulesHtml, setRulesHtml] = useState<string | null>(null);
+  const [rulesVersion, setRulesVersion] = useState(1);
+  const [updateNote, setUpdateNote] = useState<string | null>(null);
   const [readToEnd, setReadToEnd] = useState(false);
   const [checked, setChecked] = useState(false);
   const [step, setStep] = useState<"read" | "final-confirm">("read");
@@ -28,6 +31,16 @@ export default function SiteRulesGate() {
       if (!user) { if (active) setProfile(null); return; }
       const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
       if (active) setProfile(data as Profile);
+      const { data: settings } = await supabase
+        .from("site_settings")
+        .select("site_rules_html, site_rules_version, site_rules_update_note")
+        .eq("id", true)
+        .single();
+      if (active && settings) {
+        setRulesHtml(settings.site_rules_html ?? null);
+        setRulesVersion(settings.site_rules_version ?? 1);
+        setUpdateNote(settings.site_rules_update_note ?? null);
+      }
     }
     load();
     const { data: sub } = supabase.auth.onAuthStateChange(() => load());
@@ -45,7 +58,7 @@ export default function SiteRulesGate() {
     const res = await fetch("/api/site-rules/accept", { method: "POST" });
     setSubmitting(false);
     if (res.ok) {
-      setProfile((p) => (p ? { ...p, site_rules_accepted_at: new Date().toISOString() } : p));
+      setProfile((p) => (p ? { ...p, site_rules_accepted_at: new Date().toISOString(), site_rules_seen_version: rulesVersion } : p));
     } else {
       const j = await res.json().catch(() => ({}));
       alert(j.error || "שגיאה בשמירת האישור, נסה שוב");
@@ -53,8 +66,10 @@ export default function SiteRulesGate() {
   }
 
   // לא חוסמים משתמש חסום כאן - הוא ממילא מנותב ל-/banned ע"י middleware.ts, ואין טעם
-  // להציג לו שער נוסף לפני שהוא בכלל מטופל.
-  const shouldShow = !!profile && !profile.banned && !profile.site_rules_accepted_at;
+  // להציג לו שער נוסף לפני שהוא בכלל מטופל. מציגים שוב גם למי שכבר אישר בעבר, אם הצוות
+  // פרסם עדכון לחוקים מאז (site_rules_seen_version נמוך מהגרסה הנוכחית - ראו
+  // components/SiteRulesEditorPanel.tsx).
+  const shouldShow = !!profile && !profile.banned && (profile.site_rules_seen_version ?? 0) < rulesVersion;
   if (!shouldShow) return null;
 
   return (
@@ -66,7 +81,11 @@ export default function SiteRulesGate() {
           </div>
           <div>
             <h2 className="text-lg font-black text-white">חוקי עוגן פליי</h2>
-            <p className="text-xs text-gray-500">חובה לקרוא ולאשר פעם אחת לפני המשך השימוש באתר</p>
+            <p className="text-xs text-gray-500">
+              {(profile?.site_rules_seen_version ?? 0) > 0
+                ? "חוקי האתר עודכנו - יש לקרוא ולאשר שוב לפני המשך השימוש באתר"
+                : "חובה לקרוא ולאשר פעם אחת לפני המשך השימוש באתר"}
+            </p>
           </div>
         </div>
 
@@ -77,7 +96,13 @@ export default function SiteRulesGate() {
               onScroll={handleScroll}
               className="flex-1 overflow-y-auto px-6 py-5 text-sm leading-relaxed text-gray-300"
             >
-              <SiteRulesContent />
+              {(profile?.site_rules_seen_version ?? 0) > 0 && updateNote && (
+                <div className="mb-5 rounded-xl border border-gold/30 bg-gold/10 p-4 text-sm text-gold">
+                  <p className="mb-1 font-bold">עדכון מהצוות</p>
+                  <p className="text-gray-300">{updateNote}</p>
+                </div>
+              )}
+              <SiteRulesContent html={rulesHtml} />
             </div>
 
             <div className="border-t border-border px-6 py-4">

@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning, ScrollText } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import TicketsPanel from "./TicketsPanel";
 import SuggestionsQueue from "./SuggestionsQueue";
@@ -12,9 +12,10 @@ import CouncilPanel from "./CouncilPanel";
 import AppReportsQueue from "./AppReportsQueue";
 import SizeOverridePanel from "./SizeOverridePanel";
 import BanAppealsPanel from "./BanAppealsPanel";
+import SiteRulesEditorPanel from "./SiteRulesEditorPanel";
 import type { AppRow, Profile, BanAppeal } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "tickets" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals";
+type TabKey = "notifications" | "review" | "allApps" | "tickets" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals" | "siteRules";
 
 export default function ModeratorDashboardClient({
   apps,
@@ -35,6 +36,13 @@ export default function ModeratorDashboardClient({
 }) {
   const [tab, setTab] = useState<TabKey>("notifications");
 
+  // תמיכה בקישור ישיר לטאב מסוים (למשל ?tab=tickets) - ראו הסבר זהה ב-AdminDashboardClient.tsx.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const wanted = params.get("tab") as TabKey | null;
+    if (wanted && ["tickets", "council"].includes(wanted)) setTab(wanted);
+  }, []);
+
   const pendingBanAppealsCount = banAppeals.filter((a) => a.status === "pending").length;
   const notificationCount = apps.length + suggestionsPendingCount + ticketsNeedingReplyCount + pendingBanAppealsCount;
 
@@ -49,7 +57,8 @@ export default function ModeratorDashboardClient({
     { key: "council", label: "ועדה", icon: Siren },
     { key: "reports", label: "דיווחים על אפליקציות", icon: Flag },
     { key: "sizeOverrides", label: "הרשאות גודל", icon: HardDrive },
-    { key: "banAppeals", label: `ערעורי חסימה${pendingBanAppealsCount ? ` (${pendingBanAppealsCount})` : ""}`, icon: MessageSquareWarning }
+    { key: "banAppeals", label: `ערעורי חסימה${pendingBanAppealsCount ? ` (${pendingBanAppealsCount})` : ""}`, icon: MessageSquareWarning },
+    { key: "siteRules", label: "חוקי האתר", icon: ScrollText }
   ] as const;
 
   const notificationItems = [
@@ -93,6 +102,7 @@ export default function ModeratorDashboardClient({
       {tab === "reports" && <AppReportsQueue />}
       {tab === "sizeOverrides" && <SizeOverridePanel profiles={profiles} isAdmin={false} />}
       {tab === "banAppeals" && <BanAppealsPanel appeals={banAppeals} />}
+      {tab === "siteRules" && <SiteRulesEditorPanel isAdmin={false} />}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { sendPushToUser, notifyAdmins } from "@/lib/push";
 
 // הוספת הודעה לפנייה קיימת - הבעלים של הפנייה, או צוות (מנהל/פיקוח)
 export async function POST(request: Request, { params }: { params: { id: string } }) {
@@ -60,6 +61,33 @@ export async function POST(request: Request, { params }: { params: { id: string 
       updated_at: new Date().toISOString()
     })
     .eq("id", ticket.id);
+
+  // התראת דחיפה (Web Push) לצד השני של השיחה - כדי שהוא ידע מיד שיש הודעה חדשה, גם אם
+  // הוא לא נמצא באתר כרגע, ויוכל ללחוץ ולעבור ישר לשיחה (ראו components/NotificationBell.tsx
+  // ו-public/sw.js לטיפול בלחיצה על ההתראה).
+  const preview = (message?.trim() || "[קובץ מצורף]").slice(0, 120);
+  if (staff) {
+    sendPushToUser(ticket.user_id, {
+      title: `הודעה חדשה מהצוות: ${ticket.subject}`,
+      body: preview,
+      url: "/support"
+    }).catch(() => {});
+  } else {
+    const notifyStaffId = ticket.assigned_staff_id as string | null;
+    if (notifyStaffId) {
+      sendPushToUser(notifyStaffId, {
+        title: `הודעה חדשה מ-${profile.username}: ${ticket.subject}`,
+        body: preview,
+        url: "/dashboard/admin?tab=tickets"
+      }).catch(() => {});
+    } else {
+      notifyAdmins({
+        title: `הודעה חדשה מ-${profile.username}: ${ticket.subject}`,
+        body: preview,
+        url: "/dashboard/admin?tab=tickets"
+      }).catch(() => {});
+    }
+  }
 
   return NextResponse.json({ ok: true });
 }

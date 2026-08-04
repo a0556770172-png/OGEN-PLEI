@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/database";
 import ThemeToggle from "@/components/ThemeToggle";
 import PushNotificationsSetup from "@/components/PushNotificationsSetup";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function Navbar() {
   const supabase = createClient();
@@ -96,6 +97,7 @@ export default function Navbar() {
           </Link>
           {!loading && profile && (
             <div className="flex items-center gap-3">
+              <NotificationBell dashboardBase={adminHref ?? moderatorHref ?? null} />
               <Link href="/profile" className="flex items-center gap-2 text-sm text-gray-400 transition hover:text-white">
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface2 ring-1 ring-border">
                   {avatarUrl ? (
@@ -133,6 +135,7 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2 justify-self-end md:hidden">
+          {!loading && profile && <NotificationBell dashboardBase={adminHref ?? moderatorHref ?? null} />}
           <ThemeToggle />
           <button onClick={() => setOpen((o) => !o)}>
             {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}

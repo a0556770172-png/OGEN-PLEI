@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { sendPushToUser } from "@/lib/push";
 
 // פתיחת שיחה/פנייה ביוזמת הצוות (מנהל או פיקוח) למשתמש ספציפי - לא רק כשהמשתמש פונה ראשון.
 export async function POST(request: Request) {
@@ -43,6 +44,14 @@ export async function POST(request: Request) {
     attachment_name: attachmentName ?? null,
     attachment_type: attachmentType ?? null
   });
+
+  // התראת דחיפה למשתמש/מפתח שהצוות פתח אליו שיחה - כדי שהוא ידע מיד וילחץ ישר אל השיחה
+  // (ראו components/NotificationBell.tsx לתג ההתראה בתוך האתר עצמו).
+  sendPushToUser(targetUserId, {
+    title: `הודעה חדשה מהצוות: ${subject.trim()}`,
+    body: (message?.trim() || "[קובץ מצורף]").slice(0, 120),
+    url: "/support"
+  }).catch(() => {});
 
   return NextResponse.json({ ticket });
 }

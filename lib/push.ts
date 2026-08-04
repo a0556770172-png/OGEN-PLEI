@@ -58,3 +58,20 @@ export async function notifyAdmins(payload: PushPayload): Promise<void> {
   if (!admins) return;
   await Promise.all(admins.map((a: any) => sendPushToUser(a.id, payload)));
 }
+
+// שולח לכל משתמש רשום באתר - שימוש נדיר ומכוון בלבד, כמו עדכון חוקי אתר שדורש תשומת לב
+// מיידית מכולם (ראו app/api/admin/site-rules/route.ts, action "publish"). לא מיועד
+// לשימוש שגרתי - זו לא אמורה להיות התראה "על כל דבר".
+export async function notifyAllUsers(payload: PushPayload): Promise<void> {
+  ensureConfigured();
+  if (!configured) return;
+  const admin = createAdminSupabase();
+  const { data: users } = await admin.from("profiles").select("id").eq("banned", false);
+  if (!users) return;
+  // בבאצ'ים כדי לא להציף את שרת ה-Push בבת אחת אם יש הרבה משתמשים.
+  const BATCH_SIZE = 25;
+  for (let i = 0; i < users.length; i += BATCH_SIZE) {
+    const batch = users.slice(i, i + BATCH_SIZE);
+    await Promise.all(batch.map((u: any) => sendPushToUser(u.id, payload)));
+  }
+}

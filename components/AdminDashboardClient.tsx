@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import UserManagementTable from "./UserManagementTable";
 import ProRequestsQueue from "./ProRequestsQueue";
@@ -16,9 +16,10 @@ import AuditLogPanel from "./AuditLogPanel";
 import AppReportsQueue from "./AppReportsQueue";
 import SizeOverridePanel from "./SizeOverridePanel";
 import BanAppealsPanel from "./BanAppealsPanel";
+import SiteRulesEditorPanel from "./SiteRulesEditorPanel";
 import type { AppRow, Profile, ProRequest, UserDeletionRequest, BanAppeal } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "settings";
+type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "siteRules" | "settings";
 
 export default function AdminDashboardClient({
   apps,
@@ -47,6 +48,15 @@ export default function AdminDashboardClient({
 }) {
   const [tab, setTab] = useState<TabKey>("notifications");
 
+  // תמיכה בקישור ישיר לטאב מסוים (למשל ?tab=tickets) - משמש את פעמון ההתראות בניווט
+  // (components/NotificationBell.tsx) כדי לפתוח ישר את הטאב הרלוונטי, במקום שהמנהל/פיקוח
+  // יצטרך לחפש אותו ידנית אחרי שהוא לוחץ על התראה.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const wanted = params.get("tab") as TabKey | null;
+    if (wanted && ["tickets", "council"].includes(wanted)) setTab(wanted);
+  }, []);
+
   const pendingBanAppealsCount = banAppeals.filter((a) => a.status === "pending").length;
 
   const notificationCount =
@@ -67,6 +77,7 @@ export default function AdminDashboardClient({
     { key: "reports", label: "דיווחים על אפליקציות", icon: Flag },
     { key: "sizeOverrides", label: "הרשאות גודל", icon: HardDrive },
     { key: "banAppeals", label: `ערעורי חסימה${pendingBanAppealsCount ? ` (${pendingBanAppealsCount})` : ""}`, icon: MessageSquareWarning },
+    { key: "siteRules", label: "חוקי האתר", icon: ScrollText },
     { key: "settings", label: "הגדרות", icon: Settings }
   ] as const;
 
@@ -115,6 +126,7 @@ export default function AdminDashboardClient({
       {tab === "reports" && <AppReportsQueue />}
       {tab === "sizeOverrides" && <SizeOverridePanel profiles={profiles} isAdmin={true} />}
       {tab === "banAppeals" && <BanAppealsPanel appeals={banAppeals} />}
+      {tab === "siteRules" && <SiteRulesEditorPanel isAdmin={true} />}
       {tab === "settings" && <SiteSettingsPanel requireEmailVerification={requireEmailVerification} />}
     </div>
   );

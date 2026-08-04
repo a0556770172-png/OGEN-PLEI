@@ -11,9 +11,14 @@ export async function POST() {
   const { profile } = result;
 
   const admin = createAdminSupabase();
+  const { data: settings } = await admin.from("site_settings").select("site_rules_version").eq("id", true).single();
+
   const { error } = await admin
     .from("profiles")
-    .update({ site_rules_accepted_at: new Date().toISOString() })
+    .update({
+      site_rules_accepted_at: new Date().toISOString(),
+      site_rules_seen_version: settings?.site_rules_version ?? 1
+    })
     .eq("id", profile.id);
 
   if (error) return NextResponse.json({ error: "שגיאה בשמירת האישור" }, { status: 500 });

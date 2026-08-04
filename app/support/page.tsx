@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   MessageCircle, Plus, Send, Loader2, AlertCircle,
@@ -11,8 +12,19 @@ import MessageReactionsBar from "@/components/MessageReactions";
 import { FormattedMessageBody, buildQuoteText, copyMessageWithLink, toggleBoldAtSelection } from "@/lib/chatFormat";
 import type { Ticket, TicketMessage } from "@/types/database";
 
+// עוטפים ב-Suspense כי useSearchParams (בשביל ?ticket=<id> - ראו components/NotificationBell.tsx)
+// דורש את זה ב-App Router, אחרת ה-build נכשל (ראו הסבר דומה ב-app/login/page.tsx).
 export default function SupportPage() {
+  return (
+    <Suspense fallback={null}>
+      <SupportPageInner />
+    </Suspense>
+  );
+}
+
+function SupportPageInner() {
   const supabase = createClient();
+  const searchParams = useSearchParams();
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -35,12 +47,22 @@ export default function SupportPage() {
     const { data: { user } } = await supabase.auth.getUser();
     setUserId(user?.id ?? null);
     const { data } = await supabase.from("tickets").select("*").order("updated_at", { ascending: false });
-    setTickets((data as Ticket[]) ?? []);
+    const list = (data as Ticket[]) ?? [];
+    setTickets(list);
     setLoading(false);
+
+    // אם הגענו מכפתור ההתראות (ראו components/NotificationBell.tsx) עם ?ticket=<id> - פותחים
+    // ישר את השיחה הזו, בלי שהמשתמש יצטרך לחפש אותה ידנית ברשימה.
+    const wantedId = searchParams.get("ticket");
+    if (wantedId) {
+      const wanted = list.find((t) => t.id === wantedId);
+      if (wanted) openTicket(wanted);
+    }
   }
 
   useEffect(() => {
     loadTickets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function openTicket(ticket: Ticket) {

@@ -32,6 +32,10 @@ export interface Profile {
   // מתי המשתמש קרא ואישר את "חוקי האתר" (שער חובה חד-פעמי לכל חשבון - ראו
   // components/SiteRulesGate.tsx). null = עדיין לא אישר, ייחסם עד שיאשר.
   site_rules_accepted_at: string | null;
+  // מאיזו גרסה של חוקי האתר המשתמש אישר לאחרונה - ראו site_settings.site_rules_version.
+  // כשהצוות מפרסם עדכון לחוקים (app/api/admin/site-rules/route.ts, action "publish"),
+  // הגרסה הגלובלית עולה וכל מי שהמספר שלו נמוך יותר רואה את השער שוב.
+  site_rules_seen_version: number;
   created_at: string;
 }
 
