@@ -156,21 +156,6 @@ export interface AppSuggestion {
   suggester?: Profile;
 }
 
-export type BanAppealStatus = "pending" | "resolved" | "rejected";
-
-export interface BanAppeal {
-  id: string;
-  user_id: string;
-  message: string;
-  admin_reply: string | null;
-  status: BanAppealStatus;
-  replied_by: string | null;
-  replied_at: string | null;
-  created_at: string;
-  updated_at: string;
-  user?: Profile;
-}
-
 export type CouncilThreadStatus = "open" | "closed";
 
 export interface CouncilThread {
@@ -198,7 +183,7 @@ export interface CouncilMessage {
   replyTo?: CouncilMessage;
 }
 
-export type BanAppealStatus = "pending" | "answered";
+export type BanAppealStatus = "pending" | "resolved" | "rejected";
 
 export interface BanAppeal {
   id: string;
