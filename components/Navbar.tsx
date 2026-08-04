@@ -91,6 +91,9 @@ export default function Navbar() {
           <Link href="/about" className="text-sm font-medium text-gray-300 transition hover:text-white">
             הסברים
           </Link>
+          <Link href="/site-rules" className="text-sm font-medium text-gray-300 transition hover:text-white">
+            חוקי האתר
+          </Link>
           {!loading && profile && (
             <div className="flex items-center gap-3">
               <Link href="/profile" className="flex items-center gap-2 text-sm text-gray-400 transition hover:text-white">
@@ -154,6 +157,7 @@ export default function Navbar() {
             <Link href="/" onClick={() => setOpen(false)}>החנות</Link>
             <Link href="/users" onClick={() => setOpen(false)}>משתמשים</Link>
             <Link href="/about" onClick={() => setOpen(false)}>הסברים</Link>
+            <Link href="/site-rules" onClick={() => setOpen(false)}>חוקי האתר</Link>
             {profile && (
               <>
                 <Link href="/profile" onClick={() => setOpen(false)}>הפרופיל שלי</Link>

@@ -77,6 +77,11 @@ export default function HomeHero({
             <ShieldCheck className="h-4 w-4" /> עיון בחנות
           </Link>
         </div>
+        <p className="max-w-xl text-center text-xs text-gray-500">
+          "הרשמה כמפתח" - להעלאת אפליקציות/תוכנות שלך באופן פרטי, עם אפשרות לערוך פרטים ולהעלות גרסאות חדשות בכל עת.{" "}
+          "הוספה למאגר" - להצעת אפליקציה/תוכנה קיימת (לא שלך) לצוות, כדי שיבדוק ויפרסם אותה בעצמו - זה לא ניתן לעריכה
+          אח"כ, וזה מזכה בנקודות.
+        </p>
 
         <a
           href="https://ko-fi.com/aishivsheramlumad"

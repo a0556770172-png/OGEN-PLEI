@@ -82,7 +82,7 @@ export default function AboutPage() {
           <h2 className="text-2xl font-black">מה מקבלים בחשבון PRO?</h2>
         </div>
         <ul className="flex flex-col gap-2 text-sm text-gray-300">
-          <li className="flex items-center gap-2"><Star className="h-3.5 w-3.5 text-gold" /> עד 50 אפליקציות/תוכנות פעילות (במקום 5 בחשבון רגיל)</li>
+          <li className="flex items-center gap-2"><Star className="h-3.5 w-3.5 text-gold" /> עד 50 אפליקציות/תוכנות פעילות (במקום 10 בחשבון רגיל)</li>
           <li className="flex items-center gap-2"><Star className="h-3.5 w-3.5 text-gold" /> עד 100MB לקובץ (במקום 30MB בחשבון רגיל)</li>
         </ul>
         <p className="mt-4 text-sm text-gray-400">

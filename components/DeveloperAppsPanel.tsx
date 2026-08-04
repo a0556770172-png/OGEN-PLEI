@@ -167,6 +167,15 @@ export default function DeveloperAppsPanel({
                   <div className="mb-1 flex flex-wrap items-center gap-2">
                     <Link href={`/apps/${app.id}`} className="font-bold text-white hover:underline">{app.name}</Link>
                     <StatusBadge status={app.status} />
+                    {app.source === "public_suggestion" ? (
+                      <span className="rounded-full bg-surface2 px-2 py-0.5 text-[11px] font-bold text-gray-400" title="נוצרה מהצעה ציבורית שאושרה - לא ניתנת לעריכה">
+                        מהצעה ציבורית
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-bold text-primary-light" title="הועלתה ישירות על ידך - ניתנת לעריכה ולהעלאת גרסאות חדשות">
+                        העלאה פרטית
+                      </span>
+                    )}
                   </div>
                   <p className="truncate text-sm text-gray-500">{app.short_description}</p>
                   {app.status === "rejected" && app.review_note && (

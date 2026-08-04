@@ -121,11 +121,15 @@ export default async function ProfilePage() {
           <Rocket className="h-8 w-8 text-primary-light" />
           <div>
             <p className="font-bold text-white">רוצה לפרסם אפליקציות ותוכנות משלך?</p>
-            <p className="text-sm text-gray-400">אפשר לשדרג את החשבון שלך למפתח בכמה שניות, ישירות מכאן.</p>
+            <p className="text-sm text-gray-400">אפשר לשדרג את החשבון שלך למפתח בכמה שניות, ישירות מכאן - זה מאפשר עריכה והעלאת גרסאות בעתיד.</p>
           </div>
           <Link href="/profile/become-developer" className="btn-primary">
             <Rocket className="h-4 w-4" /> הרשמה כמפתח
           </Link>
+          <p className="text-xs text-gray-500">
+            רק רוצים להציע אפליקציה של מישהו אחר (כמו Waze) שכדאי שתהיה בחנות?{" "}
+            <Link href="/suggest-app" className="font-bold text-primary-light hover:underline">הוספה למאגר וצבירת נקודות</Link>
+          </p>
         </div>
       )}
 

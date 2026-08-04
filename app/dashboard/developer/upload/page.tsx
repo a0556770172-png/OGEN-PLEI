@@ -207,6 +207,10 @@ export default function UploadAppPage() {
           </div>
           <h1 className="text-2xl font-black">העלאת אפליקציה / תוכנה</h1>
           <p className="text-sm text-gray-400">האפליקציה או התוכנה תישלח לבדיקה ידנית לפני פרסום בחנות</p>
+          <p className="max-w-md text-xs text-gray-500">
+            זו העלאה פרטית משלך (בעלים = אתה) - בניגוד ל"הוספה למאגר" (הצעת אפליקציה ציבורית), כאן תמיד תוכל לחזור
+            ולערוך פרטים ולהעלות גרסאות חדשות בעתיד דרך "אזור מפתח" בפרופיל שלך.
+          </p>
         </div>
 
         {error && (

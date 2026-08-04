@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Gift, Send, Loader2, AlertCircle, CheckCircle2, FileArchive, Image as ImageIcon, ShieldAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -145,6 +146,12 @@ export default function SuggestAppPage() {
         <p className="mx-auto mt-2 max-w-lg text-gray-400">
           מכירים אפליקציה או תוכנה פופולרית ומאושרת (כמו Waze, WhatsApp וכו') שכדאי שתהיה זמינה בחנות? הציעו אותה כאן.
           כשההצעה שלכם תאושר ותתפרסם, תקבלו 5 נקודות. הגעה ל-300 נקודות מזכה בשדרוג PRO אוטומטי.
+        </p>
+        <p className="mx-auto mt-3 max-w-lg text-xs text-gray-500">
+          שימו לב: זו הצעה ציבורית - הצוות בודק ומפרסם אותה בעצמו, ואחרי הפרסום היא לא תהיה ניתנת לעריכה על ידכם (לא
+          פרטים ולא גרסאות חדשות). אם אתם עצמכם המפתחים ורוצים לפרסם ולנהל אפליקציה משלכם עם אפשרות לערוך אותה בעתיד -
+          <Link href="/signup/developer" className="mx-1 font-bold text-primary-light hover:underline">ההרשמה כמפתח</Link>
+          היא המסלול המתאים.
         </p>
       </div>
 
