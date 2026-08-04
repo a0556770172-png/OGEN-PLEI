@@ -60,29 +60,41 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   // לפרסום אוטומטי) ורק אם עדיין לא נוצרה אפליקציה מההצעה הזו בעבר (מונע כפילות בלחיצה כפולה)
   if (status === "approved" && suggestion.file_key && suggestion.file_name && suggestion.file_size_bytes && !createdAppId) {
     // מנסים לחלץ אייקון מתוך הקובץ (רק אם זה APK) לפני יצירת הרשומה, כדי שהאפליקציה
-    // תתפרסם מיד עם אייקון ולא תצטרך תיקון ידני מאוחר יותר.
+    // תתפרסם מיד עם אייקון ולא תצטרך תיקון ידני מאוחר יותר - רק אם המציע לא כבר העלה
+    // אייקון ידנית בטופס עצמו (suggestion.icon_key), כדי לא לבזבז ניסיון חילוץ מיותר.
     let iconKey: string | null = null;
-    try {
-      const iconResult = await extractApkIcon(suggestion.file_key, suggestion.suggested_by);
-      if (iconResult.iconKey !== null) iconKey = iconResult.iconKey;
-    } catch {
-      // חילוץ אייקון הוא נוחות בלבד - לא מכשילים את פרסום האפליקציה בגללו
+    if (!suggestion.icon_key) {
+      try {
+        const iconResult = await extractApkIcon(suggestion.file_key, suggestion.suggested_by);
+        if (iconResult.iconKey !== null) iconKey = iconResult.iconKey;
+      } catch {
+        // חילוץ אייקון הוא נוחות בלבד - לא מכשילים את פרסום האפליקציה בגללו
+      }
     }
 
+    // מעדיפים את השדות המלאים שהמציע מילא בטופס (תיאור קצר/מלא, קטגוריה, אייקון) אם קיימים -
+    // הצעות ישנות שהוגשו לפני שהטופס הושלם עדיין נופלות חזרה ל"note" הישן כברירת מחדל.
     const { data: newApp, error: createError } = await admin
       .from("apps")
       .insert({
         developer_id: suggestion.suggested_by,
         name: suggestion.app_name,
-        short_description: (suggestion.note?.trim() || suggestion.app_name).slice(0, 140),
-        description_html: suggestion.note ? sanitizeUserHtml(`<p>${suggestion.note}</p>`) : "",
+        short_description: (suggestion.short_description?.trim() || suggestion.note?.trim() || suggestion.app_name).slice(0, 140),
+        description_html: suggestion.description_html
+          ? sanitizeUserHtml(suggestion.description_html)
+          : suggestion.note
+          ? sanitizeUserHtml(`<p>${suggestion.note}</p>`)
+          : "",
         version: suggestion.version?.trim() || "1.0.0",
-        category: "general",
-        icon_key: iconKey,
+        category: suggestion.category?.trim() || "general",
+        icon_key: suggestion.icon_key ?? iconKey,
         file_key: suggestion.file_key,
         file_name: suggestion.file_name,
         file_size_bytes: suggestion.file_size_bytes,
         min_android_version: suggestion.min_android_version ?? null,
+        // מקור: הצעה ציבורית - לא ניתנת לעריכה ע"י המציע (ראו app/api/apps/[id]/route.ts).
+        source: "public_suggestion",
+        developer_name: suggestion.developer_name?.trim() || null,
         status: "approved",
         reviewed_by: user.id,
         reviewed_at: new Date().toISOString()

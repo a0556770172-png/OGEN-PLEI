@@ -13,12 +13,12 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  async function act(id: string, action: string) {
+  async function act(id: string, action: string, extra?: Record<string, unknown>) {
     setBusyId(id);
     const res = await fetch(`/api/admin/users/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action })
+      body: JSON.stringify({ action, ...extra })
     });
     setBusyId(null);
     if (res.ok) router.refresh();
@@ -26,6 +26,22 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
       const j = await res.json().catch(() => ({}));
       alert(j.error || "שגיאה בביצוע הפעולה");
     }
+  }
+
+  // חסימת משתמש - מבקשים סיבה (מוצגת למשתמש עצמו בעמוד /banned) ומשך זמן בשעות (ריק =
+  // חסימה לצמיתות). זה נשלח כ-banReason/banHours ל-API, שכבר תומך בהם (ראו
+  // app/api/admin/users/[id]/route.ts) - עד עכשיו הטופס כאן פשוט לא איפשר להזין אותם.
+  async function banUser(id: string, username: string) {
+    const reason = window.prompt(`סיבת החסימה של "${username}" (תוצג למשתמש עצמו):`);
+    if (reason === null) return;
+    const hoursInput = window.prompt('משך החסימה בשעות (ריק = לצמיתות)?\nלדוגמה: 24 ליום אחד, 168 לשבוע', "");
+    if (hoursInput === null) return;
+    const trimmedHours = hoursInput.trim();
+    if (trimmedHours && (!Number.isFinite(Number(trimmedHours)) || Number(trimmedHours) <= 0)) {
+      alert("משך החסימה חייב להיות מספר חיובי של שעות, או ריק לצמיתות");
+      return;
+    }
+    await act(id, "ban", { banReason: reason.trim() || null, banHours: trimmedHours ? Number(trimmedHours) : undefined });
   }
 
   async function deleteUser(id: string, username: string) {
@@ -122,7 +138,15 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
               </td>
               <td className="px-4 py-3">{p.points.toLocaleString("he-IL")}</td>
               <td className="px-4 py-3">
-                {p.banned ? <span className="text-xs font-bold text-red-400">חסום</span> : <span className="text-xs text-accent">פעיל</span>}
+                {p.banned ? (
+                  <div>
+                    <span className="text-xs font-bold text-red-400">חסום</span>
+                    {p.ban_reason && <div className="mt-0.5 max-w-[160px] text-xs text-gray-500">{p.ban_reason}</div>}
+                    <div className="mt-0.5 text-xs text-gray-600">{p.ban_expires_at ? `עד ${new Date(p.ban_expires_at).toLocaleString("he-IL")}` : "לצמיתות"}</div>
+                  </div>
+                ) : (
+                  <span className="text-xs text-accent">פעיל</span>
+                )}
               </td>
               <td className="px-4 py-3">
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -139,7 +163,7 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
                         p.banned ? (
                           <button title="הסרת חסימה" onClick={() => act(p.id, "unban")} className="rounded-lg p-1.5 text-accent hover:bg-accent/10"><ShieldCheck className="h-4 w-4" /></button>
                         ) : (
-                          <button title="חסימת משתמש" onClick={() => act(p.id, "ban")} className="rounded-lg p-1.5 text-red-400 hover:bg-red-500/10"><Ban className="h-4 w-4" /></button>
+                          <button title="חסימת משתמש" onClick={() => banUser(p.id, p.username)} className="rounded-lg p-1.5 text-red-400 hover:bg-red-500/10"><Ban className="h-4 w-4" /></button>
                         )
                       )}
                       {isAdmin && p.is_moderator && (

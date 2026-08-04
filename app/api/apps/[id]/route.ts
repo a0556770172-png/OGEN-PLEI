@@ -22,6 +22,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: "אין הרשאה לערוך אפליקציה זו" }, { status: 403 });
   }
 
+  // אפליקציה שמקורה בהצעה ציבורית שאושרה (לא הועלתה ישירות מהדשבורד הפרטי) לא ניתנת
+  // לעריכה ע"י מי שהציע אותה - רק צוות (מנהל/פיקוח) יכול לתקן פרטים כאלה במידת הצורך.
+  if (isOwner && !isStaff(profile) && app.source === "public_suggestion") {
+    return NextResponse.json(
+      { error: "אפליקציה שפורסמה מהצעה ציבורית אינה ניתנת לעריכה - רק אפליקציות שהעלית ישירות מהדשבורד הפרטי ניתנות לעריכה." },
+      { status: 403 }
+    );
+  }
+
   const body = await request.json().catch(() => ({}));
   const { name, shortDescription, descriptionHtml, category, iconFileName, iconContentType, adminNote } = body;
 

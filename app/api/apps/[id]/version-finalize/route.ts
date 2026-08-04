@@ -17,6 +17,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (app.developer_id !== user.id) {
     return NextResponse.json({ error: "אין הרשאה לאפליקציה זו" }, { status: 403 });
   }
+  // אפליקציה שמקורה בהצעה ציבורית שאושרה לא ניתנת לעדכון גרסה ע"י מי שהציע אותה.
+  if (app.source === "public_suggestion") {
+    return NextResponse.json({ error: "אפליקציה שפורסמה מהצעה ציבורית אינה ניתנת לעריכה/עדכון גרסה." }, { status: 403 });
+  }
 
   const { fileKey, fileName, fileSize, version } = await request.json().catch(() => ({}));
   if (!fileKey || !fileName || !fileSize) {

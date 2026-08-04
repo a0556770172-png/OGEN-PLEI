@@ -3,6 +3,7 @@ import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { notifyAdmins } from "@/lib/push";
 import { MAX_SUGGESTION_MB } from "@/lib/constants";
+import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
 
 // כל משתמש מחובר (רגיל או מפתח) יכול להציע אפליקציה פופולרית להוספה למאגר
 export async function POST(request: Request) {
@@ -10,12 +11,34 @@ export async function POST(request: Request) {
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
   const { user, profile } = result;
 
-  const { appName, version, note, fileKey, fileName, fileSize, minAndroidVersion } = await request.json().catch(() => ({}));
+  const {
+    appName,
+    version,
+    note,
+    shortDescription,
+    descriptionHtml,
+    category,
+    iconKey,
+    developerName,
+    fileKey,
+    fileName,
+    fileSize,
+    minAndroidVersion
+  } = await request.json().catch(() => ({}));
+
   if (!appName?.trim()) {
     return NextResponse.json({ error: "חובה למלא את שם האפליקציה/התוכנה" }, { status: 400 });
   }
   if (!version?.trim()) {
     return NextResponse.json({ error: "חובה למלא את מספר הגרסה" }, { status: 400 });
+  }
+  if (!shortDescription?.trim()) {
+    return NextResponse.json({ error: "חובה למלא תיאור קצר" }, { status: 400 });
+  }
+  // שדה חובה חדש: שם המפתח/חברת הפיתוח האמיתית של האפליקציה - קרדיט חובה למפתח המקורי.
+  // אסור להעלות אפליקציות/תוכנות פרטיות של אחרים בלי לציין במפורש מי פיתח אותן בפועל.
+  if (!developerName?.trim()) {
+    return NextResponse.json({ error: "חובה לציין את שם המפתח/חברת הפיתוח האמיתית של האפליקציה" }, { status: 400 });
   }
   if (!fileKey || !fileName || !fileSize) {
     return NextResponse.json({ error: "חובה להעלות את קובץ ההתקנה של האפליקציה/התוכנה" }, { status: 400 });
@@ -32,6 +55,11 @@ export async function POST(request: Request) {
     app_name: appName.trim(),
     version: version.trim(),
     note: note?.trim() || null,
+    short_description: shortDescription.trim().slice(0, 140),
+    description_html: typeof descriptionHtml === "string" && descriptionHtml.trim() ? sanitizeUserHtml(descriptionHtml) : null,
+    category: category?.trim() || "general",
+    icon_key: iconKey || null,
+    developer_name: developerName.trim(),
     file_key: fileKey,
     file_name: fileName,
     file_size_bytes: fileSize,

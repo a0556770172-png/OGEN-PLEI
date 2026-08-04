@@ -185,9 +185,15 @@ export default function DeveloperAppsPanel({
                     {developerUsername && (
                       <span className="inline-flex items-center gap-1"><User className="h-3.5 w-3.5" /> {developerUsername}</span>
                     )}
-                    <Link href={`/dashboard/developer/apps/${app.id}/edit`} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-primary-light transition hover:bg-primary/10">
-                      <Pencil className="h-3.5 w-3.5" /> עריכה / גרסה חדשה
-                    </Link>
+                    {app.source === "public_suggestion" ? (
+                      <span className="text-xs text-gray-600" title="אפליקציה שפורסמה מהצעה ציבורית אינה ניתנת לעריכה">
+                        פורסמה מהצעה ציבורית - לא ניתנת לעריכה
+                      </span>
+                    ) : (
+                      <Link href={`/dashboard/developer/apps/${app.id}/edit`} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-primary-light transition hover:bg-primary/10">
+                        <Pencil className="h-3.5 w-3.5" /> עריכה / גרסה חדשה
+                      </Link>
+                    )}
                     {app.status !== "approved" && <DeleteAppButton appId={app.id} />}
                   </div>
                 </div>

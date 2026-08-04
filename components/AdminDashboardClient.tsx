@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive } from "lucide-react";
+import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import UserManagementTable from "./UserManagementTable";
 import ProRequestsQueue from "./ProRequestsQueue";
@@ -15,9 +15,10 @@ import CouncilPanel from "./CouncilPanel";
 import AuditLogPanel from "./AuditLogPanel";
 import AppReportsQueue from "./AppReportsQueue";
 import SizeOverridePanel from "./SizeOverridePanel";
-import type { AppRow, Profile, ProRequest, UserDeletionRequest } from "@/types/database";
+import BanAppealsPanel from "./BanAppealsPanel";
+import type { AppRow, Profile, ProRequest, UserDeletionRequest, BanAppeal } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "settings";
+type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "settings";
 
 export default function AdminDashboardClient({
   apps,
@@ -29,7 +30,8 @@ export default function AdminDashboardClient({
   deletionRequests,
   councilAutoApprovedCount,
   requireEmailVerification,
-  currentProfile
+  currentProfile,
+  banAppeals
 }: {
   apps: AppRow[];
   allApps: AppRow[];
@@ -41,11 +43,14 @@ export default function AdminDashboardClient({
   councilAutoApprovedCount: number;
   requireEmailVerification: boolean;
   currentProfile: Profile;
+  banAppeals: BanAppeal[];
 }) {
   const [tab, setTab] = useState<TabKey>("notifications");
 
+  const pendingBanAppealsCount = banAppeals.filter((a) => a.status === "pending").length;
+
   const notificationCount =
-    apps.length + proRequests.length + suggestionsPendingCount + ticketsNeedingReplyCount + deletionRequests.length + councilAutoApprovedCount;
+    apps.length + proRequests.length + suggestionsPendingCount + ticketsNeedingReplyCount + deletionRequests.length + councilAutoApprovedCount + pendingBanAppealsCount;
 
   const tabs = [
     { key: "notifications", label: `התראות${notificationCount ? ` (${notificationCount})` : ""}`, icon: BellRing },
@@ -61,6 +66,7 @@ export default function AdminDashboardClient({
     { key: "auditLog", label: "מעקב פיקוח", icon: History },
     { key: "reports", label: "דיווחים על אפליקציות", icon: Flag },
     { key: "sizeOverrides", label: "הרשאות גודל", icon: HardDrive },
+    { key: "banAppeals", label: `ערעורי חסימה${pendingBanAppealsCount ? ` (${pendingBanAppealsCount})` : ""}`, icon: MessageSquareWarning },
     { key: "settings", label: "הגדרות", icon: Settings }
   ] as const;
 
@@ -70,7 +76,8 @@ export default function AdminDashboardClient({
     { key: "suggestions", label: "הצעות אפליקציות ממתינות", description: "משתמשים שהציעו אפליקציה להוספה למאגר", count: suggestionsPendingCount, icon: Gift },
     { key: "tickets", label: "הודעות ממתינות למענה", description: "הודעות שמשתמשים כתבו ועדיין לא קיבלו תגובה", count: ticketsNeedingReplyCount, icon: MessageCircle },
     { key: "deletionRequests", label: "בקשות מחיקת משתמשים מצוות פיקוח", description: "בקשות מחיקה שהגיש צוות הפיקוח וממתינות לאישורך", count: deletionRequests.length, icon: ShieldAlert },
-    { key: "council", label: "ועדות שנפתחו אוטומטית ע\"י הצוות", description: "שני חברי צוות ביקשו לפתוח ועדה תוך 24 שעות - דורש תשומת לבך", count: councilAutoApprovedCount, icon: Siren }
+    { key: "council", label: "ועדות שנפתחו אוטומטית ע\"י הצוות", description: "שני חברי צוות ביקשו לפתוח ועדה תוך 24 שעות - דורש תשומת לבך", count: councilAutoApprovedCount, icon: Siren },
+    { key: "banAppeals", label: "ערעורי חסימה ממתינים", description: "משתמשים חסומים שכתבו ערעור וממתינים לתגובת צוות", count: pendingBanAppealsCount, icon: MessageSquareWarning }
   ];
 
   return (
@@ -107,6 +114,7 @@ export default function AdminDashboardClient({
       {tab === "auditLog" && <AuditLogPanel />}
       {tab === "reports" && <AppReportsQueue />}
       {tab === "sizeOverrides" && <SizeOverridePanel profiles={profiles} isAdmin={true} />}
+      {tab === "banAppeals" && <BanAppealsPanel appeals={banAppeals} />}
       {tab === "settings" && <SiteSettingsPanel requireEmailVerification={requireEmailVerification} />}
     </div>
   );

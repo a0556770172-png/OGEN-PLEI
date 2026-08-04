@@ -49,7 +49,7 @@ export default async function AppDetailPage({ params }: { params: { id: string }
             </div>
             <p className="mb-4 text-gray-400">{app.short_description}</p>
             <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-500 sm:justify-start">
-              <span className="inline-flex items-center gap-1"><User className="h-3.5 w-3.5" /> {app.developer?.username ?? "מפתח"}</span>
+              <span className="inline-flex items-center gap-1"><User className="h-3.5 w-3.5" /> הועלה ע"י {app.developer?.username ?? "מפתח"}</span>
               <span className="inline-flex items-center gap-1"><HardDrive className="h-3.5 w-3.5" /> {formatFileSize(app.file_size_bytes)}</span>
               <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> גרסה {app.version}</span>
               <span>{category}</span>
@@ -57,6 +57,9 @@ export default async function AppDetailPage({ params }: { params: { id: string }
                 <span className="inline-flex items-center gap-1"><Smartphone className="h-3.5 w-3.5" /> {app.min_android_version}</span>
               )}
             </div>
+            {app.developer_name && (
+              <p className="mt-1.5 text-xs text-gray-500">מפתח/חברת הפיתוח המקורית: <span className="text-gray-300">{app.developer_name}</span></p>
+            )}
             <div className="mt-5 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               <DownloadButton
                 appId={app.id}

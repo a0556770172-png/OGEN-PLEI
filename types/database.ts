@@ -15,6 +15,9 @@ export interface Profile {
   pro_status: ProStatus;
   points: number;
   banned: boolean;
+  ban_reason: string | null;
+  ban_expires_at: string | null;
+  banned_at: string | null;
   accepted_terms_at: string | null;
   last_seen_at: string | null;
   moderator_agreement_signed_at: string | null;
@@ -66,6 +69,12 @@ export interface AppRow {
   download_paused_until: string | null;
   admin_note: string | null;
   admin_note_at: string | null;
+  // מקור פרסום האפליקציה - "developer_upload" (העלאה ישירה מהדשבורד הפרטי, ניתנת לעריכה
+  // ולהעלאת גרסאות חדשות) מול "public_suggestion" (נוצרה מאישור הצעה ציבורית - לא ניתנת
+  // לעריכה בכלל ע"י מי שהציע אותה, ראו app/api/apps/[id]/route.ts).
+  source: "developer_upload" | "public_suggestion";
+  // שם המפתח/חברת הפיתוח האמיתית (קרדיט) - בעיקר רלוונטי לאפליקציות שמקורן בהצעה ציבורית.
+  developer_name: string | null;
   created_at: string;
   updated_at: string;
   developer?: Profile;
@@ -131,6 +140,13 @@ export interface AppSuggestion {
   file_name: string | null;
   file_size_bytes: number | null;
   min_android_version: string | null;
+  // שדות שהושלמו כדי להשוות את טופס ההצעה הציבורית לטופס ההעלאה הפרטית של מפתח.
+  short_description: string | null;
+  description_html: string | null;
+  category: string | null;
+  icon_key: string | null;
+  // שם המפתח/חברת הפיתוח האמיתית - שדה חובה בטופס (קרדיט חובה למפתח המקורי).
+  developer_name: string | null;
   status: SuggestionStatus;
   points_awarded: boolean;
   reviewed_by: string | null;
@@ -138,6 +154,21 @@ export interface AppSuggestion {
   created_app_id: string | null;
   created_at: string;
   suggester?: Profile;
+}
+
+export type BanAppealStatus = "pending" | "resolved" | "rejected";
+
+export interface BanAppeal {
+  id: string;
+  user_id: string;
+  message: string;
+  admin_reply: string | null;
+  status: BanAppealStatus;
+  replied_by: string | null;
+  replied_at: string | null;
+  created_at: string;
+  updated_at: string;
+  user?: Profile;
 }
 
 export type CouncilThreadStatus = "open" | "closed";
@@ -165,6 +196,21 @@ export interface CouncilMessage {
   created_at: string;
   sender?: Profile;
   replyTo?: CouncilMessage;
+}
+
+export type BanAppealStatus = "pending" | "answered";
+
+export interface BanAppeal {
+  id: string;
+  user_id: string;
+  message: string;
+  admin_reply: string | null;
+  status: BanAppealStatus;
+  replied_by: string | null;
+  replied_at: string | null;
+  created_at: string;
+  updated_at: string;
+  user?: Profile;
 }
 
 export interface Category {

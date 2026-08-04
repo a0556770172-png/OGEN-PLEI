@@ -16,7 +16,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: "לא ניתן לבצע פעולה זו על החשבון שלך" }, { status: 400 });
   }
 
-  const { action, username, sizeOverrideMb, hours } = await request.json();
+  const { action, username, sizeOverrideMb, hours, banReason, banHours } = await request.json();
 
   // פעולות אלה (מינוי/הדחה מפיקוח, מתן/הסרת PRO, מתן הרשאת קבצים, עריכת פרטי משתמש) הן
   // בסמכות מנהל בפועל בלבד - גם חבר צוות פיקוח שרואה את המסך הזה לא יכול לבצע אותן.
@@ -163,9 +163,23 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   const patch: Record<string, any> = {};
   switch (action) {
-    // חסימה/הסרת חסימה - גם צוות פיקוח יכול לבצע, לא רק מנהל.
-    case "ban": patch.banned = true; break;
-    case "unban": patch.banned = false; break;
+    // חסימה/הסרת חסימה - גם צוות פיקוח יכול לבצע, לא רק מנהל. סיבת החסימה ומשך הזמן
+    // (בשעות, ריק/0 = לצמיתות) מוצגים אחר כך למשתמש עצמו בעמוד /banned, וגם נבדקים
+    // אוטומטית ב-lib/auth-helpers.ts כדי לשחרר אותו לבד כשהזמן עובר.
+    case "ban": {
+      const h = Number(banHours);
+      patch.banned = true;
+      patch.ban_reason = typeof banReason === "string" && banReason.trim() ? banReason.trim() : null;
+      patch.ban_expires_at = Number.isFinite(h) && h > 0 ? new Date(Date.now() + h * 60 * 60 * 1000).toISOString() : null;
+      patch.banned_at = new Date().toISOString();
+      break;
+    }
+    case "unban":
+      patch.banned = false;
+      patch.ban_reason = null;
+      patch.ban_expires_at = null;
+      patch.banned_at = null;
+      break;
     // פיקוח הוא דגל נוסף על גבי התפקיד הבסיסי (לא דורס אותו) - כך שמפתח שהתמנה לצוות
     // פיקוח לא מאבד את מעמד המפתח שלו (הגישה לאזור המפתח והאפליקציות שלו).
     case "promote_moderator": patch.is_moderator = true; break;
@@ -195,6 +209,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       targetType: "user",
       targetId: params.id,
       targetLabel: targetForLabel?.username ?? null,
+      meta: action === "ban" ? { reason: patch.ban_reason, expiresAt: patch.ban_expires_at } : undefined,
       undoable: true
     });
   }

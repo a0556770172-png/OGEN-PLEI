@@ -99,6 +99,10 @@ export default function SuggestionsQueue() {
             {!s.file_key && (
               <p className="mt-1 text-xs font-bold text-gold">אין קובץ מצורף להצעה זו - אישור לא יפרסם אותה אוטומטית בחנות.</p>
             )}
+            {s.developer_name && (
+              <p className="mt-1 text-xs text-gray-400">מפתח/חברת פיתוח שצוין: <span className="font-bold text-white">{s.developer_name}</span></p>
+            )}
+            {s.short_description && <p className="mt-1 text-sm text-gray-300">{s.short_description}</p>}
             {s.note && <p className="mt-1 text-sm text-gray-400">"{s.note}"</p>}
           </div>
           <div className="flex items-center gap-2">

@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
   const { user, profile } = result;
 
-  const { fileName, fileSize, contentType } = await request.json().catch(() => ({}));
+  const { fileName, fileSize, contentType, iconFileName, iconContentType } = await request.json().catch(() => ({}));
   if (!fileName || !fileSize) {
     return NextResponse.json({ error: "חסרים פרטי קובץ" }, { status: 400 });
   }
@@ -37,8 +37,17 @@ export async function POST(request: Request) {
     }
   }
 
-  const fileKey = `suggestions/${user.id}/${crypto.randomUUID()}-${sanitize(fileName)}`;
+  const uuid = crypto.randomUUID();
+  const fileKey = `suggestions/${user.id}/${uuid}-${sanitize(fileName)}`;
   const uploadUrl = await createUploadUrl(BUCKETS.apps, fileKey, contentType || "application/octet-stream");
 
-  return NextResponse.json({ uploadUrl, fileKey });
+  // אייקון - אופציונלי, בדיוק כמו בהעלאה הפרטית (ראו app/api/apps/upload-init/route.ts).
+  let iconKey: string | undefined;
+  let iconUploadUrl: string | undefined;
+  if (iconFileName && iconContentType) {
+    iconKey = `icons/${user.id}/${uuid}-${sanitize(iconFileName)}`;
+    iconUploadUrl = await createUploadUrl(BUCKETS.assets, iconKey, iconContentType);
+  }
+
+  return NextResponse.json({ uploadUrl, fileKey, iconUploadUrl, iconKey });
 }

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive } from "lucide-react";
+import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import TicketsPanel from "./TicketsPanel";
 import SuggestionsQueue from "./SuggestionsQueue";
@@ -11,9 +11,10 @@ import IconBackfillPanel from "./IconBackfillPanel";
 import CouncilPanel from "./CouncilPanel";
 import AppReportsQueue from "./AppReportsQueue";
 import SizeOverridePanel from "./SizeOverridePanel";
-import type { AppRow, Profile } from "@/types/database";
+import BanAppealsPanel from "./BanAppealsPanel";
+import type { AppRow, Profile, BanAppeal } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "tickets" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides";
+type TabKey = "notifications" | "review" | "allApps" | "tickets" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals";
 
 export default function ModeratorDashboardClient({
   apps,
@@ -21,7 +22,8 @@ export default function ModeratorDashboardClient({
   suggestionsPendingCount,
   ticketsNeedingReplyCount,
   profiles,
-  currentProfile
+  currentProfile,
+  banAppeals
 }: {
   apps: AppRow[];
   allApps: AppRow[];
@@ -29,10 +31,12 @@ export default function ModeratorDashboardClient({
   ticketsNeedingReplyCount: number;
   profiles: Profile[];
   currentProfile: Profile;
+  banAppeals: BanAppeal[];
 }) {
   const [tab, setTab] = useState<TabKey>("notifications");
 
-  const notificationCount = apps.length + suggestionsPendingCount + ticketsNeedingReplyCount;
+  const pendingBanAppealsCount = banAppeals.filter((a) => a.status === "pending").length;
+  const notificationCount = apps.length + suggestionsPendingCount + ticketsNeedingReplyCount + pendingBanAppealsCount;
 
   const tabs = [
     { key: "notifications", label: `התראות${notificationCount ? ` (${notificationCount})` : ""}`, icon: BellRing },
@@ -44,13 +48,15 @@ export default function ModeratorDashboardClient({
     { key: "users", label: "ניהול משתמשים", icon: Users },
     { key: "council", label: "ועדה", icon: Siren },
     { key: "reports", label: "דיווחים על אפליקציות", icon: Flag },
-    { key: "sizeOverrides", label: "הרשאות גודל", icon: HardDrive }
+    { key: "sizeOverrides", label: "הרשאות גודל", icon: HardDrive },
+    { key: "banAppeals", label: `ערעורי חסימה${pendingBanAppealsCount ? ` (${pendingBanAppealsCount})` : ""}`, icon: MessageSquareWarning }
   ] as const;
 
   const notificationItems = [
     { key: "review", label: "אפליקציות ממתינות לבדיקה", description: "אפליקציות חדשות שממתינות לאישור/דחייה שלך", count: apps.length, icon: ClipboardList },
     { key: "suggestions", label: "הצעות אפליקציות ממתינות", description: "משתמשים שהציעו אפליקציה להוספה למאגר", count: suggestionsPendingCount, icon: Gift },
-    { key: "tickets", label: "הודעות ממתינות למענה", description: "הודעות שמשתמשים כתבו ועדיין לא קיבלו תגובה", count: ticketsNeedingReplyCount, icon: MessageCircle }
+    { key: "tickets", label: "הודעות ממתינות למענה", description: "הודעות שמשתמשים כתבו ועדיין לא קיבלו תגובה", count: ticketsNeedingReplyCount, icon: MessageCircle },
+    { key: "banAppeals", label: "ערעורי חסימה ממתינים", description: "משתמשים חסומים שכתבו ערעור וממתינים לתגובת צוות", count: pendingBanAppealsCount, icon: MessageSquareWarning }
   ];
 
   return (
@@ -86,6 +92,7 @@ export default function ModeratorDashboardClient({
       {tab === "council" && <CouncilPanel currentProfile={currentProfile} />}
       {tab === "reports" && <AppReportsQueue />}
       {tab === "sizeOverrides" && <SizeOverridePanel profiles={profiles} isAdmin={false} />}
+      {tab === "banAppeals" && <BanAppealsPanel appeals={banAppeals} />}
     </div>
   );
 }

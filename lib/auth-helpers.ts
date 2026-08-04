@@ -10,7 +10,18 @@ export async function requireProfile(): Promise<{ user: any; profile: Profile } 
   const admin = createAdminSupabase();
   const { data: profile } = await admin.from("profiles").select("*").eq("id", user.id).single();
   if (!profile) return { error: "פרופיל לא נמצא", status: 404 };
-  if (profile.banned) return { error: "החשבון שלך חסום", status: 403 };
+
+  if (profile.banned) {
+    // חסימה זמנית שפג תוקפה - משחררים אוטומטית בלי צורך בפעולה ידנית של הצוות.
+    if (profile.ban_expires_at && new Date(profile.ban_expires_at).getTime() <= Date.now()) {
+      await admin
+        .from("profiles")
+        .update({ banned: false, ban_reason: null, ban_expires_at: null, banned_at: null })
+        .eq("id", user.id);
+      return { user, profile: { ...profile, banned: false, ban_reason: null, ban_expires_at: null, banned_at: null } as Profile };
+    }
+    return { error: "החשבון שלך חסום", status: 403 };
+  }
 
   return { user, profile: profile as Profile };
 }

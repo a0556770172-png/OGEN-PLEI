@@ -59,15 +59,20 @@ function LoginForm() {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role, banned, is_moderator")
+      .select("role, banned, is_moderator, ban_expires_at")
       .eq("id", data.user.id)
       .single();
 
+    // חשוב: בניגוד לעבר, לא מנתקים אוטומטית משתמש חסום - הוא כן מתחבר בהצלחה, אבל מנווט
+    // ישירות לעמוד /banned, כדי שיוכל לראות שם את סיבת/משך החסימה ולכתוב ערעור (זו בדיוק
+    // הפעולה היחידה שמותרת לו - ראו app/banned/page.tsx ו-app/api/appeal/route.ts).
     if (profile?.banned) {
-      await supabase.auth.signOut();
-      setError("החשבון שלך נחסם. פנה למנהל האתר לפרטים.");
-      setLoading(false);
-      return;
+      const stillBanned = !profile.ban_expires_at || new Date(profile.ban_expires_at).getTime() > Date.now();
+      if (stillBanned) {
+        router.push("/banned");
+        router.refresh();
+        return;
+      }
     }
 
     const redirect = params.get("redirect");

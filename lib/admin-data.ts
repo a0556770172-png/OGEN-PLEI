@@ -1,5 +1,5 @@
 import { createAdminSupabase } from "./supabase/admin";
-import type { AppRow, Profile, ProRequest, UserDeletionRequest } from "@/types/database";
+import type { AppRow, Profile, ProRequest, UserDeletionRequest, BanAppeal } from "@/types/database";
 
 export async function getReviewQueueApps(): Promise<AppRow[]> {
   const admin = createAdminSupabase();
@@ -123,6 +123,26 @@ export async function getPendingAppReportsCount(): Promise<number> {
   const admin = createAdminSupabase();
   const { count } = await admin
     .from("app_reports")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending");
+  return count ?? 0;
+}
+
+// כל ערעורי החסימה (כולל כאלה שכבר טופלו) - מוצג לצוות בטאב "ערעורי חסימה", ממוין כך
+// שהכי עדכני (כולל הודעה חדשה שהמשתמש הוסיף אחרי תגובת צוות) עולה קודם.
+export async function getBanAppeals(): Promise<BanAppeal[]> {
+  const admin = createAdminSupabase();
+  const { data } = await admin
+    .from("ban_appeals")
+    .select("*, user:profiles!ban_appeals_user_id_fkey(*)")
+    .order("updated_at", { ascending: false });
+  return (data as unknown as BanAppeal[]) ?? [];
+}
+
+export async function getPendingBanAppealsCount(): Promise<number> {
+  const admin = createAdminSupabase();
+  const { count } = await admin
+    .from("ban_appeals")
     .select("id", { count: "exact", head: true })
     .eq("status", "pending");
   return count ?? 0;
