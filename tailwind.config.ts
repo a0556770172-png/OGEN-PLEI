@@ -28,16 +28,22 @@ const config: Config = {
           500: "rgb(var(--c-gray-500) / <alpha-value>)",
           600: "rgb(var(--c-gray-600) / <alpha-value>)"
         },
-        primary: { DEFAULT: "#7c5cff", light: "#a78bff", dark: "#5b3df0" },
+        // primary מבוסס על משתני CSS (ראו app/globals.css) כדי לאפשר למשתמש לבחור צבע
+        // נושא אישי (פיצ'ר 2c - components/AppearanceMenu.tsx). ברירת המחדל זהה לסגול המקורי.
+        primary: {
+          DEFAULT: "rgb(var(--c-primary) / <alpha-value>)",
+          light: "rgb(var(--c-primary-light) / <alpha-value>)",
+          dark: "rgb(var(--c-primary-dark) / <alpha-value>)"
+        },
         accent: "#00d9c0",
         gold: "#f2b84b"
       },
       backgroundImage: {
-        "radial-fade": "radial-gradient(circle at 50% 0%, rgba(124,92,255,0.18), transparent 60%)",
-        "grid-glow": "linear-gradient(to bottom, rgba(124,92,255,0.08), transparent)"
+        "radial-fade": "radial-gradient(circle at 50% 0%, rgb(var(--c-primary) / 0.18), transparent 60%)",
+        "grid-glow": "linear-gradient(to bottom, rgb(var(--c-primary) / 0.08), transparent)"
       },
       boxShadow: {
-        glow: "0 0 40px rgba(124,92,255,0.25)",
+        glow: "0 0 40px rgb(var(--c-primary) / 0.25)",
         card: "0 8px 30px rgba(0,0,0,0.4)"
       },
       keyframes: {

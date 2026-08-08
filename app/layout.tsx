@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Heebo } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import QuickChatButton from "@/components/QuickChatButton";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import ModeratorAgreementGate from "@/components/ModeratorAgreementGate";
 import SiteRulesGate from "@/components/SiteRulesGate";
@@ -95,7 +96,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             *לפני* הרינדור הראשון של הדף, כדי למנוע הבהוב של מצב שגוי (FOUC) ברגע הטעינה. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{if(localStorage.getItem('ogen-theme')==='light'){document.documentElement.classList.add('light')}}catch(e){}`
+            __html: `try{if(localStorage.getItem('ogen-theme')==='light'){document.documentElement.classList.add('light')}var a=localStorage.getItem('ogen-accent');if(a&&a!=='purple'){document.documentElement.setAttribute('data-accent',a)}}catch(e){}`
           }}
         />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
@@ -106,6 +107,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SiteRulesGate />
         <ModeratorAgreementGate />
         <Navbar />
+        <QuickChatButton />
         <main className="relative z-10 mx-auto max-w-7xl px-4 pb-24 pt-6 sm:px-6 lg:px-8">{children}</main>
         <footer className="relative z-10 border-t border-border/60 py-8 text-center text-sm text-gray-500">
           כל הזכויות שמורות © עוגן פליי {new Date().getFullYear()}

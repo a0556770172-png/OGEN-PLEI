@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText } from "lucide-react";
+import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Archive } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import UserManagementTable from "./UserManagementTable";
 import ProRequestsQueue from "./ProRequestsQueue";
@@ -19,7 +19,7 @@ import BanAppealsPanel from "./BanAppealsPanel";
 import SiteRulesEditorPanel from "./SiteRulesEditorPanel";
 import type { AppRow, Profile, ProRequest, UserDeletionRequest, BanAppeal } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "siteRules" | "settings";
+type TabKey = "notifications" | "review" | "allApps" | "archive" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "siteRules" | "settings";
 
 export default function AdminDashboardClient({
   apps,
@@ -58,6 +58,9 @@ export default function AdminDashboardClient({
   }, []);
 
   const pendingBanAppealsCount = banAppeals.filter((a) => a.status === "pending").length;
+  // ארכיון (פיצ'ר 6): כל האפליקציות שהוסרו מהתצוגה הציבורית (status = archived), בלשונית נפרדת.
+  const archivedApps = allApps.filter((a) => a.status === "archived");
+  const activeApps = allApps.filter((a) => a.status !== "archived");
 
   const notificationCount =
     apps.length + proRequests.length + suggestionsPendingCount + ticketsNeedingReplyCount + deletionRequests.length + councilAutoApprovedCount + pendingBanAppealsCount;
@@ -65,7 +68,8 @@ export default function AdminDashboardClient({
   const tabs = [
     { key: "notifications", label: `התראות${notificationCount ? ` (${notificationCount})` : ""}`, icon: BellRing },
     { key: "review", label: `בדיקת פרסום (${apps.length})`, icon: ClipboardList },
-    { key: "allApps", label: `כל האפליקציות (${allApps.length})`, icon: LayoutGrid },
+    { key: "allApps", label: `כל האפליקציות (${activeApps.length})`, icon: LayoutGrid },
+    { key: "archive", label: `ארכיון (${archivedApps.length})`, icon: Archive },
     { key: "pro", label: `בקשות PRO (${proRequests.length})`, icon: Crown },
     { key: "suggestions", label: "הצעות אפליקציות", icon: Gift },
     { key: "tickets", label: "הודעות", icon: MessageCircle },
@@ -112,8 +116,11 @@ export default function AdminDashboardClient({
       {tab === "allApps" && (
         <div className="flex flex-col gap-4">
           <IconBackfillPanel />
-          <ReviewQueue apps={allApps} canDelete={true} emptyMessage="אין אפליקציות באתר עדיין." />
+          <ReviewQueue apps={activeApps} canDelete={true} isAdmin={true} emptyMessage="אין אפליקציות באתר עדיין." />
         </div>
+      )}
+      {tab === "archive" && (
+        <ReviewQueue apps={archivedApps} canDelete={true} isAdmin={true} emptyMessage="אין אפליקציות בארכיון. אפליקציות שתעביר ל'בנתיים' יופיעו כאן." />
       )}
       {tab === "pro" && <ProRequestsQueue requests={proRequests} />}
       {tab === "suggestions" && <SuggestionsQueue />}

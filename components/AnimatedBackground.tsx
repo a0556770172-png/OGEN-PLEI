@@ -6,7 +6,7 @@ export default function AnimatedBackground() {
       <div className="absolute inset-0 bg-radial-fade" />
       <div
         className="absolute -top-40 -right-40 h-[32rem] w-[32rem] rounded-full opacity-30 blur-3xl animate-float"
-        style={{ background: "radial-gradient(circle, #7c5cff 0%, transparent 70%)" }}
+        style={{ background: "radial-gradient(circle, rgb(var(--c-primary)) 0%, transparent 70%)" }}
       />
       <div
         className="absolute top-1/3 -left-40 h-[28rem] w-[28rem] rounded-full opacity-20 blur-3xl animate-float"

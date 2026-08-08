@@ -51,6 +51,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     updates.admin_note = null;
   }
 
+  // נעיצה/קידום (פיצ'ר 6): מנהל בפועל בלבד יכול לנעוץ אפליקציה כדי שתוצג בראש העמוד הראשי.
+  if (typeof body.pinned === "boolean" && profile.role === "admin") {
+    updates.pinned = body.pinned;
+    updates.pinned_at = body.pinned ? new Date().toISOString() : null;
+  }
+
   let iconUploadUrl: string | undefined;
   let iconKey: string | undefined;
   if (iconFileName && iconContentType) {
@@ -75,6 +81,17 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       targetId: app.id,
       targetLabel: app.name,
       meta: { from: app.category, to: updates.category },
+      undoable: true
+    });
+  }
+
+  if (typeof updates.pinned === "boolean") {
+    await logAudit({
+      actorId: user.id,
+      action: updates.pinned ? "pin_app" : "unpin_app",
+      targetType: "app",
+      targetId: app.id,
+      targetLabel: app.name,
       undoable: true
     });
   }

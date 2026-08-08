@@ -1,9 +1,12 @@
 import HomeHero from "@/components/HomeHero";
 import AppGrid from "@/components/AppGrid";
+import UpdatesPopup from "@/components/UpdatesPopup";
 import { getApprovedApps, getIconUrl } from "@/lib/apps-data";
 import { getCategoriesServer } from "@/lib/categories";
 import { getUsersStats } from "@/lib/users-data";
 import { getTotalSiteVisits } from "@/lib/site-stats";
+import { getCurrentProfile } from "@/lib/profile";
+import { getUserAppUpdates } from "@/lib/updates";
 
 export const dynamic = "force-dynamic";
 
@@ -20,15 +23,22 @@ export default async function HomePage() {
 
   const totalDownloads = apps.reduce((sum, app) => sum + (app.downloads_count ?? 0), 0);
 
+  // פיצ'ר 5: למשתמש מחובר - אילו אפליקציות שהוריד קיבלו עדכון גרסה (ל-Badge בכרטיס
+  // ולחלונית הכניסה).
+  const { user } = await getCurrentProfile();
+  const updates = user ? [...(await getUserAppUpdates(user.id)).values()] : [];
+  const updateAppIds = updates.map((u) => u.appId);
+
   return (
     <div className="flex flex-col gap-12">
+      {updates.length > 0 && <UpdatesPopup updates={updates} />}
       <HomeHero
         total={apps.length}
         totalDownloads={totalDownloads}
         totalUsers={usersStats.totalUsers}
         totalVisits={totalVisits}
       />
-      <AppGrid items={withIcons} categories={categories} />
+      <AppGrid items={withIcons} categories={categories} updateAppIds={updateAppIds} />
     </div>
   );
 }

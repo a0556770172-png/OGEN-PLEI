@@ -45,6 +45,15 @@ export async function POST(_request: Request, { params }: { params: { id: string
         await admin.from("profiles").update({ is_pro: false, pro_status: "none" }).eq("id", meta.developerId);
       }
       break;
+    // ביטול נעיצה/ביטול-נעיצה (פיצ'ר 6) - מחזיר את מצב ה-pinned למה שהיה לפני הפעולה.
+    case "pin_app":
+      await admin.from("apps").update({ pinned: false, pinned_at: null }).eq("id", entry.target_id);
+      revalidatePath("/");
+      break;
+    case "unpin_app":
+      await admin.from("apps").update({ pinned: true, pinned_at: new Date().toISOString() }).eq("id", entry.target_id);
+      revalidatePath("/");
+      break;
     default:
       return NextResponse.json({ error: "פעולה זו אינה נתמכת לביטול" }, { status: 400 });
   }

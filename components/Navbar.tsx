@@ -7,6 +7,7 @@ import { LayoutDashboard, LogOut, Menu, X, ShieldCheck, User } from "lucide-reac
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/database";
 import ThemeToggle from "@/components/ThemeToggle";
+import AppearanceMenu from "@/components/AppearanceMenu";
 import PushNotificationsSetup from "@/components/PushNotificationsSetup";
 import NotificationBell from "@/components/NotificationBell";
 
@@ -89,6 +90,9 @@ export default function Navbar() {
           <Link href="/users" className="text-sm font-medium text-gray-300 transition hover:text-white">
             משתמשים
           </Link>
+          <Link href="/community" className="text-sm font-medium text-gray-300 transition hover:text-white">
+            בקשות קהילה
+          </Link>
           <Link href="/about" className="text-sm font-medium text-gray-300 transition hover:text-white">
             הסברים
           </Link>
@@ -131,11 +135,13 @@ export default function Navbar() {
               </button>
             </div>
           )}
+          <AppearanceMenu />
           <ThemeToggle />
         </nav>
 
         <div className="flex items-center gap-2 justify-self-end md:hidden">
           {!loading && profile && <NotificationBell dashboardBase={adminHref ?? moderatorHref ?? null} />}
+          <AppearanceMenu />
           <ThemeToggle />
           <button onClick={() => setOpen((o) => !o)}>
             {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -159,6 +165,7 @@ export default function Navbar() {
             ) : null}
             <Link href="/" onClick={() => setOpen(false)}>החנות</Link>
             <Link href="/users" onClick={() => setOpen(false)}>משתמשים</Link>
+            <Link href="/community" onClick={() => setOpen(false)}>בקשות קהילה</Link>
             <Link href="/about" onClick={() => setOpen(false)}>הסברים</Link>
             <Link href="/site-rules" onClick={() => setOpen(false)}>חוקי האתר</Link>
             {profile && (
