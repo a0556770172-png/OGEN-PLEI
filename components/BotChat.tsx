@@ -45,8 +45,22 @@ export default function BotChat({
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState(false);
   const [listening, setListening] = useState(false);
+  const [opener, setOpener] = useState<{ text: string; followUps: string[] } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const recRef = useRef<any>(null);
+
+  // הודעת פתיחה יזומה - רק בשיחה חדשה, לא ב-readOnly.
+  useEffect(() => {
+    if (readOnly || conversationId || messages.length > 0) return;
+    let active = true;
+    fetch("/api/bot/opener")
+      .then((r) => r.json())
+      .then((j) => active && j.opener && setOpener({ text: j.opener, followUps: j.followUps ?? [] }))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [conversationId, readOnly, messages.length]);
 
   useEffect(() => {
     if (!conversationId) {
@@ -90,6 +104,7 @@ export default function BotChat({
     if (!msg || sending) return;
     setError("");
     setInput("");
+    setOpener(null);
     setMessages((m) => [...m.map((x) => ({ ...x, followUps: [] })), { role: "user", content: msg }]);
     setSending(true);
     try {
@@ -190,7 +205,33 @@ export default function BotChat({
   return (
     <div className={`flex flex-col ${heightClass}`}>
       <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-1 pe-2">
-        {messages.length === 0 && !sending && (
+        {messages.length === 0 && !sending && opener && (
+          <div className="flex flex-col gap-3">
+            <div className="flex gap-2.5">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-[#fff]">
+                <Bot className="h-4 w-4" />
+              </div>
+              <div className="flex flex-col gap-2">
+                <div className="rounded-2xl border border-border bg-surface px-3.5 py-2.5 text-sm text-gray-200">
+                  <BotMessageBody text={opener.text} />
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {opener.followUps.map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => send(f)}
+                      className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs text-primary-light transition hover:bg-primary/15"
+                    >
+                      <Sparkles className="h-3 w-3" /> {f}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {messages.length === 0 && !sending && !opener && (
           <div className="flex h-full flex-col items-center justify-center gap-4 px-4 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent text-[#fff] shadow-glow">
               <Bot className="h-7 w-7" />

@@ -11,15 +11,18 @@ export async function GET() {
   const admin = createAdminSupabase();
   const { data } = await admin
     .from("bot_config")
-    .select("enabled, model, system_prompt, daily_limit, gemini_api_key, updated_at")
+    .select("enabled, model, model_smart, system_prompt, daily_limit, proactive_enabled, max_tool_rounds, gemini_api_key, updated_at")
     .eq("id", true)
     .single();
 
   return NextResponse.json({
     enabled: data?.enabled ?? false,
     model: data?.model ?? "gemini-2.5-flash",
+    modelSmart: data?.model_smart ?? "",
     systemPrompt: data?.system_prompt ?? "",
     dailyLimit: data?.daily_limit ?? 30,
+    proactiveEnabled: data?.proactive_enabled ?? true,
+    maxToolRounds: data?.max_tool_rounds ?? 5,
     hasKey: !!data?.gemini_api_key,
     updatedAt: data?.updated_at ?? null
   });
@@ -35,7 +38,14 @@ export async function PATCH(request: Request) {
 
   if (typeof body.enabled === "boolean") patch.enabled = body.enabled;
   if (typeof body.model === "string" && body.model.trim()) patch.model = body.model.trim();
+  if (typeof body.modelSmart === "string") patch.model_smart = body.modelSmart.trim() || null;
   if (typeof body.systemPrompt === "string") patch.system_prompt = body.systemPrompt.trim() || null;
+  if (typeof body.proactiveEnabled === "boolean") patch.proactive_enabled = body.proactiveEnabled;
+  if (Number.isFinite(body.maxToolRounds)) {
+    const n = Math.round(body.maxToolRounds);
+    if (n < 1 || n > 8) return NextResponse.json({ error: "סבבי כלים בין 1 ל-8" }, { status: 400 });
+    patch.max_tool_rounds = n;
+  }
   if (Number.isFinite(body.dailyLimit)) {
     const n = Math.round(body.dailyLimit);
     if (n < 1 || n > 1000) return NextResponse.json({ error: "מגבלה יומית חייבת להיות בין 1 ל-1000" }, { status: 400 });

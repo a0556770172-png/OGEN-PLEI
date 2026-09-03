@@ -1,14 +1,25 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Bot, Loader2, Save, KeyRound, Search, MessageSquare, ArrowRight, Plug, CheckCircle2, AlertCircle } from "lucide-react";
+import { Bot, Loader2, Save, KeyRound, Search, MessageSquare, ArrowRight, Plug, CheckCircle2, AlertCircle, Wrench, ThumbsUp, ThumbsDown } from "lucide-react";
 import BotChat from "./BotChat";
 
 interface Config {
   enabled: boolean;
   model: string;
+  modelSmart: string;
   systemPrompt: string;
   dailyLimit: number;
+  proactiveEnabled: boolean;
+  maxToolRounds: number;
   hasKey: boolean;
+}
+
+interface Insights {
+  toolCallsTotal: number;
+  topTools: { tool: string; total: number; failed: number }[];
+  thumbsUp: number;
+  thumbsDown: number;
+  negatives: { note: string | null; at: string; excerpt: string; conversationId: string | null }[];
 }
 
 interface ConvRow {
@@ -30,6 +41,7 @@ export default function BotConfigPanel() {
 
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string; models: string[] } | null>(null);
+  const [insights, setInsights] = useState<Insights | null>(null);
 
   async function runTest() {
     setTesting(true);
@@ -62,7 +74,22 @@ export default function BotConfigPanel() {
   useEffect(() => {
     fetch("/api/admin/bot-config")
       .then((r) => r.json())
-      .then((j) => setCfg({ enabled: j.enabled, model: j.model, systemPrompt: j.systemPrompt, dailyLimit: j.dailyLimit, hasKey: j.hasKey }))
+      .then((j) =>
+        setCfg({
+          enabled: j.enabled,
+          model: j.model,
+          modelSmart: j.modelSmart ?? "",
+          systemPrompt: j.systemPrompt,
+          dailyLimit: j.dailyLimit,
+          proactiveEnabled: j.proactiveEnabled ?? true,
+          maxToolRounds: j.maxToolRounds ?? 5,
+          hasKey: j.hasKey
+        })
+      )
+      .catch(() => {});
+    fetch("/api/admin/bot-insights")
+      .then((r) => r.json())
+      .then((j) => setInsights(j))
       .catch(() => {});
   }, []);
 
@@ -174,7 +201,7 @@ export default function BotConfigPanel() {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1.5 block text-sm text-gray-400">מודל</label>
+            <label className="mb-1.5 block text-sm text-gray-400">מודל ראשי</label>
             <input
               value={cfg.model}
               onChange={(e) => setCfg({ ...cfg, model: e.target.value })}
@@ -183,7 +210,18 @@ export default function BotConfigPanel() {
               dir="ltr"
               placeholder="gemini-2.5-flash"
             />
-            <p className="mt-1 text-xs text-gray-500">אם המודל לא קיים - המערכת עוברת אוטומטית למודל זמין אחר ושומרת אותו.</p>
+            <p className="mt-1 text-xs text-gray-500">אם המודל לא קיים - עוברים אוטומטית למודל זמין אחר.</p>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-400">מודל חזק (עזרה למפתחים/ניסוח) — ריק = כמו הראשי</label>
+            <input
+              value={cfg.modelSmart}
+              onChange={(e) => setCfg({ ...cfg, modelSmart: e.target.value })}
+              onBlur={() => save({ modelSmart: cfg.modelSmart })}
+              className="input-field"
+              dir="ltr"
+              placeholder="gemini-2.5-pro"
+            />
           </div>
           <div>
             <label className="mb-1.5 block text-sm text-gray-400">מגבלת שאלות יומית למשתמש</label>
@@ -197,6 +235,29 @@ export default function BotConfigPanel() {
               className="input-field"
             />
           </div>
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-400">מקסימום סבבי כלים לשאלה (1–8)</label>
+            <input
+              type="number"
+              min={1}
+              max={8}
+              value={cfg.maxToolRounds}
+              onChange={(e) => setCfg({ ...cfg, maxToolRounds: Number(e.target.value) })}
+              onBlur={() => save({ maxToolRounds: cfg.maxToolRounds })}
+              className="input-field"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => save({ proactiveEnabled: !cfg.proactiveEnabled })}
+            disabled={saving}
+            className={`relative h-7 w-12 shrink-0 rounded-full transition ${cfg.proactiveEnabled ? "bg-primary" : "bg-surface2"}`}
+          >
+            <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${cfg.proactiveEnabled ? "right-1" : "right-6"}`} />
+          </button>
+          <span className="text-sm text-gray-300">הודעות פתיחה יזומות (המלצות פרואקטיביות כשנפתחת חלונית)</span>
         </div>
 
         <div>
@@ -250,6 +311,59 @@ export default function BotConfigPanel() {
           )}
         </div>
       </div>
+
+      {insights && (
+        <div className="card flex flex-col gap-4 p-6">
+          <div className="flex items-center gap-2 text-lg font-bold text-white">
+            <Wrench className="h-5 w-5 text-primary-light" /> תובנות (30 יום)
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-xl border border-border bg-surface2/60 p-3 text-center">
+              <span className="block text-xl font-black text-white">{insights.toolCallsTotal}</span>
+              <span className="text-[11px] text-gray-500">קריאות כלים</span>
+            </div>
+            <div className="rounded-xl border border-border bg-surface2/60 p-3 text-center">
+              <span className="flex items-center justify-center gap-1 text-xl font-black text-accent"><ThumbsUp className="h-4 w-4" /> {insights.thumbsUp}</span>
+              <span className="text-[11px] text-gray-500">דירוג חיובי</span>
+            </div>
+            <div className="rounded-xl border border-border bg-surface2/60 p-3 text-center">
+              <span className="flex items-center justify-center gap-1 text-xl font-black text-red-400"><ThumbsDown className="h-4 w-4" /> {insights.thumbsDown}</span>
+              <span className="text-[11px] text-gray-500">דירוג שלילי</span>
+            </div>
+          </div>
+
+          {insights.topTools.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-xs font-bold text-gray-500">כלים בשימוש</p>
+              <div className="flex flex-wrap gap-1.5">
+                {insights.topTools.slice(0, 12).map((t) => (
+                  <span key={t.tool} dir="ltr" className="rounded-full bg-surface2 px-2.5 py-1 text-[11px] text-gray-300">
+                    {t.tool} · {t.total}{t.failed ? ` (${t.failed} נכשלו)` : ""}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {insights.negatives.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-xs font-bold text-gray-500">תשובות שדורגו שלילי</p>
+              <div className="flex flex-col divide-y divide-border/60 overflow-hidden rounded-xl border border-border">
+                {insights.negatives.map((n, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => n.conversationId && setViewId(n.conversationId)}
+                    className="bg-surface2/40 px-3 py-2 text-right text-xs text-gray-400 transition hover:bg-surface2"
+                  >
+                    <span className="line-clamp-2 text-gray-300">{n.excerpt}…</span>
+                    {n.note && <span className="mt-0.5 block text-red-400">"{n.note}"</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="card flex flex-col gap-3 p-6">
         <div className="flex items-center gap-2 text-lg font-bold text-white">
