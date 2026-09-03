@@ -54,11 +54,14 @@ export default function BotWidget() {
       <motion.button
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 0.94 }}
         onClick={() => setOpen((o) => !o)}
         aria-label="עוזר עוגן פליי והודעות"
         title="עוזר עוגן פליי והודעות"
-        className="fixed bottom-6 left-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-[#fff] shadow-glow transition-all duration-300 hover:shadow-[0_0_55px_rgb(var(--c-primary)/0.5)] active:scale-95"
+        className="fixed bottom-6 left-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary via-primary to-accent text-[#fff] shadow-glow transition-shadow duration-300 hover:shadow-[0_0_55px_rgb(var(--c-primary)/0.55)]"
       >
+        {!open && <span className="absolute inset-0 -z-10 animate-ping rounded-full bg-primary/40" style={{ animationDuration: "3s" }} />}
         {open ? <X className="h-6 w-6" /> : <Bot className="h-6 w-6" />}
         {!open && hasUnread && (
           <span className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5">
@@ -75,15 +78,24 @@ export default function BotWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 320, damping: 30 }}
-            className="fixed bottom-24 left-4 z-40 flex w-[calc(100vw-2rem)] max-w-sm flex-col rounded-2xl border border-border bg-bg/95 p-4 shadow-2xl backdrop-blur-xl sm:left-6"
+            className="fixed bottom-24 left-4 z-40 flex w-[calc(100vw-2rem)] max-w-[390px] flex-col overflow-hidden rounded-2xl border border-border bg-bg/95 shadow-2xl backdrop-blur-xl sm:left-6"
             dir="rtl"
           >
+            <div className="h-1 w-full bg-gradient-to-l from-primary via-accent to-primary" />
+            <div className="flex flex-col p-4">
             <div className="mb-2 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-[#fff]">
                   <Bot className="h-4 w-4" />
                 </div>
-                <span className="text-sm font-black text-white">עוזר עוגן פליי</span>
+                <div>
+                  <span className="block text-sm font-black leading-none text-white">עוזר עוגן פליי</span>
+                  {live && (
+                    <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-accent">
+                      <span className="h-1.5 w-1.5 rounded-full bg-accent" /> מחובר
+                    </span>
+                  )}
+                </div>
               </div>
               {live && (
                 <button
@@ -137,6 +149,7 @@ export default function BotWidget() {
                 <p className="text-sm text-gray-400">העוזר החכם כבוי כרגע.</p>
               </div>
             )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

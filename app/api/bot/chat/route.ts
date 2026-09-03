@@ -73,6 +73,7 @@ export async function POST(request: Request) {
 
   // --- לולאת הסוכן ---
   let agent;
+  let usedSmartModel = false;
   try {
     const [grounding, userCtx] = await Promise.all([buildBotGrounding(), buildBotUserContext(profile)]);
     const systemInstruction = [
@@ -89,7 +90,10 @@ export async function POST(request: Request) {
       conversationId: convId
     };
 
-    agent = await runBotAgent(cfg, systemInstruction, [...history, { role: "user", content: text }], ctx);
+    // ניתוב מודלים: מפתחים מקבלים את המודל החזק (אם הוגדר) - עזרה בתיאורים/ניסוח/הסקה.
+    usedSmartModel = !!(ctx.isDeveloper && cfg.model_smart);
+    const effectiveCfg = usedSmartModel ? { ...cfg, model: cfg.model_smart! } : cfg;
+    agent = await runBotAgent(effectiveCfg, systemInstruction, [...history, { role: "user", content: text }], ctx);
   } catch (err: any) {
     if (createdNewConv) await admin.from("bot_conversations").delete().eq("id", convId);
     return NextResponse.json(
@@ -98,8 +102,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // --- שמירת המודל שעבד ---
-  if (agent.modelUsed && agent.modelUsed !== cfg.model) {
+  // --- שמירת המודל שעבד (רק במסלול הרגיל, לא כשהשתמשנו במודל החזק) ---
+  if (!usedSmartModel && agent.modelUsed && agent.modelUsed !== cfg.model) {
     await admin.from("bot_config").update({ model: agent.modelUsed, updated_at: new Date().toISOString() }).eq("id", true);
   }
 
