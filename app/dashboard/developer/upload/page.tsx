@@ -6,6 +6,7 @@ import { UploadCloud, Loader2, AlertCircle, CheckCircle2, FileArchive, Image as 
 import RichTextEditor from "@/components/RichTextEditor";
 import { putToR2, extractIconFailureReason } from "@/lib/uploadHelpers";
 import { MIN_ANDROID_VERSIONS } from "@/lib/androidVersions";
+import { parseApkForForm } from "@/lib/apkManifest";
 import type { Category } from "@/types/database";
 
 // מונע רינדור סטטי בזמן ה-build (ראו הסבר מפורט ב-app/login/page.tsx)
@@ -38,6 +39,25 @@ function UploadAppInner() {
   const [icon, setIcon] = useState<File | null>(null);
   const [error, setError] = useState("");
   const [status, setStatus] = useState<"idle" | "uploading" | "extracting-icon" | "needs-icon" | "done">("idle");
+  // מה שנשלף אוטומטית מתוך ה-APK בעת בחירת הקובץ (גרסת אנדרואיד מינ׳, מספר גרסה).
+  const [autoDetected, setAutoDetected] = useState<string[]>([]);
+
+  async function handleFilePick(f: File | null) {
+    setFile(f);
+    setAutoDetected([]);
+    if (!f) return;
+    const info = await parseApkForForm(f);
+    const found: string[] = [];
+    if (info.minSdkLabel) {
+      setMinAndroidVersion(info.minSdkLabel);
+      found.push(`גרסת אנדרואיד מינימלית: ${info.minSdkLabel}`);
+    }
+    if (info.versionName) {
+      setVersion((v) => v || info.versionName!);
+      found.push(`גרסה: ${info.versionName}`);
+    }
+    if (found.length) setAutoDetected(found);
+  }
 
   // לפני שהעלאה בפועל מתחילה, מציגים חלונית אישור עם הגרסה והקטגוריה שנבחרו - מטרתה
   // רק לגרום למפתח לעצור רגע ולוודא שהוא לא בחר בטעות גרסה ישנה/לא נכונה, או קטגוריה
@@ -335,7 +355,13 @@ function UploadAppInner() {
             </div>
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-400"><FileArchive className="h-4 w-4" /> קובץ ההתקנה (APK לאפליקציה, או קובץ ההתקנה של התוכנה)</label>
-              <input required type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[#fff]" />
+              <input required type="file" onChange={(e) => handleFilePick(e.target.files?.[0] ?? null)} className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[#fff]" />
+              {autoDetected.length > 0 && (
+                <div className="mt-1.5 flex items-start gap-1.5 text-xs text-accent">
+                  <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>זוהה אוטומטית מהקובץ ומולא בטופס (ניתן לשנות): {autoDetected.join(" · ")}</span>
+                </div>
+              )}
             </div>
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-400">

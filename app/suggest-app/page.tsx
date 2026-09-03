@@ -2,10 +2,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Gift, Send, Loader2, AlertCircle, CheckCircle2, FileArchive, Image as ImageIcon, ShieldAlert } from "lucide-react";
+import { Gift, Send, Loader2, AlertCircle, CheckCircle2, FileArchive, Image as ImageIcon, ShieldAlert, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { putToR2 } from "@/lib/uploadHelpers";
 import { MIN_ANDROID_VERSIONS } from "@/lib/androidVersions";
+import { parseApkForForm } from "@/lib/apkManifest";
 import RichTextEditor from "@/components/RichTextEditor";
 import type { AppSuggestion, Category } from "@/types/database";
 
@@ -29,7 +30,25 @@ export default function SuggestAppPage() {
   // בטעות גרסה שגויה שרק "נשארה מסומנת" מברירת המחדל.
   const [minAndroidVersion, setMinAndroidVersion] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [autoDetected, setAutoDetected] = useState<string[]>([]);
   const [note, setNote] = useState("");
+
+  async function handleFilePick(f: File | null) {
+    setFile(f);
+    setAutoDetected([]);
+    if (!f) return;
+    const info = await parseApkForForm(f);
+    const found: string[] = [];
+    if (info.minSdkLabel) {
+      setMinAndroidVersion(info.minSdkLabel);
+      found.push(`גרסת אנדרואיד מינימלית: ${info.minSdkLabel}`);
+    }
+    if (info.versionName) {
+      setVersion((v) => v || info.versionName!);
+      found.push(`גרסה: ${info.versionName}`);
+    }
+    if (found.length) setAutoDetected(found);
+  }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -246,9 +265,15 @@ export default function SuggestAppPage() {
           <input
             required
             type="file"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => handleFilePick(e.target.files?.[0] ?? null)}
             className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[#fff]"
           />
+          {autoDetected.length > 0 && (
+            <div className="mt-1.5 flex items-start gap-1.5 text-xs text-accent">
+              <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>זוהה אוטומטית מהקובץ ומולא בטופס (ניתן לשנות): {autoDetected.join(" · ")}</span>
+            </div>
+          )}
           <p className="mt-1.5 text-xs text-gray-500">יש להעלות בעצמכם את קובץ ההתקנה (עד 200MB) כדי שהצוות יוכל לבדוק ולפרסם אותו.</p>
         </div>
         <div>
