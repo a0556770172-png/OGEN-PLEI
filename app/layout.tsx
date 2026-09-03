@@ -6,6 +6,7 @@ import AnimatedBackground from "@/components/AnimatedBackground";
 import ModeratorAgreementGate from "@/components/ModeratorAgreementGate";
 import SiteRulesGate from "@/components/SiteRulesGate";
 import SiteVisitTracker from "@/components/SiteVisitTracker";
+import ReferralCapture from "@/components/ReferralCapture";
 
 const heebo = Heebo({ subsets: ["hebrew", "latin"], weight: ["300","400","500","700","900"], variable: "--font-heebo" });
 
@@ -103,6 +104,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${heebo.variable} font-sans bg-bg text-gray-100 min-h-screen antialiased relative`}>
         <AnimatedBackground />
         <SiteVisitTracker />
+        <ReferralCapture />
         <SiteRulesGate />
         <ModeratorAgreementGate />
         <Navbar />

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { UserRound, Mail, Lock, AtSign, AlertCircle, MailCheck, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { readRefCode } from "@/lib/referralClient";
 
 // מונע רינדור סטטי בזמן ה-build (ראו הסבר מפורט ב-app/login/page.tsx)
 export const dynamic = "force-dynamic";
@@ -26,11 +27,12 @@ export default function UserSignupPage() {
       return;
     }
     setLoading(true);
+    const ref = readRefCode();
     const { data, error: err } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
-        data: { username: form.username, role: "user" },
+        data: { username: form.username, role: "user", ...(ref ? { ref } : {}) },
         emailRedirectTo: `${window.location.origin}/auth/callback`
       }
     });

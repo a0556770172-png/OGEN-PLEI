@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createUploadUrl, BUCKETS } from "@/lib/r2";
 import { MAX_SUGGESTION_MB } from "@/lib/constants";
+import { effectiveMaxUploadMb } from "@/lib/uploadQuota";
 
 function sanitize(name: string) {
   return name.replace(/[^a-zA-Z0-9.\-_]/g, "_").slice(-80);
@@ -26,11 +27,9 @@ export async function POST(request: Request) {
   const hasUnlimitedWindow = unlimitedUntil > Date.now();
 
   if (!hasUnlimitedWindow) {
-    // אותה הרשאת גודל חד-פעמית שמנהל נותן ב"הרשאות גודל" (ראו app/api/admin/users/[id]/route.ts)
-    // תקפה גם כאן, בהצעת אפליקציה ציבורית - לא רק בהעלאה פרטית. אם קיימת וגדולה מהמכסה
-    // הרגילה (200MB), היא זו שקובעת את התקרה האפקטיבית להעלאה הזו.
-    const sizeOverrideMb = profile.size_override_mb ?? null;
-    const effectiveMaxMb = sizeOverrideMb && sizeOverrideMb > MAX_SUGGESTION_MB ? sizeOverrideMb : MAX_SUGGESTION_MB;
+    // תקרת הגודל האפקטיבית - כוללת הרשאת גודל חד-פעמית שאדמין נתן וגם קרדיט חריגת 150MB
+    // שנצבר מהפניות (ראו lib/uploadQuota.ts). תקפה גם כאן, בהצעה ציבורית - לא רק בהעלאה פרטית.
+    const effectiveMaxMb = effectiveMaxUploadMb(profile, MAX_SUGGESTION_MB);
     const maxBytes = effectiveMaxMb * 1024 * 1024;
     if (fileSize > maxBytes) {
       return NextResponse.json({ error: `גודל הקובץ חורג מהמותר (מקסימום ${effectiveMaxMb}MB)` }, { status: 400 });

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText } from "lucide-react";
+import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2 } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import UserManagementTable from "./UserManagementTable";
 import ProRequestsQueue from "./ProRequestsQueue";
@@ -17,9 +17,10 @@ import AppReportsQueue from "./AppReportsQueue";
 import SizeOverridePanel from "./SizeOverridePanel";
 import BanAppealsPanel from "./BanAppealsPanel";
 import SiteRulesEditorPanel from "./SiteRulesEditorPanel";
-import type { AppRow, Profile, ProRequest, UserDeletionRequest, BanAppeal } from "@/types/database";
+import ReferralsPanel from "./ReferralsPanel";
+import type { AppRow, Profile, ProRequest, UserDeletionRequest, BanAppeal, ReferralEvent } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "siteRules" | "settings";
+type TabKey = "notifications" | "review" | "allApps" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteRules" | "settings";
 
 export default function AdminDashboardClient({
   apps,
@@ -32,7 +33,8 @@ export default function AdminDashboardClient({
   councilAutoApprovedCount,
   requireEmailVerification,
   currentProfile,
-  banAppeals
+  banAppeals,
+  referralEvents
 }: {
   apps: AppRow[];
   allApps: AppRow[];
@@ -45,6 +47,7 @@ export default function AdminDashboardClient({
   requireEmailVerification: boolean;
   currentProfile: Profile;
   banAppeals: BanAppeal[];
+  referralEvents: ReferralEvent[];
 }) {
   const [tab, setTab] = useState<TabKey>("notifications");
 
@@ -77,6 +80,7 @@ export default function AdminDashboardClient({
     { key: "reports", label: "דיווחים על אפליקציות", icon: Flag },
     { key: "sizeOverrides", label: "הרשאות גודל", icon: HardDrive },
     { key: "banAppeals", label: `ערעורי חסימה${pendingBanAppealsCount ? ` (${pendingBanAppealsCount})` : ""}`, icon: MessageSquareWarning },
+    { key: "referrals", label: "הפניות", icon: Share2 },
     { key: "siteRules", label: "חוקי האתר", icon: ScrollText },
     { key: "settings", label: "הגדרות", icon: Settings }
   ] as const;
@@ -126,6 +130,7 @@ export default function AdminDashboardClient({
       {tab === "reports" && <AppReportsQueue />}
       {tab === "sizeOverrides" && <SizeOverridePanel profiles={profiles} isAdmin={true} />}
       {tab === "banAppeals" && <BanAppealsPanel appeals={banAppeals} />}
+      {tab === "referrals" && <ReferralsPanel events={referralEvents} />}
       {tab === "siteRules" && <SiteRulesEditorPanel isAdmin={true} />}
       {tab === "settings" && <SiteSettingsPanel requireEmailVerification={requireEmailVerification} />}
     </div>

@@ -9,7 +9,8 @@ import {
   getTicketsNeedingReplyCount,
   getPendingDeletionRequests,
   getOpenAutoApprovedCouncilCount,
-  getBanAppeals
+  getBanAppeals,
+  getReferralEvents
 } from "@/lib/admin-data";
 import { getSiteSettingsServer } from "@/lib/settings";
 import AdminDashboardClient from "@/components/AdminDashboardClient";
@@ -21,7 +22,7 @@ export default async function AdminDashboard() {
   if (!user || !profile) redirect("/login");
   if (profile.role !== "admin") redirect("/");
 
-  const [apps, allApps, profiles, proRequests, suggestionsPendingCount, ticketsNeedingReplyCount, deletionRequests, councilAutoApprovedCount, siteSettings, banAppeals] =
+  const [apps, allApps, profiles, proRequests, suggestionsPendingCount, ticketsNeedingReplyCount, deletionRequests, councilAutoApprovedCount, siteSettings, banAppeals, referralEvents] =
     await Promise.all([
       getReviewQueueApps(),
       getAllAppsForAdmin(),
@@ -32,7 +33,8 @@ export default async function AdminDashboard() {
       getPendingDeletionRequests(),
       getOpenAutoApprovedCouncilCount(),
       getSiteSettingsServer(),
-      getBanAppeals()
+      getBanAppeals(),
+      getReferralEvents()
     ]);
 
   return (
@@ -53,6 +55,7 @@ export default async function AdminDashboard() {
         requireEmailVerification={siteSettings.require_email_verification}
         currentProfile={profile}
         banAppeals={banAppeals}
+        referralEvents={referralEvents}
       />
     </div>
   );

@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { ShieldAlert, CheckCircle2, AlertCircle, MailCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { DEVELOPER_TERMS } from "@/lib/constants";
+import { readRefCode } from "@/lib/referralClient";
 
 // מונע רינדור סטטי בזמן ה-build (ראו הסבר מפורט ב-app/login/page.tsx)
 export const dynamic = "force-dynamic";
@@ -117,6 +118,7 @@ export default function DeveloperTermsPage() {
       // אם בדיקת קיום המייל נכשלה מסיבה טכנית, ממשיכים בזהירות לניסיון הרשמה רגיל למטה
     }
 
+    const ref = readRefCode();
     const { data: signUpData, error: err } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
@@ -126,7 +128,8 @@ export default function DeveloperTermsPage() {
           role: "developer",
           full_name: form.fullName,
           phone: form.phone,
-          accepted_terms: true
+          accepted_terms: true,
+          ...(ref ? { ref } : {})
         },
         emailRedirectTo: `${window.location.origin}/auth/callback`
       }

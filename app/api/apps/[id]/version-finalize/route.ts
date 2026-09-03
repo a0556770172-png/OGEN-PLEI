@@ -3,6 +3,8 @@ import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { deleteObject, BUCKETS } from "@/lib/r2";
+import { LIMITS } from "@/lib/constants";
+import { consumeOversizeGrant } from "@/lib/uploadQuota";
 
 // שלב 2: אחרי שהקובץ החדש עלה ל-R2 בהצלחה, מעדכנים את רשומת האפליקציה ומחזירים אותה לבדיקה מחדש -
 // זו גרסה חדשה, וכל גרסה חדשה (בדיוק כמו אפליקציה חדשה) עוברת בדיקה ידנית לפני שהיא מתפרסמת.
@@ -50,6 +52,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (error) {
     return NextResponse.json({ error: `שגיאה בשמירת הגרסה החדשה: ${error.message}` }, { status: 500 });
   }
+
+  // אם הקובץ החדש חרג מהמכסה הרגילה - "שורפים" הרשאה אחת (קודם קרדיט הפניה, ואז הרשאת אדמין).
+  const plan = profile.is_pro ? LIMITS.pro : LIMITS.free;
+  await consumeOversizeGrant(profile, Number(fileSize), plan.maxFileMb);
 
   // מנקים את קובץ הגרסה הקודמת מהאחסון כדי לא לצבור קבצים מיותרים (לא קריטי אם נכשל)
   if (previousFileKey && previousFileKey !== fileKey) {

@@ -32,6 +32,17 @@ export interface Profile {
   // מתי המשתמש קרא ואישר את "חוקי האתר" (שער חובה חד-פעמי לכל חשבון - ראו
   // components/SiteRulesGate.tsx). null = עדיין לא אישר, ייחסם עד שיאשר.
   site_rules_accepted_at: string | null;
+  // מערכת הפניות (Referral) - ראו lib/referral.ts, supabase/migrations/0033_referrals.sql.
+  // מי הזמין את המשתמש הזה (נקבע פעם אחת בהרשמה ע"י הטריגר handle_new_user, לפי ?ref=<username>).
+  referred_by: string | null;
+  // מתי המפנה קיבל (או נשלל ממנו) את התגמול עבור המשתמש הזה - null = טרם עובד.
+  referral_rewarded_at: string | null;
+  // מתי המשתמש הזה קיבל את בונוס ההצטרפות שלו (10 מוניטין).
+  referral_join_bonus_at: string | null;
+  // מספר קרדיטים של חריגת גודל 150MB שנצברו מהפניות מוצלחות (נצבר, נצרך אחד בכל העלאה חריגה).
+  referral_size_override_credits: number;
+  // ה-IP האחרון שממנו נראה המשתמש (מתעדכן ב-heartbeat) - לבדיקת רמאות בהפניות.
+  last_ip: string | null;
   // מאיזו גרסה של חוקי האתר המשתמש אישר לאחרונה - ראו site_settings.site_rules_version.
   // כשהצוות מפרסם עדכון לחוקים (app/api/admin/site-rules/route.ts, action "publish"),
   // הגרסה הגלובלית עולה וכל מי שהמספר שלו נמוך יותר רואה את השער שוב.
@@ -208,6 +219,39 @@ export interface BanAppeal {
   created_at: string;
   updated_at: string;
   user?: Profile;
+}
+
+export type ReferralStatus = "rewarded" | "capped" | "blocked_ip" | "revoked";
+
+export interface ReferralEvent {
+  id: string;
+  referrer_id: string;
+  referred_user_id: string;
+  signup_ip: string | null;
+  status: ReferralStatus;
+  referrer_points_awarded: number;
+  joiner_points_awarded: number;
+  size_credit_awarded: boolean;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  created_at: string;
+  referrer?: Pick<Profile, "id" | "username" | "email">;
+  referred?: Pick<Profile, "id" | "username" | "email">;
+}
+
+export interface ReferralStatsRecent {
+  username: string | null;
+  status: ReferralStatus;
+  points: number;
+  created_at: string;
+}
+
+export interface ReferralStats {
+  totalJoined: number;
+  rewardedCount: number;
+  pointsEarned: number;
+  sizeCredits: number;
+  recent: ReferralStatsRecent[];
 }
 
 export interface Category {

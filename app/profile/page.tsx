@@ -8,6 +8,8 @@ import { Rocket, MessageSquareText, History, Star } from "lucide-react";
 import AvatarUploadForm from "@/components/AvatarUploadForm";
 import DeveloperAppsPanel from "@/components/DeveloperAppsPanel";
 import ProfileTagsEditor from "@/components/ProfileTagsEditor";
+import ReferralCard from "@/components/ReferralCard";
+import { getReferralStats } from "@/lib/referral";
 import { getDeveloperContributionCount, isDmUnlocked, DM_UNLOCK_THRESHOLD } from "@/lib/dm-eligibility";
 import type { AppRow } from "@/types/database";
 
@@ -44,6 +46,7 @@ export default async function ProfilePage() {
   }
   const plan = profile.is_pro ? LIMITS.pro : LIMITS.free;
   const contributionCount = await getDeveloperContributionCount(user.id);
+  const referralStats = await getReferralStats(user.id);
   const dmUnlocked = await isDmUnlocked(user.id);
   const dmUnlockedByRole = profile.role === "admin" || profile.is_moderator || profile.is_pro;
 
@@ -53,6 +56,8 @@ export default async function ProfilePage() {
         <h1 className="text-2xl font-black">הפרופיל שלי</h1>
         <p className="text-sm text-gray-400">שלום {profile.username}, כאן תוכלו לנהל את הפרטים שלכם{isDeveloper ? " ואת האפליקציות שלכם" : ""}.</p>
       </div>
+
+      <ReferralCard username={profile.username} stats={referralStats} />
 
       {/* "ג'וקר" - תג ויזואלי שמוצג רק למי שקיבל מהמנהל הרשאת גודל חד-פעמית (ראו טאב "הרשאות
           גודל" בניהול). המטרה: שהמשתמש עצמו ידע בבירור שיש לו את זה פעיל, ומה בדיוק מותר לו,

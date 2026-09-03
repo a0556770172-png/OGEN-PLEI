@@ -3,6 +3,7 @@ import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { notifyAdmins } from "@/lib/push";
 import { MAX_SUGGESTION_MB } from "@/lib/constants";
+import { consumeOversizeGrant } from "@/lib/uploadQuota";
 import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
 
 // כל משתמש מחובר (רגיל או מפתח) יכול להציע אפליקציה פופולרית להוספה למאגר
@@ -74,12 +75,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `שגיאה בשליחת ההצעה: ${error.message}` }, { status: 500 });
   }
 
-  // אם הקובץ שהועלה כאן בפועל חרג מהמכסה הרגילה של הצעה ציבורית (200MB) - זה סימן שנוצלה
-  // הרשאת הגודל החד-פעמית שהמנהל נתן (ראו app/api/suggestions/upload-init/route.ts ו-
-  // app/api/admin/users/[id]/route.ts) - מבטלים אותה כדי שלא ניתן יהיה לנצל אותה שוב.
-  const sizeOverrideMb = profile.size_override_mb ?? null;
-  if (sizeOverrideMb && sizeOverrideMb > MAX_SUGGESTION_MB && fileSize > MAX_SUGGESTION_MB * 1024 * 1024) {
-    await admin.from("profiles").update({ size_override_mb: null }).eq("id", user.id);
+  // אם הקובץ חרג מהמכסה הרגילה של הצעה ציבורית (200MB) - "שורפים" הרשאה אחת (קודם קרדיט
+  // הפניה, ואז הרשאת אדמין חד-פעמית). לא רלוונטי אם למשתמש יש חלון "העלאה ציבורית ללא הגבלה"
+  // פעיל - במקרה כזה שום דבר לא נצרך.
+  const unlimitedUntil = profile.unlimited_public_upload_until
+    ? new Date(profile.unlimited_public_upload_until).getTime()
+    : 0;
+  if (unlimitedUntil <= Date.now()) {
+    await consumeOversizeGrant(profile, fileSize, MAX_SUGGESTION_MB);
   }
 
   notifyAdmins({ title: "הצעת אפליקציה חדשה", body: `הוצעה אפליקציה חדשה: ${appName.trim()}`, url: "/dashboard/admin" }).catch(() => {});

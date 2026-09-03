@@ -3,6 +3,7 @@ import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { createUploadUrl, BUCKETS } from "@/lib/r2";
 import { LIMITS } from "@/lib/constants";
+import { effectiveMaxUploadMb } from "@/lib/uploadQuota";
 
 function sanitize(name: string) {
   return name.replace(/[^a-zA-Z0-9.\-_]/g, "_").slice(-80);
@@ -32,9 +33,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
   }
 
   const plan = profile.is_pro ? LIMITS.pro : LIMITS.free;
-  const maxBytes = plan.maxFileMb * 1024 * 1024;
+  // תקרה אפקטיבית - כוללת הרשאת גודל חד-פעמית שאדמין נתן וקרדיט חריגת 150MB מהפניות.
+  const effectiveMaxMb = effectiveMaxUploadMb(profile, plan.maxFileMb);
+  const maxBytes = effectiveMaxMb * 1024 * 1024;
   if (fileSize > maxBytes) {
-    return NextResponse.json({ error: `גודל הקובץ חורג מהמותר (מקסימום ${plan.maxFileMb}MB)` }, { status: 400 });
+    return NextResponse.json({ error: `גודל הקובץ חורג מהמותר (מקסימום ${effectiveMaxMb}MB)` }, { status: 400 });
   }
 
   const fileKey = `apps/${user.id}/${crypto.randomUUID()}-${sanitize(fileName)}`;

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ShieldCheck, Users, Layers, Star, Crown, UploadCloud, Download, Gift, MessageSquareText, LifeBuoy, ArrowLeft, Heart, ThumbsUp } from "lucide-react";
+import { ShieldCheck, Users, Layers, Star, Crown, UploadCloud, Download, Gift, MessageSquareText, LifeBuoy, ArrowLeft, Heart, ThumbsUp, Share2 } from "lucide-react";
+import { REFERRAL } from "@/lib/constants";
 
 export const metadata = { title: "הסברים — עוגן פליי" };
 
@@ -71,6 +72,17 @@ export default function AboutPage() {
             <div>
               <p className="font-bold text-white">הצעת אפליקציה או תוכנה פופולרית שאושרה — 5 מוניטין</p>
               <p className="text-sm text-gray-400">כל משתמש (גם ללא חשבון מפתח) יכול להציע אפליקציה או תוכנה למאגר. אישור ההצעה מזכה ב-5 מוניטין.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-light"><Share2 className="h-4 w-4" /></div>
+            <div>
+              <p className="font-bold text-white">הזמנת חבר שנרשם דרך הקישור שלכם — {REFERRAL.referrerPoints} מוניטין</p>
+              <p className="text-sm text-gray-400">
+                בעמוד הפרופיל יש לכם קישור הזמנה אישי. כל חבר שנרשם דרכו ומאמת מייל מזכה אתכם ב-{REFERRAL.referrerPoints} מוניטין
+                וקרדיט חד-פעמי להעלאת קובץ עד {REFERRAL.sizeOverrideMb}MB (נצבר) — וגם החבר עצמו מקבל {REFERRAL.joinerPoints} מוניטין
+                מתנה. עד {REFERRAL.dailyRewardCap} הפניות מתוגמלות ביום, ולא ניתן לתגמל הרשמה מאותה רשת/מכשיר של המפנה.
+              </p>
             </div>
           </div>
         </div>

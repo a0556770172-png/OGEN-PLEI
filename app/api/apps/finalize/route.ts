@@ -4,6 +4,7 @@ import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { addPoints } from "@/lib/points";
 import { LIMITS } from "@/lib/constants";
+import { effectiveMaxUploadMb, consumeOversizeGrant } from "@/lib/uploadQuota";
 import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
 
 export async function POST(request: Request) {
@@ -36,17 +37,13 @@ export async function POST(request: Request) {
   }
 
   const plan = profile.is_pro ? LIMITS.pro : LIMITS.free;
-  // הרשאת גודל חד-פעמית שמנהל נתן למשתמש הזה (ראו app/api/admin/users/[id]/route.ts) -
-  // אם קיימת וגדולה מהמכסה הרגילה שלו, היא זו שקובעת את התקרה האפקטיבית להעלאה הזו בלבד.
-  const sizeOverrideMb = profile.size_override_mb ?? null;
-  const effectiveMaxMb = sizeOverrideMb && sizeOverrideMb > plan.maxFileMb ? sizeOverrideMb : plan.maxFileMb;
+  // תקרת הגודל האפקטיבית - כוללת הרשאת גודל חד-פעמית שאדמין נתן (size_override_mb) וגם
+  // קרדיט חריגת 150MB שנצבר מהפניות (ראו lib/uploadQuota.ts).
+  const effectiveMaxMb = effectiveMaxUploadMb(profile, plan.maxFileMb);
   const maxBytes = effectiveMaxMb * 1024 * 1024;
   if (fileSize > maxBytes) {
     return NextResponse.json({ error: `גודל הקובץ חורג מהמותר (מקסימום ${effectiveMaxMb}MB)` }, { status: 400 });
   }
-  // ההרשאה נוצלת בפועל רק אם הקובץ שהועלה באמת חרג מהמכסה הרגילה - אם המשתמש מעלה בכל
-  // זאת קובץ בתוך המכסה הרגילה שלו, ההרשאה החד-פעמית נשארת זמינה לשימוש הבא.
-  const usedSizeOverride = sizeOverrideMb && sizeOverrideMb > plan.maxFileMb && fileSize > plan.maxFileMb * 1024 * 1024;
 
   const admin = createAdminSupabase();
   const { count } = await admin
@@ -98,11 +95,8 @@ export async function POST(request: Request) {
   await admin.from("points_log").insert({ profile_id: user.id, delta: UPLOAD_POINTS, reason: "upload", app_id: app.id });
   await addPoints(user.id, UPLOAD_POINTS);
 
-  // ההעלאה הזו ניצלה בפועל את הרשאת הגודל החד-פעמית - מבטלים אותה כדי שלא ניתן יהיה
-  // להשתמש בה שוב בלי אישור ידני חדש מהמנהל.
-  if (usedSizeOverride) {
-    await admin.from("profiles").update({ size_override_mb: null }).eq("id", user.id);
-  }
+  // אם הקובץ חרג מהמכסה הרגילה - "שורפים" הרשאה אחת (קודם קרדיט הפניה, ואז הרשאת אדמין).
+  await consumeOversizeGrant(profile, fileSize, plan.maxFileMb);
 
   // חשוב במיוחד כשמנהל מעלה ומאושר מיידית: בלי זה, הפרופיל הציבורי שלו (/users/[id]) יכול
   // להציג עותק ישן מה-Router Cache של Next.js ולא להראות את מה שהוא בדיוק העלה.

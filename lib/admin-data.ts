@@ -1,5 +1,5 @@
 import { createAdminSupabase } from "./supabase/admin";
-import type { AppRow, Profile, ProRequest, UserDeletionRequest, BanAppeal } from "@/types/database";
+import type { AppRow, Profile, ProRequest, UserDeletionRequest, BanAppeal, ReferralEvent } from "@/types/database";
 
 export async function getReviewQueueApps(): Promise<AppRow[]> {
   const admin = createAdminSupabase();
@@ -146,4 +146,17 @@ export async function getPendingBanAppealsCount(): Promise<number> {
     .select("id", { count: "exact", head: true })
     .eq("status", "pending");
   return count ?? 0;
+}
+
+// כל אירועי ההפניה (Referral) - לטאב "הפניות" בפאנל הניהול. הכי חדש קודם.
+export async function getReferralEvents(): Promise<ReferralEvent[]> {
+  const admin = createAdminSupabase();
+  const { data } = await admin
+    .from("referral_events")
+    .select(
+      "*, referrer:profiles!referral_events_referrer_id_fkey(id, username, email), referred:profiles!referral_events_referred_user_id_fkey(id, username, email)"
+    )
+    .order("created_at", { ascending: false })
+    .limit(500);
+  return (data as unknown as ReferralEvent[]) ?? [];
 }

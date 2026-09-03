@@ -3,6 +3,7 @@ import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { createUploadUrl, BUCKETS } from "@/lib/r2";
 import { LIMITS } from "@/lib/constants";
+import { effectiveMaxUploadMb } from "@/lib/uploadQuota";
 
 function sanitize(name: string) {
   return name.replace(/[^a-zA-Z0-9.\-_]/g, "_").slice(-80);
@@ -27,11 +28,9 @@ export async function POST(request: Request) {
   }
 
   const plan = profile.is_pro ? LIMITS.pro : LIMITS.free;
-  // הרשאת גודל חד-פעמית שמנהל נתן למשתמש הזה (ראו app/api/admin/users/[id]/route.ts) -
-  // חייבים לבדוק אותה כבר כאן, לפני שנוצר קישור ההעלאה, אחרת קובץ חריג ייחסם עוד לפני
-  // שמגיע ל-finalize.
-  const sizeOverrideMb = profile.size_override_mb ?? null;
-  const effectiveMaxMb = sizeOverrideMb && sizeOverrideMb > plan.maxFileMb ? sizeOverrideMb : plan.maxFileMb;
+  // תקרת הגודל האפקטיבית - כוללת הרשאת גודל חד-פעמית שאדמין נתן (size_override_mb) וגם
+  // קרדיט חריגת 150MB שנצבר מהפניות. חייבים לבדוק כבר כאן, לפני יצירת קישור ההעלאה.
+  const effectiveMaxMb = effectiveMaxUploadMb(profile, plan.maxFileMb);
   const maxBytes = effectiveMaxMb * 1024 * 1024;
   if (fileSize > maxBytes) {
     return NextResponse.json({ error: `גודל הקובץ חורג מהמותר (מקסימום ${effectiveMaxMb}MB)` }, { status: 400 });
