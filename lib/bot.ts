@@ -313,8 +313,12 @@ export async function runBotAgent(
       };
     }
 
-    const parts: any[] = data?.candidates?.[0]?.content?.parts ?? [];
-    const calls = parts.filter((p) => p.functionCall).map((p) => p.functionCall);
+    const modelContent = data?.candidates?.[0]?.content;
+    const parts: any[] = modelContent?.parts ?? [];
+    // חשוב: functionCall יכול לבוא עם thoughtSignature על ה-part (במודלים חדשים עם "חשיבה").
+    // צריך לשמור את ה-part המלא, לא רק את ה-functionCall.
+    const callParts = parts.filter((p) => p.functionCall);
+    const calls = callParts.map((p) => p.functionCall);
 
     if (calls.length === 0 || round === maxRounds) {
       const text = parts.map((p) => p.text).filter(Boolean).join("").trim();
@@ -330,7 +334,8 @@ export async function runBotAgent(
       };
     }
 
-    contents.push({ role: "model", parts: calls.map((c: any) => ({ functionCall: c })) });
+    // מהדהדים את תוכן המודל בדיוק כפי שהתקבל (כולל thoughtSignature על ה-parts).
+    contents.push(modelContent ?? { role: "model", parts: callParts });
 
     const responseParts: any[] = [];
     for (const c of calls) {
@@ -348,7 +353,9 @@ export async function runBotAgent(
       }
       if (outcome.proposedAction) proposedAction = outcome.proposedAction;
       if (outcome.clientAction) clientAction = outcome.clientAction;
-      responseParts.push({ functionResponse: { name: c.name, response: { data: outcome.result } } });
+      const fr: any = { name: c.name, response: { data: outcome.result } };
+      if (c.id) fr.id = c.id; // מזהה לשיוך בקריאות מקבילות (API חדש)
+      responseParts.push({ functionResponse: fr });
     }
     contents.push({ role: "user", parts: responseParts });
   }
