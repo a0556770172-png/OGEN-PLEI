@@ -6,8 +6,10 @@ import { parseMitmachimUrl } from "@/lib/mitmachim";
 import { getIconUrl } from "@/lib/apps-data";
 import { getCurrentProfile } from "@/lib/profile";
 import { isDmUnlocked } from "@/lib/dm-eligibility";
+import { createAdminSupabase } from "@/lib/supabase/admin";
 import StatusBadge from "@/components/StatusBadge";
 import DmButton from "@/components/DmButton";
+import NotifyButton from "@/components/NotifyButton";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +37,18 @@ export default async function PublicUserPage({ params }: { params: { id: string 
 
   const { user: viewer } = await getCurrentProfile();
   const canOpenDm = viewer && viewer.id !== user.id ? await isDmUnlocked(viewer.id) : false;
+
+  // האם הצופה כבר רשום להתראות מהמפתח הזה
+  let followsDeveloper = false;
+  if (viewer && viewer.id !== user.id && isDeveloper) {
+    const { count } = await createAdminSupabase()
+      .from("notification_subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", viewer.id)
+      .eq("type", "developer")
+      .eq("target_id", user.id);
+    followsDeveloper = (count ?? 0) > 0;
+  }
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
@@ -91,9 +105,12 @@ export default async function PublicUserPage({ params }: { params: { id: string 
           </div>
         )}
 
-        {canOpenDm && (
-          <div className="mt-4">
-            <DmButton targetUserId={user.id} />
+        {(canOpenDm || (viewer && viewer.id !== user.id && isDeveloper)) && (
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            {canOpenDm && <DmButton targetUserId={user.id} />}
+            {viewer && viewer.id !== user.id && isDeveloper && (
+              <NotifyButton type="developer" targetId={user.id} label="קבל התראות מהמפתח הזה" subscribed={followsDeveloper} />
+            )}
           </div>
         )}
       </div>

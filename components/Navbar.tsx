@@ -118,7 +118,7 @@ export default function Navbar() {
                   )}
                 </span>
               </Link>
-              {(adminHref || moderatorHref) && <PushNotificationsSetup />}
+              <PushNotificationsSetup />
               {adminHref && (
                 <Link href={adminHref} className="btn-ghost text-sm">
                   <LayoutDashboard className="h-4 w-4" /> ניהול

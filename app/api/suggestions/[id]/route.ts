@@ -5,6 +5,7 @@ import { createAdminSupabase } from "@/lib/supabase/admin";
 import { addPoints } from "@/lib/points";
 import { extractApkIcon } from "@/lib/extractIcon";
 import { logAudit } from "@/lib/audit";
+import { notifyForApprovedApp } from "@/lib/notifications";
 import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
 
 export const maxDuration = 60;
@@ -108,6 +109,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       await admin.from("app_suggestions").update({ created_app_id: newApp.id }).eq("id", suggestion.id);
       revalidatePath("/");
       revalidatePath(`/apps/${newApp.id}`);
+      try {
+        await notifyForApprovedApp(newApp.id);
+      } catch {
+        // התראות לא מכשילות את הפרסום
+      }
     }
   }
 

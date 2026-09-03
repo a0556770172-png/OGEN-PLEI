@@ -5,6 +5,7 @@ import { createAdminSupabase } from "@/lib/supabase/admin";
 import { addPoints } from "@/lib/points";
 import { LIMITS } from "@/lib/constants";
 import { effectiveMaxUploadMb, consumeOversizeGrant } from "@/lib/uploadQuota";
+import { notifyForApprovedApp } from "@/lib/notifications";
 import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
 
 export async function POST(request: Request) {
@@ -105,6 +106,11 @@ export async function POST(request: Request) {
     revalidatePath(`/apps/${app.id}`);
     revalidatePath("/users");
     revalidatePath(`/users/${user.id}`);
+    try {
+      await notifyForApprovedApp(app.id);
+    } catch {
+      // ignore
+    }
   }
 
   return NextResponse.json({ app });

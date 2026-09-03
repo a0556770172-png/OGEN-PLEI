@@ -43,7 +43,7 @@ export default async function HomePage() {
         totalUsers={usersStats.totalUsers}
         totalVisits={totalVisits}
       />
-      <AppGrid items={withIcons} categories={categories} updateAppIds={updateAppIds} viewerIsStaff={viewerIsStaff} />
+      <AppGrid items={withIcons} categories={categories} updateAppIds={updateAppIds} viewerIsStaff={viewerIsStaff} loggedIn={!!user} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Smartphone, Monitor, SlidersHorizontal, ArrowDownWideNarrow, ArrowDownAZ, HardDrive, Check } from "lucide-react";
+import { Search, Smartphone, Monitor, SlidersHorizontal, ArrowDownWideNarrow, ArrowDownAZ, HardDrive, Check, Bell, BellRing } from "lucide-react";
 import AppCard from "./AppCard";
 import AppModal from "./AppModal";
 import type { AppRow, Category } from "@/types/database";
@@ -37,12 +37,14 @@ export default function AppGrid({
   items,
   categories,
   updateAppIds = [],
-  viewerIsStaff = false
+  viewerIsStaff = false,
+  loggedIn = false
 }: {
   items: { app: AppRow; iconUrl: string | null }[];
   categories: Category[];
   updateAppIds?: string[];
   viewerIsStaff?: boolean;
+  loggedIn?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
@@ -52,6 +54,34 @@ export default function AppGrid({
   const [sortOpen, setSortOpen] = useState(false);
   // פיצ'ר 2a: האפליקציה שנבחרה לפתיחה בחלונית צפה (Modal).
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  // מנויי התראות לקטגוריות של המשתמש המחובר.
+  const [catSubs, setCatSubs] = useState<Set<string>>(new Set());
+  const [catBusy, setCatBusy] = useState(false);
+  useEffect(() => {
+    if (!loggedIn) return;
+    fetch("/api/notifications/subscriptions")
+      .then((r) => r.json())
+      .then((j) => setCatSubs(new Set((j.subscriptions ?? []).filter((s: any) => s.type === "category").map((s: any) => s.targetId))))
+      .catch(() => {});
+  }, [loggedIn]);
+
+  async function toggleCatSub(value: string) {
+    if (catBusy) return;
+    setCatBusy(true);
+    const on = !catSubs.has(value);
+    setCatSubs((prev) => {
+      const n = new Set(prev);
+      on ? n.add(value) : n.delete(value);
+      return n;
+    });
+    await fetch("/api/notifications/subscribe", {
+      method: on ? "POST" : "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "category", targetId: value })
+    }).catch(() => {});
+    setCatBusy(false);
+  }
 
   const updates = useMemo(() => new Set(updateAppIds), [updateAppIds]);
 
@@ -175,6 +205,23 @@ export default function AppGrid({
             </button>
           ))}
         </div>
+
+        {loggedIn && category !== "all" && (
+          <button
+            onClick={() => toggleCatSub(category)}
+            disabled={catBusy}
+            className={`inline-flex w-fit items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+              catSubs.has(category)
+                ? "border border-primary/50 bg-primary/15 text-primary-light"
+                : "border border-border bg-surface2 text-gray-400 hover:text-white"
+            }`}
+          >
+            {catSubs.has(category) ? <BellRing className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
+            {catSubs.has(category)
+              ? `מקבל התראות על חדש ב"${categories.find((c) => c.value === category)?.label ?? ""}"`
+              : `קבל התראה על אפליקציה חדשה ב"${categories.find((c) => c.value === category)?.label ?? ""}"`}
+          </button>
+        )}
       </div>
 
       {filtered.length === 0 ? (

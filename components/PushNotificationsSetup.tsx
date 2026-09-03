@@ -11,8 +11,9 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-// כפתור קטן שמאפשר להפעיל/לכבות התראות דפדפן אמיתיות (Web Push) - מוצג רק לצוות הפיקוח/מנהל
-// (הם מי שבאמת צריכים לדעת גם כשהם לא נמצאים באתר). לוחצים פעם אחת, מאשרים הרשאה בדפדפן, וזהו.
+// כפתור קטן שמאפשר להפעיל/לכבות התראות דפדפן אמיתיות (Web Push) - מוצג לכל משתמש מחובר,
+// כדי שגם מנויי התראות (מפתח פרסם, קטגוריה חדשה וכו') יגיעו כשלא נמצאים באתר. לוחצים פעם
+// אחת, מאשרים הרשאה בדפדפן, וזהו.
 export default function PushNotificationsSetup() {
   const [supported, setSupported] = useState(false);
   const [subscribed, setSubscribed] = useState(false);

@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
+import { notifyForApprovedApp } from "@/lib/notifications";
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const result = await requireProfile();
@@ -38,6 +39,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       updated_at: new Date().toISOString()
     })
     .eq("id", params.id);
+
+  // אפליקציה שאושרה (חדשה או גרסה חדשה) - שולחים התראות למנויים.
+  if (action === "approve" && app.status !== "approved") {
+    try {
+      await notifyForApprovedApp(params.id);
+    } catch {
+      // התראות לא אמורות להכשיל את האישור
+    }
+  }
 
   if (action === "approve" || action === "reject") {
     await logAudit({

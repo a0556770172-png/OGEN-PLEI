@@ -5,6 +5,7 @@ import { createAdminSupabase } from "@/lib/supabase/admin";
 import { deleteObject, BUCKETS } from "@/lib/r2";
 import { LIMITS } from "@/lib/constants";
 import { consumeOversizeGrant } from "@/lib/uploadQuota";
+import { notifyForApprovedApp } from "@/lib/notifications";
 
 // שלב 2: אחרי שהקובץ החדש עלה ל-R2 בהצלחה, מעדכנים את רשומת האפליקציה ומחזירים אותה לבדיקה מחדש -
 // זו גרסה חדשה, וכל גרסה חדשה (בדיוק כמו אפליקציה חדשה) עוברת בדיקה ידנית לפני שהיא מתפרסמת.
@@ -70,6 +71,16 @@ export async function POST(request: Request, { params }: { params: { id: string 
   // מנקים את קובץ הגרסה הקודמת מהאחסון כדי לא לצבור קבצים מיותרים (לא קריטי אם נכשל)
   if (previousFileKey && previousFileKey !== fileKey) {
     await deleteObject(BUCKETS.apps, previousFileKey).catch(() => {});
+  }
+
+  // מנהל בפועל שמעדכן גרסה - האפליקציה אושרה מיד, אז שולחים התראות למנויים כבר עכשיו.
+  // (גרסה של מפתח רגיל חוזרת לתור בדיקה ותשלח התראות באישור הצוות, ב-app/api/admin/review.)
+  if (isAdminUpload) {
+    try {
+      await notifyForApprovedApp(app.id);
+    } catch {
+      // ignore
+    }
   }
 
   revalidatePath("/");
