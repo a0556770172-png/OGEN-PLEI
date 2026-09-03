@@ -99,6 +99,11 @@ export default function Navbar() {
           <Link href="/site-rules" className="text-sm font-medium text-gray-300 transition hover:text-white">
             חוקי האתר
           </Link>
+          {profile && (
+            <Link href="/assistant" className="text-sm font-medium text-primary-light transition hover:text-white">
+              עוזר AI
+            </Link>
+          )}
           {!loading && profile && (
             <div className="flex items-center gap-3">
               <NotificationBell dashboardBase={adminHref ?? moderatorHref ?? null} />
@@ -170,6 +175,7 @@ export default function Navbar() {
             <Link href="/site-rules" onClick={() => setOpen(false)}>חוקי האתר</Link>
             {profile && (
               <>
+                <Link href="/assistant" onClick={() => setOpen(false)} className="text-primary-light">עוזר AI</Link>
                 <Link href="/profile" onClick={() => setOpen(false)}>הפרופיל שלי</Link>
                 {adminHref && <Link href={adminHref} onClick={() => setOpen(false)}>ניהול</Link>}
                 {moderatorHref && <Link href={moderatorHref} onClick={() => setOpen(false)}>פיקוח</Link>}

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2, Archive } from "lucide-react";
+import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2, Archive, Bot } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import UserManagementTable from "./UserManagementTable";
 import ProRequestsQueue from "./ProRequestsQueue";
@@ -18,9 +18,10 @@ import SizeOverridePanel from "./SizeOverridePanel";
 import BanAppealsPanel from "./BanAppealsPanel";
 import SiteRulesEditorPanel from "./SiteRulesEditorPanel";
 import ReferralsPanel from "./ReferralsPanel";
+import BotConfigPanel from "./BotConfigPanel";
 import type { AppRow, Profile, ProRequest, UserDeletionRequest, BanAppeal, ReferralEvent } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "archive" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteRules" | "settings";
+type TabKey = "notifications" | "review" | "allApps" | "archive" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "bot" | "siteRules" | "settings";
 
 export default function AdminDashboardClient({
   apps,
@@ -85,6 +86,7 @@ export default function AdminDashboardClient({
     { key: "sizeOverrides", label: "הרשאות גודל", icon: HardDrive },
     { key: "banAppeals", label: `ערעורי חסימה${pendingBanAppealsCount ? ` (${pendingBanAppealsCount})` : ""}`, icon: MessageSquareWarning },
     { key: "referrals", label: "הפניות", icon: Share2 },
+    { key: "bot", label: "צ'אט-בוט", icon: Bot },
     { key: "siteRules", label: "חוקי האתר", icon: ScrollText },
     { key: "settings", label: "הגדרות", icon: Settings }
   ] as const;
@@ -138,6 +140,7 @@ export default function AdminDashboardClient({
       {tab === "sizeOverrides" && <SizeOverridePanel profiles={profiles} isAdmin={true} />}
       {tab === "banAppeals" && <BanAppealsPanel appeals={banAppeals} />}
       {tab === "referrals" && <ReferralsPanel events={referralEvents} />}
+      {tab === "bot" && <BotConfigPanel />}
       {tab === "siteRules" && <SiteRulesEditorPanel isAdmin={true} />}
       {tab === "settings" && <SiteSettingsPanel requireEmailVerification={requireEmailVerification} />}
     </div>
