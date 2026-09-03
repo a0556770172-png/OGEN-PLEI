@@ -8,6 +8,7 @@ import { Rocket, MessageSquareText, History, Star } from "lucide-react";
 import AvatarUploadForm from "@/components/AvatarUploadForm";
 import DeveloperAppsPanel from "@/components/DeveloperAppsPanel";
 import ProfileTagsEditor from "@/components/ProfileTagsEditor";
+import MitmachimConnect from "@/components/MitmachimConnect";
 import ReferralCard from "@/components/ReferralCard";
 import { getReferralStats } from "@/lib/referral";
 import { getDeveloperContributionCount, isDmUnlocked, DM_UNLOCK_THRESHOLD } from "@/lib/dm-eligibility";
@@ -90,6 +91,8 @@ export default async function ProfilePage() {
           initialShowEmailTag={profile.show_email_tag}
         />
       </div>
+
+      <MitmachimConnect initialUrl={profile.mitmachim_url ?? null} />
 
       <div className="card mx-auto flex w-full max-w-xl flex-col gap-4 p-6">
         <div className="flex items-center gap-4">

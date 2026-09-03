@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { User as UserIcon, ShieldCheck, Crown, Package, Calendar, Clock, StickyNote, Mail } from "lucide-react";
+import { User as UserIcon, ShieldCheck, Crown, Package, Calendar, Clock, StickyNote, Mail, MessagesSquare } from "lucide-react";
 import { getPublicUserDetail } from "@/lib/users-data";
+import { parseMitmachimUrl } from "@/lib/mitmachim";
 import { getIconUrl } from "@/lib/apps-data";
 import { getCurrentProfile } from "@/lib/profile";
 import { isDmUnlocked } from "@/lib/dm-eligibility";
@@ -66,7 +67,7 @@ export default async function PublicUserPage({ params }: { params: { id: string 
           <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {timeAgoLabel(user.lastSeenAt)}</span>
         </div>
 
-        {(user.notes || user.displayEmail) && (
+        {(user.notes || user.displayEmail || user.mitmachimUrl) && (
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
             {user.notes && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-surface2 px-3 py-1.5 text-xs text-gray-300"><StickyNote className="h-3.5 w-3.5 text-primary-light" /> {user.notes}</span>
@@ -74,6 +75,19 @@ export default async function PublicUserPage({ params }: { params: { id: string 
             {user.displayEmail && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-surface2 px-3 py-1.5 text-xs text-gray-300"><Mail className="h-3.5 w-3.5 text-primary-light" /> {user.displayEmail}</span>
             )}
+            {user.mitmachimUrl && (() => {
+              const handle = parseMitmachimUrl(user.mitmachimUrl).handle;
+              return (
+                <a
+                  href={user.mitmachimUrl}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary-light transition hover:bg-primary/20"
+                >
+                  <MessagesSquare className="h-3.5 w-3.5" /> מתמחים טופ{handle ? `: @${handle}` : ""}
+                </a>
+              );
+            })()}
           </div>
         )}
 

@@ -24,6 +24,8 @@ export interface Profile {
   notes: string | null;
   display_email: string | null;
   show_email_tag: boolean;
+  // קישור לפרופיל של המשתמש בפורום "מתמחים טופ" (mitmachim.top) - מוצג בפרופיל הציבורי.
+  mitmachim_url: string | null;
   can_like_override: boolean;
   can_comment_override: boolean;
   size_override_mb: number | null;
