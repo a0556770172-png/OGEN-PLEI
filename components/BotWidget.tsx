@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bot, X, Plus, MessageCircle, ArrowLeft } from "lucide-react";
+import { Bot, X, Plus, MessageCircle, ArrowLeft, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import BotChat from "./BotChat";
 
@@ -17,6 +17,8 @@ export default function BotWidget() {
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [peek, setPeek] = useState<{ text: string; followUps: string[] } | null>(null);
+  const [pendingSend, setPendingSend] = useState<string | null>(null);
 
   const hasUnread = unread > 0;
 
@@ -31,7 +33,35 @@ export default function BotWidget() {
         setUnread(0);
         return;
       }
-      fetch("/api/bot/status").then((r) => r.json()).then((j) => active && setLive(!!j.live)).catch(() => {});
+      fetch("/api/bot/status")
+        .then((r) => r.json())
+        .then((j) => {
+          if (!active || !j.live) return;
+          setLive(true);
+          // הודעת פתיחה יזומה - קופצת כ-peek פעם ביום.
+          const today = new Date().toISOString().slice(0, 10);
+          let shownToday = false;
+          try {
+            shownToday = localStorage.getItem("ogen-bot-peek") === today;
+          } catch {
+            // ignore
+          }
+          if (!shownToday) {
+            fetch("/api/bot/opener")
+              .then((r) => r.json())
+              .then((op) => {
+                if (!active || !op.opener || !op.showAuto) return;
+                setPeek({ text: op.opener, followUps: op.followUps ?? [] });
+                try {
+                  localStorage.setItem("ogen-bot-peek", today);
+                } catch {
+                  // ignore
+                }
+              })
+              .catch(() => {});
+          }
+        })
+        .catch(() => {});
       fetch("/api/notifications/unread")
         .then((r) => r.json())
         .then((j) => active && setUnread(j?.totalUnread ?? 0))
@@ -49,14 +79,69 @@ export default function BotWidget() {
   // בעמוד העוזר המלא הכפתור מיותר.
   if (!loggedIn || pathname.startsWith("/assistant")) return null;
 
+  function openFromPeek(msg?: string) {
+    setPeek(null);
+    setConversationId(null);
+    if (msg) setPendingSend(msg);
+    setOpen(true);
+  }
+
   return (
     <>
+      <AnimatePresence>
+        {peek && !open && live && (
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 300, damping: 26 }}
+            className="fixed bottom-24 left-4 z-40 w-[calc(100vw-2rem)] max-w-[320px] overflow-hidden rounded-2xl border border-primary/40 bg-bg/95 shadow-2xl backdrop-blur-xl sm:left-6"
+            dir="rtl"
+          >
+            <div className="h-1 w-full bg-gradient-to-l from-primary via-accent to-primary" />
+            <div className="p-3.5">
+              <div className="flex items-start gap-2.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-[#fff]">
+                  <Bot className="h-4 w-4" />
+                </div>
+                <button onClick={() => openFromPeek()} className="flex-1 text-right text-sm leading-relaxed text-gray-200">
+                  {peek.text}
+                </button>
+                <button
+                  onClick={() => setPeek(null)}
+                  aria-label="סגירה"
+                  className="shrink-0 rounded-lg p-1 text-gray-500 transition hover:bg-white/10 hover:text-white"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              {peek.followUps.length > 0 && (
+                <div className="mt-2.5 flex flex-wrap gap-1.5 ps-10">
+                  {peek.followUps.slice(0, 3).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => openFromPeek(f)}
+                      className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs text-primary-light transition hover:bg-primary/20"
+                    >
+                      <Sparkles className="h-3 w-3" /> {f}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <motion.button
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.94 }}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          setPeek(null);
+          setOpen((o) => !o);
+        }}
         aria-label="עוזר עוגן פליי והודעות"
         title="עוזר עוגן פליי והודעות"
         className="fixed bottom-6 left-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary via-primary to-accent text-[#fff] shadow-glow transition-shadow duration-300 hover:shadow-[0_0_55px_rgb(var(--c-primary)/0.55)]"
@@ -137,6 +222,7 @@ export default function BotWidget() {
                   conversationId={conversationId}
                   onConversationChange={setConversationId}
                   onNavigate={() => setOpen(false)}
+                  autoSend={pendingSend}
                 />
                 <Link
                   href="/assistant"

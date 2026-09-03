@@ -41,16 +41,19 @@ export default function BotChat({
   conversationId = null,
   onConversationChange,
   onNavigate,
+  autoSend = null,
   readOnly = false
 }: {
   variant?: "widget" | "page";
   conversationId?: string | null;
   onConversationChange?: (id: string) => void;
   onNavigate?: () => void;
+  autoSend?: string | null;
   readOnly?: boolean;
 }) {
   const router = useRouter();
   const [messages, setMessages] = useState<Msg[]>([]);
+  const autoSentRef = useRef<string | null>(null);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
@@ -111,6 +114,15 @@ export default function BotChat({
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, sending]);
+
+  // שליחה אוטומטית של שאלה שהגיעה מה-peek של הווידג'ט (פעם אחת לכל ערך).
+  useEffect(() => {
+    if (autoSend && autoSend !== autoSentRef.current && !conversationId && messages.length === 0 && !sending) {
+      autoSentRef.current = autoSend;
+      send(autoSend);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSend, conversationId, messages.length, sending]);
 
   async function send(text: string) {
     const msg = text.trim();

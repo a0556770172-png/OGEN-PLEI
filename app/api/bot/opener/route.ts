@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { getBotConfig, botIsLive } from "@/lib/bot";
+import { getUserAppUpdates } from "@/lib/updates";
 import { REFERRAL } from "@/lib/constants";
+import { LIKE_UNLOCK_THRESHOLD, COMMENT_UNLOCK_THRESHOLD } from "@/lib/engagement-eligibility";
 
-// הודעת פתיחה יזומה קצרה (ללא קריאה ל-Gemini - היוריסטיקה זולה) שהחלונית מציגה
-// כשנפתחת שיחה חדשה. מטרה: לדחוף לפעולה. מכובה דרך bot_config.proactive_enabled.
+// הודעת פתיחה יזומה - נבנית בשרת ללא קריאה ל-Gemini (זול). מטרה: לגרום למשתמש לחזור
+// לפעולה בכל כניסה. showAuto=true אומר לצ'אט-ווידג'ט לקפוץ מעצמו (פעם ביום).
 export async function GET() {
   const result = await requireProfile();
   if ("error" in result) return NextResponse.json({ opener: null });
@@ -18,31 +20,86 @@ export async function GET() {
   const staff = isStaff(profile);
   const isDeveloper = profile.role === "developer" || profile.role === "admin";
   const points = profile.points ?? 0;
+  const name = profile.username;
 
-  const [{ count: referred }, { count: downloads }] = await Promise.all([
-    admin.from("referral_events").select("id", { count: "exact", head: true }).eq("referrer_id", user.id).eq("status", "rewarded"),
-    admin.from("download_events").select("id", { count: "exact", head: true }).eq("user_id", user.id)
-  ]);
+  // מתי הוצגה הודעת פתיחה לאחרונה (לחישוב "מה חדש מאז") - עמיד למצב שמיגרציה 0037 עוד לא רצה.
+  let lastOpenerAt: string | null = null;
+  try {
+    const { data } = await admin.from("profiles").select("bot_opener_at").eq("id", user.id).maybeSingle();
+    lastOpenerAt = (data as any)?.bot_opener_at ?? null;
+  } catch {
+    // ignore
+  }
+  const since = lastOpenerAt || new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
 
+  const [{ count: activeApps }, { count: approvedApps }, { count: referred }, { count: downloads }, { data: recentDl }] =
+    await Promise.all([
+      admin.from("apps").select("id", { count: "exact", head: true }).eq("developer_id", user.id).neq("status", "archived"),
+      admin.from("apps").select("id", { count: "exact", head: true }).eq("developer_id", user.id).eq("status", "approved"),
+      admin.from("referral_events").select("id", { count: "exact", head: true }).eq("referrer_id", user.id).eq("status", "rewarded"),
+      admin.from("download_events").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      admin.from("download_events").select("apps(category)").eq("user_id", user.id).limit(40)
+    ]);
+
+  const favCats = [...new Set((recentDl ?? []).map((d: any) => d.apps?.category).filter(Boolean))];
+  const uploaded = approvedApps ?? 0;
+
+  // כמה אפליקציות חדשות עלו מאז הביקור הקודם (בקטגוריות שהמשתמש אוהב, אם יש)
+  let newAppsCount = 0;
+  {
+    let q = admin.from("apps").select("id", { count: "exact", head: true }).eq("status", "approved").gt("created_at", since);
+    if (favCats.length) q = q.in("category", favCats);
+    const { count } = await q;
+    newAppsCount = count ?? 0;
+  }
+
+  // כמה אפליקציות שהמשתמש הוריד קיבלו עדכון
+  let updatesCount = 0;
+  try {
+    updatesCount = (await getUserAppUpdates(user.id)).size;
+  } catch {
+    // ignore
+  }
+
+  // ---- בחירת ההודעה: חגיגה > מה חדש > דחיפה לפי מצב ----
   let opener: string;
   let followUps: string[];
 
-  if (!staff && !profile.is_pro && points >= 240) {
-    opener = `היי ${profile.username} 👋 יש לך ${points} מוניטין — עוד קצת ואתה מקבל PRO אוטומטית (ב-300). רוצה שאראה לך איך הכי מהר להשלים?`;
-    followUps = ["איך משלימים ל-PRO?", "מה נותן PRO?", "כמה חסר לי בדיוק?"];
+  const dlToday = 0; // (מתן מוניטין מוגבל ל-10 הורדות ביום; נשמור פשוט)
+  const pointsToPro = profile.is_pro || staff ? 0 : Math.max(0, 300 - points);
+
+  if (updatesCount > 0) {
+    opener = `היי ${name} 👋 ${updatesCount === 1 ? "אפליקציה אחת שהורדת קיבלה" : `${updatesCount} אפליקציות שהורדת קיבלו`} גרסה חדשה. רוצה שאראה לך אילו?`;
+    followUps = ["מה קיבל עדכון?", "המלץ לי על עוד אפליקציות", pointsToPro ? `כמה חסר לי ל-PRO?` : "כמה מוניטין יש לי?"];
+  } else if (newAppsCount >= 3) {
+    opener = `היי ${name} 👋 מאז שהיית פה נוספו ${newAppsCount} אפליקציות חדשות${favCats.length ? " בקטגוריות שאתה אוהב" : ""}. רוצה לראות את הטובות?`;
+    followUps = ["מה חדש?", "המלץ לי על אפליקציות", "מה הכי מורד השבוע?"];
+  } else if (!staff && !profile.is_pro && pointsToPro > 0 && pointsToPro <= 60) {
+    opener = `היי ${name} 👋 יש לך ${points} מוניטין — עוד ${pointsToPro} ואתה מקבל PRO אוטומטית. הכי מהיר: ${Math.ceil(pointsToPro / REFERRAL.referrerPoints)} הזמנות חברים (${REFERRAL.referrerPoints} כל אחת) או אפליקציה שתאושר. רוצה שאעזור?`;
+    followUps = ["מה קישור ההפניה שלי?", "איך מעלים אפליקציה?", "מה נותן PRO?"];
   } else if (!isDeveloper) {
-    opener = `היי ${profile.username} 👋 רוצה לפרסם אפליקציות או תוכנות משלך? אפשר לשדרג לחשבון מפתח בכמה שניות — ואז כל אפליקציה שמאושרת שווה מוניטין.`;
-    followUps = ["איך נרשמים כמפתח?", "מה ההבדל בין מפתח למשתמש רגיל?", "מצא לי אפליקציה"];
+    opener = `היי ${name} 👋 יש לך ${points} מוניטין. רוצה להתחיל לצבור מהר? הרשמה כמפתח (30 שניות) פותחת אפשרות להעלות אפליקציות — כל אחת שמאושרת שווה 5 מוניטין, ועוד 2 על כל הורדה.`;
+    followUps = ["איך נרשמים כמפתח?", "מה ההבדל בין מפתח למשתמש?", "מצא לי אפליקציה"];
   } else if ((referred ?? 0) === 0) {
-    opener = `היי ${profile.username} 👋 ידעת שיש לך קישור הזמנה אישי? כל חבר שנרשם דרכו שווה לך ${REFERRAL.referrerPoints} מוניטין + קרדיט העלאה, והוא מקבל ${REFERRAL.joinerPoints}.`;
-    followUps = ["מה קישור ההפניה שלי?", "איך זה עובד?", "כמה מוניטין צברתי?"];
+    opener = `היי ${name} 👋 הדרך הכי מהירה למוניטין שאתה עוד לא מנצל: קישור ההפניה שלך. כל חבר שנרשם דרכו = ${REFERRAL.referrerPoints} מוניטין + קרדיט העלאה, והוא מקבל ${REFERRAL.joinerPoints}. רוצה שאכין לך הודעה מוכנה לשיתוף?`;
+    followUps = ["הכן לי הודעת שיתוף", "מה קישור ההפניה שלי?", "כמה מוניטין צברתי?"];
+  } else if (isDeveloper && !profile.is_pro && uploaded < COMMENT_UNLOCK_THRESHOLD) {
+    opener = `היי ${name} 👋 העלית ${uploaded} אפליקציות שאושרו. עוד ${COMMENT_UNLOCK_THRESHOLD - uploaded} ותוכל לכתוב תגובות, ובהמשך (${LIKE_UNLOCK_THRESHOLD}) גם לייקים. יש בקשות קהילה פתוחות שאתה יכול למלא — רוצה לראות?`;
+    followUps = ["הראה לי בקשות קהילה", "מה כדאי לי להעלות?", "עזור לי לנסח תיאור לאפליקציה"];
   } else if ((downloads ?? 0) > 0) {
-    opener = `היי ${profile.username} 👋 רוצה שאמצא לך אפליקציות חדשות בקטגוריות שאתה אוהב, או שאבדוק אם משהו שהורדת קיבל עדכון?`;
+    opener = `היי ${name} 👋 רוצה שאמצא לך אפליקציות חדשות בקטגוריות שאתה אוהב, או שאבדוק אם משהו שהורדת קיבל עדכון?`;
     followUps = ["המלץ לי על אפליקציות", "מה קיבל עדכון?", "מצא לי אפליקציה אופליין"];
   } else {
-    opener = `היי ${profile.username} 👋 אני יכול לעזור למצוא אפליקציה לפי דרישות, להסביר על מוניטין ו-PRO, או להראות מה חדש במאגר. מה בא לך?`;
+    opener = `היי ${name} 👋 אני יכול למצוא לך אפליקציה לפי דרישות, להסביר איך צוברים מוניטין, או להראות מה חדש. מה בא לך?`;
     followUps = ["מצא לי אפליקציה", "איך צוברים מוניטין?", "מה הכי מורד באתר?"];
   }
 
-  return NextResponse.json({ opener, followUps });
+  // מעדכנים את חותמת הזמן (best-effort) כדי ש"מה חדש מאז" יעבוד בפעם הבאה.
+  try {
+    await admin.from("profiles").update({ bot_opener_at: new Date().toISOString() }).eq("id", user.id);
+  } catch {
+    // ignore
+  }
+
+  return NextResponse.json({ opener, followUps, showAuto: true });
 }

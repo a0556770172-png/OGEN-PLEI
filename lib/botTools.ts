@@ -158,6 +158,26 @@ export function toolDeclarations(ctx: ToolContext) {
       parameters: { type: "object", properties: {} }
     },
     {
+      name: "draft_referral_message",
+      description: "מנסח הודעת שיתוף מוכנה (עם קישור ההפניה) שהמשתמש יכול לשלוח לחברים בוואטסאפ.",
+      parameters: { type: "object", properties: {} }
+    },
+    {
+      name: "what_can_i_earn_today",
+      description: "מחזיר רשימה קונקרטית של מה שהמשתמש יכול להרוויח היום (מוניטין מהורדות שנותרו, מהפניות, מהעלאות) - עם המספרים המדויקים. השתמש בזה כדי לתמרץ אותו.",
+      parameters: { type: "object", properties: {} }
+    },
+    {
+      name: "get_leaderboard",
+      description: "טבלת המובילים במוניטין + המיקום של המשתמש. משתמשים בזה לשאלות 'איפה אני בטבלה' או כדי לעורר תחרותיות.",
+      parameters: { type: "object", properties: {} }
+    },
+    {
+      name: "get_points_history",
+      description: "מאיפה המשתמש קיבל מוניטין לאחרונה (העלאות, הורדות, הפניות...).",
+      parameters: { type: "object", properties: {} }
+    },
+    {
       name: "check_duplicate",
       description: "בודק אם כבר קיימת במאגר אפליקציה בשם דומה - למפתח שרוצה להעלות, כדי למנוע כפילות.",
       parameters: { type: "object", properties: { app_name: { type: "string" } }, required: ["app_name"] }
@@ -442,6 +462,91 @@ export async function executeTool(name: string, rawArgs: any, ctx: ToolContext):
           joiner_bonus: REFERRAL.joinerPoints
         },
         summary: "get_referral_link"
+      };
+    }
+
+    case "draft_referral_message": {
+      const link = `/?ref=${encodeURIComponent(ctx.profile.username)}`;
+      const msg = `היי! מצאתי אתר מעולה לאפליקציות ותוכנות מסוננות ומאושרות - "עוגן פליי". כל אפליקציה עוברת בדיקה ידנית לפני פרסום. הרשמה דרך הקישור שלי: ${link}`;
+      return {
+        result: {
+          message: msg,
+          note: "הצג את ההודעה למשתמש. בעמוד הפרופיל יש כפתור שיתוף וואטסאפ מוכן עם הקישור המלא."
+        },
+        clientAction: { kind: "navigate", url: "/profile", label: "לכרטיס ההפניה (העתקה ושיתוף)", auto: false },
+        summary: "draft_referral_message"
+      };
+    }
+
+    case "what_can_i_earn_today": {
+      const p = ctx.profile;
+      const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+      const [{ count: dlToday }, { count: refToday }, { count: pending }] = await Promise.all([
+        admin.from("download_events").select("id", { count: "exact", head: true }).eq("user_id", ctx.userId).gte("created_at", since),
+        admin.from("referral_events").select("id", { count: "exact", head: true }).eq("referrer_id", ctx.userId).eq("status", "rewarded").gte("created_at", since),
+        admin.from("apps").select("id", { count: "exact", head: true }).eq("developer_id", ctx.userId).eq("status", "pending")
+      ]);
+      const opportunities: string[] = [];
+      const dlLeft = Math.max(0, 10 - (dlToday ?? 0));
+      // מוניטין להורדה הולך למפתח של האפליקציה, לא למוריד - אז זה רלוונטי רק אם למשתמש יש אפליקציות
+      if (ctx.isDeveloper) opportunities.push(`כל הורדה של אפליקציה שלך ע"י משתמש אחר = +2 מוניטין (עד 10 ליום).`);
+      const refLeft = Math.max(0, REFERRAL.dailyRewardCap - (refToday ?? 0));
+      if (refLeft > 0) opportunities.push(`עוד ${refLeft} הזמנות חברים היום = עד +${refLeft * REFERRAL.referrerPoints} מוניטין (${REFERRAL.referrerPoints} כל אחת).`);
+      if (ctx.isDeveloper) opportunities.push(`כל אפליקציה/תוכנה חדשה שתעלה ותאושר = +5 מוניטין.`);
+      opportunities.push(`כל הצעת אפליקציה ציבורית שתאושר = +5 מוניטין.`);
+      if ((pending ?? 0) > 0) opportunities.push(`יש לך ${pending} אפליקציות בתור בדיקה - כל אחת שתאושר = +5 מוניטין.`);
+      return {
+        result: {
+          current_points: p.points,
+          points_to_pro: p.is_pro ? 0 : Math.max(0, 300 - (p.points ?? 0)),
+          referrals_left_today: refLeft,
+          opportunities
+        },
+        summary: "what_can_i_earn_today"
+      };
+    }
+
+    case "get_leaderboard": {
+      const { data: top } = await admin
+        .from("profiles")
+        .select("username, points, is_pro")
+        .order("points", { ascending: false })
+        .limit(10);
+      const { count: ahead } = await admin
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .gt("points", ctx.profile.points ?? 0);
+      return {
+        result: {
+          top: (top ?? []).map((t: any, i: number) => ({ rank: i + 1, username: t.username, points: t.points, pro: t.is_pro })),
+          my_rank: (ahead ?? 0) + 1,
+          my_points: ctx.profile.points
+        },
+        summary: "get_leaderboard"
+      };
+    }
+
+    case "get_points_history": {
+      const { data } = await admin
+        .from("points_log")
+        .select("delta, reason, created_at")
+        .eq("profile_id", ctx.userId)
+        .order("created_at", { ascending: false })
+        .limit(15);
+      const reasonHe: Record<string, string> = {
+        upload: "העלאת אפליקציה שאושרה",
+        download: "הורדה של אפליקציה שלך",
+        referral: "הזמנת חבר",
+        referral_join: "בונוס הצטרפות",
+        referral_revoked: "ביטול תגמול הפניה",
+        suggestion: "הצעת אפליקציה שאושרה"
+      };
+      return {
+        result: {
+          total: ctx.profile.points,
+          recent: (data ?? []).map((r: any) => ({ change: r.delta, reason: reasonHe[r.reason] ?? r.reason, at: r.created_at }))
+        },
+        summary: `get_points_history → ${(data ?? []).length}`
       };
     }
 
