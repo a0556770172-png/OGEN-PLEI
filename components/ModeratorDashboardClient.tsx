@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning, ScrollText } from "lucide-react";
+import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning, ScrollText, History } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import TicketsPanel from "./TicketsPanel";
 import SuggestionsQueue from "./SuggestionsQueue";
@@ -13,9 +13,10 @@ import AppReportsQueue from "./AppReportsQueue";
 import SizeOverridePanel from "./SizeOverridePanel";
 import BanAppealsPanel from "./BanAppealsPanel";
 import SiteRulesEditorPanel from "./SiteRulesEditorPanel";
+import AuditLogPanel from "./AuditLogPanel";
 import type { AppRow, Profile, BanAppeal } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "tickets" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals" | "siteRules";
+type TabKey = "notifications" | "review" | "allApps" | "tickets" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals" | "teamTracking" | "siteRules";
 
 export default function ModeratorDashboardClient({
   apps,
@@ -58,6 +59,7 @@ export default function ModeratorDashboardClient({
     { key: "reports", label: "דיווחים על אפליקציות", icon: Flag },
     { key: "sizeOverrides", label: "הרשאות גודל", icon: HardDrive },
     { key: "banAppeals", label: `ערעורי חסימה${pendingBanAppealsCount ? ` (${pendingBanAppealsCount})` : ""}`, icon: MessageSquareWarning },
+    { key: "teamTracking", label: "מעקב צוותים", icon: History },
     { key: "siteRules", label: "חוקי האתר", icon: ScrollText }
   ] as const;
 
@@ -102,6 +104,9 @@ export default function ModeratorDashboardClient({
       {tab === "reports" && <AppReportsQueue />}
       {tab === "sizeOverrides" && <SizeOverridePanel profiles={profiles} isAdmin={false} />}
       {tab === "banAppeals" && <BanAppealsPanel appeals={banAppeals} />}
+      {/* "מעקב צוותים" - אותו לוג בדיוק כמו "מעקב פיקוח" של הניהול, אבל ללא כפתור ביטול
+          פעולה: כל חבר צוות רואה מה כל אחד עשה, ורק מנהל בפועל יכול לבטל פעולות. */}
+      {tab === "teamTracking" && <AuditLogPanel readOnly={true} />}
       {tab === "siteRules" && <SiteRulesEditorPanel isAdmin={false} />}
     </div>
   );

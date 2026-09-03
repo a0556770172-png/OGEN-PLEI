@@ -17,7 +17,18 @@ const ACTION_LABELS: Record<string, string> = {
   reject_deletion_request: "דחיית בקשת מחיקת משתמש",
   approve_app_report: "אישור דיווח על אפליקציה",
   reject_app_report: "דחיית דיווח על אפליקציה",
-  edit_user_profile: "עריכת פרטי משתמש"
+  edit_user_profile: "עריכת פרטי משתמש",
+  pin_app: "נעיצת אפליקציה לראש העמוד",
+  unpin_app: "ביטול נעיצת אפליקציה",
+  grant_size_override: "מתן הרשאת גודל חריגה",
+  revoke_size_override: "ביטול הרשאת גודל חריגה",
+  grant_unlimited_public_upload: "מתן הרשאת העלאה ציבורית ללא הגבלה",
+  revoke_unlimited_public_upload: "ביטול הרשאת העלאה ציבורית ללא הגבלה",
+  reply_ban_appeal: "מענה לערעור חסימה",
+  release_referral: "שחרור ידני של הפניה",
+  revoke_referral: "ביטול תגמול הפניה",
+  edit_site_rules: "עריכת חוקי האתר",
+  publish_site_rules_update: "פרסום עדכון לחוקי האתר"
 };
 
 interface AuditItem {
@@ -34,10 +45,10 @@ interface AuditItem {
   actor?: { username: string };
 }
 
-// טאב "מעקב פיקוח" למנהל בפועל - כל פעולה שצוות הפיקוח (או המנהל עצמו) ביצע, מי עשה אותה,
-// על מה/מי, ומתי, כולל אפשרות לבטל פעולות נתמכות (חסימה, אישור/דחייה של אפליקציה, שינוי
-// קטגוריה, אישור/דחייה של PRO).
-export default function AuditLogPanel() {
+// לוג הביקורת: כל פעולה שצוות הפיקוח (או המנהל) ביצע - מי עשה אותה, על מה/מי, ומתי.
+//   • טאב "מעקב פיקוח" בפאנל הניהול - עם כפתור "ביטול פעולה" לפעולות נתמכות (מנהל בפועל).
+//   • טאב "מעקב צוותים" בפאנל הפיקוח - readOnly=true, אותו תוכן בדיוק ללא אפשרות ביטול.
+export default function AuditLogPanel({ readOnly = false }: { readOnly?: boolean }) {
   const [items, setItems] = useState<AuditItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [undoingId, setUndoingId] = useState<string | null>(null);
@@ -102,7 +113,7 @@ export default function AuditLogPanel() {
               {item.undone_at && <span className="text-red-400"> · בוטלה</span>}
             </p>
           </div>
-          {item.undoable && !item.undone_at && (
+          {!readOnly && item.undoable && !item.undone_at && (
             <button
               onClick={() => undo(item.id)}
               disabled={undoingId === item.id}
