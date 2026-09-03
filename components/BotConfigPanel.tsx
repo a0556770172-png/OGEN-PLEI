@@ -41,7 +41,16 @@ export default function BotConfigPanel() {
         setTestResult({ ok: true, text: `חיבור תקין! מודל בשימוש: ${j.modelUsed}. תשובת בדיקה: "${j.reply}"`, models: j.availableModels ?? [] });
         if (cfg && j.modelUsed) setCfg({ ...cfg, model: j.modelUsed });
       } else {
-        setTestResult({ ok: false, text: j.error || "הבדיקה נכשלה", models: j.availableModels ?? [] });
+        const raw = String(j.error || "הבדיקה נכשלה");
+        let hint = raw;
+        if (/suspended/i.test(raw)) {
+          hint = "מפתח ה-API הושעה ע\"י Google. צור מפתח חדש ב-aistudio.google.com/app/apikey (עדיף בפרויקט חדש) והכנס אותו כאן. " + raw;
+        } else if (/API_KEY_INVALID|API key not valid/i.test(raw)) {
+          hint = "מפתח ה-API לא תקין. ודא שהעתקת אותו במלואו מ-aistudio.google.com/app/apikey. " + raw;
+        } else if (/403|PERMISSION_DENIED/i.test(raw)) {
+          hint = "אין הרשאה - ייתכן ש-Generative Language API לא מופעל בפרויקט, או שהמפתח מוגבל. " + raw;
+        }
+        setTestResult({ ok: false, text: hint, models: j.availableModels ?? [] });
       }
     } catch {
       setTestResult({ ok: false, text: "שגיאת רשת בבדיקה", models: [] });
