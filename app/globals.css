@@ -20,7 +20,18 @@
   --c-gray-400: 156 163 175;
   --c-gray-500: 107 114 128;
   --c-gray-600: 75 85 99;
+  /* צבע הנושא (primary) - ניתן להתאמה אישית ע"י המשתמש (פיצ'ר 2c). ברירת המחדל: הסגול המקורי. */
+  --c-primary: 124 92 255;
+  --c-primary-light: 167 139 255;
+  --c-primary-dark: 91 61 240;
 }
+
+/* ערכות צבע חלופיות שהמשתמש יכול לבחור (data-accent על ה-html, נשמר ב-localStorage). */
+html[data-accent="blue"]   { --c-primary: 56 132 255;  --c-primary-light: 125 178 255; --c-primary-dark: 37 99 235; }
+html[data-accent="teal"]   { --c-primary: 20 184 166;  --c-primary-light: 45 212 191;  --c-primary-dark: 13 148 136; }
+html[data-accent="emerald"]{ --c-primary: 16 185 129;  --c-primary-light: 52 211 153;  --c-primary-dark: 5 150 105; }
+html[data-accent="rose"]   { --c-primary: 244 63 94;   --c-primary-light: 251 113 133; --c-primary-dark: 225 29 72; }
+html[data-accent="amber"]  { --c-primary: 245 158 11;  --c-primary-light: 251 191 36;  --c-primary-dark: 217 119 6; }
 
 html.light {
   --c-bg: 246 247 251;
@@ -46,7 +57,7 @@ html, body {
 }
 
 ::selection {
-  background: rgba(124, 92, 255, 0.4);
+  background: rgb(var(--c-primary) / 0.4);
 }
 
 .glass {
@@ -56,14 +67,14 @@ html, body {
 }
 
 .text-gradient {
-  background: linear-gradient(90deg, #a78bff, #7c5cff 40%, #00d9c0);
+  background: linear-gradient(90deg, rgb(var(--c-primary-light)), rgb(var(--c-primary)) 40%, #00d9c0);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 .btn-primary {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-bold text-[#fff] shadow-glow transition-all duration-300 hover:bg-primary-light hover:shadow-[0_0_55px_rgba(124,92,255,0.45)] active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-bold text-[#fff] shadow-glow transition-all duration-300 hover:bg-primary-light hover:shadow-[0_0_55px_rgb(var(--c-primary)/0.45)] active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
 }
 
 .btn-ghost {
@@ -86,7 +97,7 @@ input, textarea, select {
 }
 
 .shimmer-border {
-  background: linear-gradient(90deg, transparent, rgba(124,92,255,0.5), transparent);
+  background: linear-gradient(90deg, transparent, rgb(var(--c-primary) / 0.5), transparent);
   background-size: 200% 100%;
   animation: shimmer 2.5s linear infinite;
 }
@@ -95,5 +106,5 @@ input, textarea, select {
 .rich-content p { margin: 0.5em 0; line-height: 1.8; }
 .rich-content ul { list-style: disc; padding-inline-start: 1.4em; }
 .rich-content ol { list-style: decimal; padding-inline-start: 1.4em; }
-.rich-content a { color: #a78bff; text-decoration: underline; }
+.rich-content a { color: rgb(var(--c-primary-light)); text-decoration: underline; }
 .rich-content b, .rich-content strong { font-weight: 700; }

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Check, X, Archive, Trash2, Loader2, User, HardDrive, ShieldQuestion, CheckCircle2, XCircle, ImageOff, MessageSquarePlus, FolderInput, Search } from "lucide-react";
+import { Download, Check, X, Archive, Trash2, Loader2, User, HardDrive, ShieldQuestion, CheckCircle2, XCircle, ImageOff, MessageSquarePlus, FolderInput, Search, Pin, PinOff } from "lucide-react";
 import type { AppRow, Category } from "@/types/database";
 import StatusBadge from "./StatusBadge";
 import { formatFileSize } from "@/lib/format";
@@ -11,11 +11,13 @@ type VerifyResult = { status: string; visibleToPublic: boolean; updatedAt: strin
 export default function ReviewQueue({
   apps,
   canDelete,
-  emptyMessage
+  emptyMessage,
+  isAdmin = false
 }: {
   apps: AppRow[];
   canDelete: boolean;
   emptyMessage?: string;
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -90,6 +92,19 @@ export default function ReviewQueue({
     setBusyId(null);
     if (res.ok) router.refresh();
     else alert("שגיאה במחיקה");
+  }
+
+  // נעיצה/קידום (פיצ'ר 6) - מנהל בפועל בלבד. נעוצה מוצגת בראש העמוד הראשי.
+  async function togglePin(appId: string, pinned: boolean) {
+    setBusyId(appId);
+    const res = await fetch(`/api/apps/${appId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pinned })
+    });
+    setBusyId(null);
+    if (res.ok) router.refresh();
+    else alert("שגיאה בעדכון הנעיצה");
   }
 
   async function sendNote(appId: string) {
@@ -196,6 +211,18 @@ export default function ReviewQueue({
               {app.status !== "archived" && (
                 <button onClick={() => act(app.id, "archive")} disabled={busyId === app.id} className="inline-flex items-center gap-1 rounded-xl bg-gray-500/15 px-3 py-2 text-xs font-bold text-gray-400 transition hover:bg-gray-500/25">
                   <Archive className="h-3.5 w-3.5" /> העברה לבנתיים
+                </button>
+              )}
+              {/* נעיצה/קידום - מנהל בפועל בלבד, ורק לאפליקציה מאושרת (שמוצגת בעמוד הראשי). */}
+              {isAdmin && app.status === "approved" && (
+                <button
+                  onClick={() => togglePin(app.id, !app.pinned)}
+                  disabled={busyId === app.id}
+                  className={`inline-flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-bold transition ${
+                    app.pinned ? "bg-gold/20 text-gold hover:bg-gold/30" : "bg-surface2 text-gray-400 hover:text-white"
+                  }`}
+                >
+                  {app.pinned ? <><PinOff className="h-3.5 w-3.5" /> ביטול נעיצה</> : <><Pin className="h-3.5 w-3.5" /> נעיצה בראש</>}
                 </button>
               )}
               {canDelete && (

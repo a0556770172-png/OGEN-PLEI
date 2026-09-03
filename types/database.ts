@@ -32,7 +32,7 @@ export interface Profile {
   // מתי המשתמש קרא ואישר את "חוקי האתר" (שער חובה חד-פעמי לכל חשבון - ראו
   // components/SiteRulesGate.tsx). null = עדיין לא אישר, ייחסם עד שיאשר.
   site_rules_accepted_at: string | null;
-  // מערכת הפניות (Referral) - ראו lib/referral.ts, supabase/migrations/0033_referrals.sql.
+  // מערכת הפניות (Referral) - ראו lib/referral.ts, supabase/migrations/0034_referrals.sql.
   // מי הזמין את המשתמש הזה (נקבע פעם אחת בהרשמה ע"י הטריגר handle_new_user, לפי ?ref=<username>).
   referred_by: string | null;
   // מתי המפנה קיבל (או נשלל ממנו) את התגמול עבור המשתמש הזה - null = טרם עובד.
@@ -96,9 +96,35 @@ export interface AppRow {
   // האם האפליקציה/התוכנה פועלת אופליין, חייבת חיבור אינטרנט, או שהמעלה לא יודע - נשאל
   // באותה חלונית אישור שבה נשאלת שאלת "נטפרי" בזמן ההעלאה.
   offline_support: "offline" | "online" | "unknown";
+  // נעיצה/קידום ע"י מנהל - אפליקציות נעוצות מוצגות תמיד בראש העמוד הראשי (ראו lib/apps-data.ts).
+  pinned: boolean;
+  pinned_at: string | null;
   created_at: string;
   updated_at: string;
   developer?: Profile;
+}
+
+export type CommunityRequestStatus = "open" | "claimed" | "fulfilled" | "closed";
+
+// פיצ'ר "בקשות קהילתיות": משתמש מדביק קישור לבקשה מפורום חיצוני, ומתנדב מוריד מהמקור
+// ומעלה עבורו את הקובץ. ראו app/community וכן app/api/community-requests.
+export interface CommunityRequest {
+  id: string;
+  requested_by: string;
+  title: string;
+  source_link: string | null;
+  note: string | null;
+  category: string | null;
+  status: CommunityRequestStatus;
+  claimed_by: string | null;
+  claimed_at: string | null;
+  fulfilled_by: string | null;
+  fulfilled_app_id: string | null;
+  fulfilled_at: string | null;
+  created_at: string;
+  updated_at: string;
+  requester?: Pick<Profile, "id" | "username"> | null;
+  claimer?: Pick<Profile, "id" | "username"> | null;
 }
 
 export interface ProRequest {

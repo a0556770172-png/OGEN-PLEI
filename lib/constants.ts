@@ -14,7 +14,7 @@ export const MAX_SUGGESTION_MB = 200;
 // הקטגוריות עברו לטבלת categories ב-DB (ניתנות לניהול מהאדמין) - ראו lib/categories.ts
 // ואת ה-API הציבורי ב-app/api/categories/route.ts. הרשימה הקבועה הוסרה מכאן בכוונה.
 
-// מערכת הפניות (Referral) - ראו lib/referral.ts, supabase/migrations/0033_referrals.sql.
+// מערכת הפניות (Referral) - ראו lib/referral.ts, supabase/migrations/0034_referrals.sql.
 // כל משתמש משתף קישור ?ref=<שם המשתמש שלו>. חבר חדש שנרשם דרכו ומאמת מייל מזכה את המפנה.
 export const REFERRAL = {
   // מוניטין למפנה על כל חבר חדש שנרשם דרך הקישור שלו ואימת מייל.

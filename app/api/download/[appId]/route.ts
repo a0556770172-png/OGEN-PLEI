@@ -58,7 +58,8 @@ export async function POST(request: Request, { params }: { params: { appId: stri
   const url = await createDownloadUrl(BUCKETS.apps, app.file_key, app.file_name);
 
   await admin.from("apps").update({ downloads_count: app.downloads_count + 1 }).eq("id", app.id);
-  await admin.from("download_events").insert({ user_id: user.id, app_id: app.id });
+  // שומרים גם את הגרסה שהורדה - לזיהוי עתידי של עדכון זמין (פיצ'ר 5, ראו lib/updates.ts).
+  await admin.from("download_events").insert({ user_id: user.id, app_id: app.id, downloaded_version: app.version });
 
   if (app.status === "approved" && !isOwnerOrStaff && pointsEligible) {
     const POINTS_PER_DOWNLOAD = 2;
