@@ -132,7 +132,12 @@ export default function BotWidget() {
 
             {live ? (
               <>
-                <BotChat variant="widget" conversationId={conversationId} onConversationChange={setConversationId} />
+                <BotChat
+                  variant="widget"
+                  conversationId={conversationId}
+                  onConversationChange={setConversationId}
+                  onNavigate={() => setOpen(false)}
+                />
                 <Link
                   href="/assistant"
                   onClick={() => setOpen(false)}

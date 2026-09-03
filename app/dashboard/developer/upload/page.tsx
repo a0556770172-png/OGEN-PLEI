@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { UploadCloud, Loader2, AlertCircle, CheckCircle2, FileArchive, Image as ImageIcon, Sparkles, ShieldAlert } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
@@ -11,8 +11,20 @@ import type { Category } from "@/types/database";
 // מונע רינדור סטטי בזמן ה-build (ראו הסבר מפורט ב-app/login/page.tsx)
 export const dynamic = "force-dynamic";
 
+// עוטפים ב-Suspense כי useSearchParams (מילוי מראש מהעוזר החכם - ?name=&cat=&...) דורש זאת.
 export default function UploadAppPage() {
+  return (
+    <Suspense fallback={null}>
+      <UploadAppInner />
+    </Suspense>
+  );
+}
+
+function UploadAppInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // מילוי מראש מהעוזר החכם (start_upload) - הבוט מעביר לכאן עם השדות שסוכמו בשיחה.
+  const [prefilledByBot, setPrefilledByBot] = useState(false);
   const [name, setName] = useState("");
   const [shortDescription, setShortDescription] = useState("");
   const [descriptionHtml, setDescriptionHtml] = useState("");
@@ -45,12 +57,30 @@ export default function UploadAppPage() {
   const [savingIcon, setSavingIcon] = useState(false);
 
   useEffect(() => {
+    const pName = searchParams.get("name");
+    const pShort = searchParams.get("short");
+    const pDesc = searchParams.get("desc");
+    const pMin = searchParams.get("minandroid");
+    const pOffline = searchParams.get("offline");
+    let touched = false;
+    if (pName) { setName(pName.slice(0, 120)); touched = true; }
+    if (pShort) { setShortDescription(pShort.slice(0, 140)); touched = true; }
+    if (pDesc) { setDescriptionHtml(`<p>${pDesc.replace(/</g, "&lt;").slice(0, 4000)}</p>`); touched = true; }
+    if (pMin) { setMinAndroidVersion(pMin); touched = true; }
+    if (pOffline === "offline" || pOffline === "online" || pOffline === "unknown") { setOfflineSupport(pOffline); touched = true; }
+    if (touched) setPrefilledByBot(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     fetch("/api/categories")
       .then((r) => r.json())
       .then((json) => {
         const list: Category[] = json.categories ?? [];
         setCategories(list);
-        if (list.length && !list.some((c) => c.value === category)) setCategory(list[0].value);
+        const pCat = searchParams.get("cat");
+        if (pCat && list.some((c) => c.value === pCat)) setCategory(pCat);
+        else if (list.length && !list.some((c) => c.value === category)) setCategory(list[0].value);
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -217,6 +247,11 @@ export default function UploadAppPage() {
           </p>
         </div>
 
+        {prefilledByBot && (
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary-light">
+            <Sparkles className="h-4 w-4 shrink-0" /> חלק מהשדות מולאו מראש מהשיחה עם העוזר החכם — בדקו, תקנו אם צריך, והוסיפו את הקובץ.
+          </div>
+        )}
         {error && (
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
             <AlertCircle className="h-4 w-4 shrink-0" /> {error}

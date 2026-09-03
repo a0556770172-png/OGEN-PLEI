@@ -126,7 +126,12 @@ export async function POST(request: Request) {
   }
 
   // --- שמירת ההודעות ---
-  const meta = { appCards: agent.appCards, followUps: agent.followUps, proposedAction: agent.proposedAction };
+  const meta = {
+    appCards: agent.appCards,
+    followUps: agent.followUps,
+    proposedAction: agent.proposedAction,
+    clientAction: agent.clientAction
+  };
   await admin.from("bot_messages").insert({ conversation_id: convId, role: "user", content: text });
   let botMsg: { id: string } | null = null;
   {
@@ -155,6 +160,7 @@ export async function POST(request: Request) {
     reply: agent.text,
     appCards: agent.appCards,
     followUps: agent.followUps,
-    proposedAction: agent.proposedAction
+    proposedAction: agent.proposedAction,
+    clientAction: agent.clientAction
   });
 }

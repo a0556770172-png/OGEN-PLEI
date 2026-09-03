@@ -30,6 +30,30 @@ export interface ProposedAction {
   summary: string;
 }
 
+// פעולת לקוח - הצ'אט מבצע אותה בדפדפן (ניווט בין דפים / הפעלת הורדה).
+// auto=true פירושו שהמשתמש ביקש במפורש "פשוט תעשה" והצ'אט מבצע אחרי ספירה קצרה עם ביטול.
+export interface ClientAction {
+  kind: "navigate" | "download";
+  url?: string; // ל-navigate
+  appId?: string; // ל-download
+  label: string;
+  auto?: boolean;
+}
+
+// נתיבים פנימיים מותרים לניווט אוטומטי של הבוט.
+const ALLOWED_NAV = [
+  "/",
+  "/community",
+  "/about",
+  "/site-rules",
+  "/support",
+  "/suggest-app",
+  "/profile",
+  "/profile/become-developer",
+  "/dashboard/developer/upload",
+  "/users"
+];
+
 export interface ToolContext {
   userId: string;
   profile: Profile;
@@ -42,6 +66,7 @@ export interface ToolOutcome {
   result: any; // נשלח חזרה ל-Gemini (קומפקטי)
   appCards?: BotAppCard[];
   proposedAction?: ProposedAction;
+  clientAction?: ClientAction;
   summary: string; // ללוג
 }
 
@@ -146,6 +171,43 @@ export function toolDeclarations(ctx: ToolContext) {
       name: "get_site_stats",
       description: "סטטיסטיקות ציבוריות של האתר: מספר אפליקציות, הורדות, משתמשים.",
       parameters: { type: "object", properties: {} }
+    },
+    {
+      name: "offer_download",
+      description: "מציע למשתמש להוריד אפליקציה ספציפית - מציג כפתור הורדה בולט בצ'אט. השתמש בזה כשהמשתמש מחפש אפליקציה, מצאת אותה, והוא רוצה להתקין. אם המשתמש אמר במפורש 'תוריד לי' / 'כן תוריד' - קבע auto=true והצ'אט יתחיל את ההורדה לבד.",
+      parameters: {
+        type: "object",
+        properties: { app_id: { type: "string" }, auto: { type: "boolean", description: "true = להתחיל הורדה אוטומטית (רק אם המשתמש ביקש במפורש)" } },
+        required: ["app_id"]
+      }
+    },
+    {
+      name: "go_to_page",
+      description: "מעביר את המשתמש לדף אחר באתר (הצ'אט ינווט). השתמש בזה כשהמשתמש רוצה להגיע למקום מסוים - תמיכה, בקשות קהילה, הרשמה כמפתח וכו'. אם המשתמש אמר 'קח אותי לשם' - קבע auto=true.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: { type: "string", description: `אחד מ: ${ALLOWED_NAV.join(", ")}` },
+          auto: { type: "boolean" }
+        },
+        required: ["path"]
+      }
+    },
+    {
+      name: "start_upload",
+      description: "פותח למשתמש (מפתח) את דף העלאת האפליקציה עם השדות ממולאים מראש ממה שסוכם בשיחה. השתמש בזה אחרי שהבנת מהמשתמש איזו אפליקציה הוא מעלה, שמה, תיאור וקטגוריה. אם המשתמש מוכן - קבע auto=true והצ'אט יעביר אותו לשם.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          short_description: { type: "string", description: "תיאור קצר עד 140 תווים" },
+          description: { type: "string", description: "תיאור מלא" },
+          category: { type: "string", description: "ערך קטגוריה (value)" },
+          min_android: { type: "string" },
+          offline_support: { type: "string", enum: ["offline", "online", "unknown"] },
+          auto: { type: "boolean" }
+        }
+      }
     },
     {
       name: "propose_support_ticket",
@@ -429,6 +491,71 @@ export async function executeTool(name: string, rawArgs: any, ctx: ToolContext):
         .eq("developer_id", ctx.userId)
         .order("created_at", { ascending: false });
       return { result: { apps: data ?? [] }, summary: `get_my_apps_status → ${(data ?? []).length}` };
+    }
+
+    case "offer_download": {
+      const { data: a } = await admin
+        .from("apps")
+        .select("id, name, status, download_paused, download_paused_until, icon_key, category, downloads_count, file_name, file_key")
+        .eq("id", String(args.app_id))
+        .single();
+      if (!a || a.status !== "approved") return { result: { error: "האפליקציה לא נמצאה או לא זמינה להורדה" }, summary: "offer_download → not found" };
+      const paused = a.download_paused || (a.download_paused_until && new Date(a.download_paused_until).getTime() > Date.now());
+      if (paused) return { result: { error: "ההורדה של האפליקציה הזו מושהית כרגע ע\"י המפתח" }, summary: "offer_download → paused" };
+      const [withRating] = await attachRatings(admin, [a]);
+      return {
+        result: { id: a.id, name: a.name, ready: true },
+        appCards: await toCards([withRating]),
+        clientAction: { kind: "download", appId: a.id, label: `הורדת ${a.name}`, auto: args.auto === true },
+        summary: `offer_download → ${a.name}${args.auto ? " (auto)" : ""}`
+      };
+    }
+
+    case "go_to_page": {
+      const path = String(args.path || "").trim();
+      if (!ALLOWED_NAV.includes(path)) {
+        return { result: { error: `נתיב לא מותר. מותרים: ${ALLOWED_NAV.join(", ")}` }, summary: `go_to_page → blocked ${path}` };
+      }
+      const labels: Record<string, string> = {
+        "/": "מעבר לחנות",
+        "/community": "מעבר לבקשות הקהילה",
+        "/support": "מעבר לתמיכה",
+        "/suggest-app": "מעבר להוספת אפליקציה למאגר",
+        "/profile": "מעבר לפרופיל שלי",
+        "/profile/become-developer": "מעבר להרשמה כמפתח",
+        "/dashboard/developer/upload": "מעבר להעלאת אפליקציה",
+        "/users": "מעבר לרשימת המשתמשים",
+        "/about": "מעבר להסברים",
+        "/site-rules": "מעבר לחוקי האתר"
+      };
+      return {
+        result: { navigating_to: path },
+        clientAction: { kind: "navigate", url: path, label: labels[path] || "מעבר לדף", auto: args.auto === true },
+        summary: `go_to_page → ${path}`
+      };
+    }
+
+    case "start_upload": {
+      if (!ctx.isDeveloper) {
+        return {
+          result: { error: "המשתמש עדיין לא מפתח - צריך קודם לשדרג לחשבון מפתח" },
+          clientAction: { kind: "navigate", url: "/profile/become-developer", label: "הרשמה כמפתח", auto: false },
+          summary: "start_upload → not developer"
+        };
+      }
+      const params = new URLSearchParams();
+      if (args.name) params.set("name", String(args.name).slice(0, 120));
+      if (args.short_description) params.set("short", String(args.short_description).slice(0, 140));
+      if (args.description) params.set("desc", String(args.description).slice(0, 4000));
+      if (args.category) params.set("cat", String(args.category).slice(0, 60));
+      if (args.min_android) params.set("minandroid", String(args.min_android).slice(0, 20));
+      if (["offline", "online", "unknown"].includes(args.offline_support)) params.set("offline", args.offline_support);
+      const url = `/dashboard/developer/upload${params.toString() ? `?${params.toString()}` : ""}`;
+      return {
+        result: { prefilled: true, url },
+        clientAction: { kind: "navigate", url, label: "המשך להעלאת האפליקציה", auto: args.auto === true },
+        summary: "start_upload"
+      };
     }
 
     case "propose_support_ticket": {

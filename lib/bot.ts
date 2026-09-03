@@ -3,7 +3,7 @@ import { getCategoriesServer } from "./categories";
 import { getSiteSettingsServer } from "./settings";
 import { DEFAULT_SITE_RULES_HTML } from "./siteRulesDefault";
 import { LIMITS, MAX_SUGGESTION_MB, REFERRAL } from "./constants";
-import { toolDeclarations, executeTool, type ToolContext, type BotAppCard, type ProposedAction } from "./botTools";
+import { toolDeclarations, executeTool, type ToolContext, type BotAppCard, type ProposedAction, type ClientAction } from "./botTools";
 
 export interface BotConfig {
   enabled: boolean;
@@ -49,6 +49,12 @@ export const DEFAULT_BOT_SYSTEM_PROMPT = `אתה "עוזר עוגן פליי" - 
 - יש לך כלים לשליפת מידע אמיתי (חיפוש אפליקציות, פרטי אפליקציה, המלצות, מצב המשתמש, חוקים, קישור הפניה ועוד). השתמש בהם - אל תנחש ואל תמציא.
 - כשאתה ממליץ על אפליקציה, כתוב את שמה כקישור מרקדאון: [שם](/apps/<id>) לפי ה-id שהכלי החזיר. לעולם אל תמציא id.
 - אם משתמש רוצה לפנות לצוות או להציע אפליקציה - השתמש ב-propose_support_ticket / propose_app_suggestion (המשתמש יאשר לפני שנשלח).
+
+## פעולה ישירה - אתה יכול להזיז את המשתמש (חשוב מאוד!)
+- **הורדה:** משתמש שמחפש אפליקציה ומצאת לו אותה - הצע לו להוריד עם offer_download. אם הוא כותב "כן"/"תוריד"/"תוריד לי" - קרא ל-offer_download עם auto=true והצ'אט יתחיל את ההורדה לבד.
+- **העלאה:** מפתח שרוצה להעלות - שאל אותו קצר על שם האפליקציה, תיאור וקטגוריה, ואז קרא ל-start_upload עם הפרטים. הדף ייפתח לו עם השדות ממולאים. אם הוא מוכן - auto=true.
+- **ניווט:** משתמש שרוצה להגיע למקום (תמיכה, בקשות קהילה, הרשמה כמפתח) - השתמש ב-go_to_page.
+- אל תבקש אישור מיותר - אם הכוונה של המשתמש ברורה, פשוט תבצע (auto=true).
 
 ## דחיפה לפעולה (חשוב!)
 - כל תשובה חייבת להסתיים בצעד הבא הרלוונטי + קישור. לעולם אל תסיים תשובה בלי כיוון.
@@ -241,6 +247,7 @@ export interface BotAgentResult {
   followUps: string[];
   appCards: BotAppCard[];
   proposedAction: ProposedAction | null;
+  clientAction: ClientAction | null;
   modelUsed: string;
   toolLog: { tool: string; args: any; ok: boolean; summary: string; ms: number }[];
 }
@@ -260,6 +267,7 @@ export async function runBotAgent(
 
   const appCards: BotAppCard[] = [];
   let proposedAction: ProposedAction | null = null;
+  let clientAction: ClientAction | null = null;
   const toolLog: BotAgentResult["toolLog"] = [];
   const modelCandidates = [cfg.model, ...MODEL_FALLBACKS.filter((m) => m !== cfg.model)];
   let workingModel: string | null = null;
@@ -299,6 +307,7 @@ export async function runBotAgent(
         followUps: [],
         appCards,
         proposedAction,
+        clientAction,
         modelUsed,
         toolLog
       };
@@ -315,6 +324,7 @@ export async function runBotAgent(
         followUps,
         appCards,
         proposedAction,
+        clientAction,
         modelUsed,
         toolLog
       };
@@ -337,12 +347,13 @@ export async function runBotAgent(
         for (const card of outcome.appCards) if (!appCards.find((x) => x.id === card.id)) appCards.push(card);
       }
       if (outcome.proposedAction) proposedAction = outcome.proposedAction;
+      if (outcome.clientAction) clientAction = outcome.clientAction;
       responseParts.push({ functionResponse: { name: c.name, response: { data: outcome.result } } });
     }
     contents.push({ role: "user", parts: responseParts });
   }
 
-  return { text: "לא הצלחתי לנסח תשובה כרגע.", followUps: [], appCards, proposedAction, modelUsed, toolLog };
+  return { text: "לא הצלחתי לנסח תשובה כרגע.", followUps: [], appCards, proposedAction, clientAction, modelUsed, toolLog };
 }
 
 // שמות מודלים שזמינים בפועל למפתח ה-API הזה (לכפתור הבדיקה בניהול).

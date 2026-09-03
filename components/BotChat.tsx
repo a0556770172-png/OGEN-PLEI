@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Send, Loader2, Bot, User as UserIcon, AlertCircle, ThumbsUp, ThumbsDown, Mic, Check, X, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Send, Loader2, Bot, User as UserIcon, AlertCircle, ThumbsUp, ThumbsDown, Mic, Check, X, Sparkles, Download, ArrowLeft } from "lucide-react";
 import BotMessageBody from "./BotMessageBody";
 import BotAppCard, { type BotAppCardData } from "./BotAppCard";
 
@@ -9,6 +10,13 @@ interface ProposedAction {
   summary: string;
   payload: Record<string, any>;
 }
+interface ClientAction {
+  kind: "navigate" | "download";
+  url?: string;
+  appId?: string;
+  label: string;
+  auto?: boolean;
+}
 interface Msg {
   id?: string;
   role: "user" | "assistant";
@@ -16,6 +24,7 @@ interface Msg {
   appCards?: BotAppCardData[];
   followUps?: string[];
   proposedAction?: ProposedAction | null;
+  clientAction?: ClientAction | null;
   feedback?: 1 | -1 | null;
   actionDone?: string;
 }
@@ -31,13 +40,16 @@ export default function BotChat({
   variant = "page",
   conversationId = null,
   onConversationChange,
+  onNavigate,
   readOnly = false
 }: {
   variant?: "widget" | "page";
   conversationId?: string | null;
   onConversationChange?: (id: string) => void;
+  onNavigate?: () => void;
   readOnly?: boolean;
 }) {
+  const router = useRouter();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -84,7 +96,8 @@ export default function BotChat({
             content: m.content,
             appCards: m.meta?.appCards ?? [],
             followUps: m.meta?.followUps ?? [],
-            proposedAction: m.meta?.proposedAction ?? null
+            proposedAction: m.meta?.proposedAction ?? null,
+            clientAction: m.meta?.clientAction ? { ...m.meta.clientAction, auto: false } : null
           }))
         );
         setLoadedId(conversationId);
@@ -128,6 +141,7 @@ export default function BotChat({
           appCards: json.appCards ?? [],
           followUps: json.followUps ?? [],
           proposedAction: json.proposedAction ?? null,
+          clientAction: json.clientAction ?? null,
           feedback: null
         }
       ]);
@@ -151,6 +165,27 @@ export default function BotChat({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messageId: msgId, rating })
     }).catch(() => {});
+  }
+
+  function doNavigate(url: string) {
+    onNavigate?.();
+    router.push(url);
+  }
+
+  async function doDownload(appId: string, msgId?: string) {
+    setMessages((m) => m.map((x) => (x.id === msgId ? { ...x, actionDone: "מתחיל הורדה…" } : x)));
+    try {
+      const res = await fetch(`/api/download/${appId}`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) {
+        setMessages((m) => m.map((x) => (x.id === msgId ? { ...x, actionDone: json.error || "ההורדה נכשלה" } : x)));
+        return;
+      }
+      window.location.href = json.url;
+      setMessages((m) => m.map((x) => (x.id === msgId ? { ...x, actionDone: "ההורדה החלה ✓" } : x)));
+    } catch {
+      setMessages((m) => m.map((x) => (x.id === msgId ? { ...x, actionDone: "שגיאת רשת בהורדה" } : x)));
+    }
   }
 
   async function confirmAction(msg: Msg) {
@@ -283,6 +318,15 @@ export default function BotChat({
                 </div>
               )}
 
+              {/* פעולת לקוח - ניווט / הורדה (עם auto אופציונלי) */}
+              {m.clientAction && !readOnly && !m.actionDone && (
+                <ClientActionCard
+                  action={m.clientAction}
+                  onNavigate={() => doNavigate(m.clientAction!.url!)}
+                  onDownload={() => doDownload(m.clientAction!.appId!, m.id)}
+                />
+              )}
+
               {/* פעולה מוצעת - כרטיס אישור */}
               {m.proposedAction && !readOnly && (
                 <div className="w-full rounded-xl border border-gold/40 bg-gold/10 p-3">
@@ -400,6 +444,64 @@ export default function BotChat({
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </button>
         </form>
+      )}
+    </div>
+  );
+}
+
+function ClientActionCard({
+  action,
+  onNavigate,
+  onDownload
+}: {
+  action: ClientAction;
+  onNavigate: () => void;
+  onDownload: () => void;
+}) {
+  const [countdown, setCountdown] = useState(action.auto ? 3 : -1);
+  const [fired, setFired] = useState(false);
+  const Icon = action.kind === "download" ? Download : ArrowLeft;
+
+  function fire() {
+    setFired(true);
+    if (action.kind === "download") onDownload();
+    else onNavigate();
+  }
+
+  useEffect(() => {
+    if (countdown < 0 || fired) return;
+    if (countdown === 0) {
+      fire();
+      return;
+    }
+    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countdown, fired]);
+
+  if (fired) return null;
+
+  return (
+    <div className="w-full rounded-xl border border-primary/40 bg-primary/10 p-3">
+      {countdown > 0 ? (
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-bold text-primary-light">
+            <Icon className="me-1 inline h-3.5 w-3.5" /> {action.label} — בעוד {countdown}…
+          </span>
+          <button
+            onClick={() => setCountdown(-1)}
+            className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-bold text-gray-400 hover:text-white"
+          >
+            <X className="h-3.5 w-3.5" /> ביטול
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={fire}
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-black text-[#fff] transition hover:bg-primary-light"
+        >
+          <Icon className="h-4 w-4" /> {action.label}
+        </button>
       )}
     </div>
   );
