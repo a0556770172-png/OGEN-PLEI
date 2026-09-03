@@ -9,11 +9,8 @@ export async function GET() {
   if (result.profile.role !== "admin") return NextResponse.json({ error: "רק מנהל בפועל" }, { status: 403 });
 
   const admin = createAdminSupabase();
-  const { data } = await admin
-    .from("bot_config")
-    .select("enabled, model, model_smart, system_prompt, daily_limit, proactive_enabled, max_tool_rounds, gemini_api_key, updated_at")
-    .eq("id", true)
-    .single();
+  // select("*") - עמיד לכך שמיגרציה 0036 עוד לא רצה (עמודות חדשות פשוט undefined).
+  const { data } = await admin.from("bot_config").select("*").eq("id", true).maybeSingle();
 
   return NextResponse.json({
     enabled: data?.enabled ?? false,
@@ -57,8 +54,19 @@ export async function PATCH(request: Request) {
   }
 
   const admin = createAdminSupabase();
-  const { error } = await admin.from("bot_config").update(patch).eq("id", true);
-  if (error) return NextResponse.json({ error: "שגיאה בשמירת ההגדרות" }, { status: 500 });
+
+  // upsert (ולא update) כדי שגם אם שורת bot_config חסרה מסיבה כלשהי - היא תיווצר.
+  let { error } = await admin.from("bot_config").upsert({ id: true, ...patch });
+
+  // אם מיגרציה 0036 עוד לא רצה, עמודות חדשות עלולות להכשיל את השמירה - מנסים שוב בלעדיהן,
+  // כדי שלפחות מפתח ה-API וההגדרות הבסיסיות ישמרו.
+  if (error && /column .* does not exist|model_smart|proactive_enabled|max_tool_rounds/i.test(error.message || "")) {
+    const { model_smart, proactive_enabled, max_tool_rounds, ...safe } = patch as any;
+    const retry = await admin.from("bot_config").upsert({ id: true, ...safe });
+    error = retry.error;
+  }
+
+  if (error) return NextResponse.json({ error: `שגיאה בשמירת ההגדרות: ${error.message}` }, { status: 500 });
 
   return NextResponse.json({ ok: true });
 }

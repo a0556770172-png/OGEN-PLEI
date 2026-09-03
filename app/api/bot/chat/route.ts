@@ -107,32 +107,46 @@ export async function POST(request: Request) {
     await admin.from("bot_config").update({ model: agent.modelUsed, updated_at: new Date().toISOString() }).eq("id", true);
   }
 
-  // --- לוג קריאות כלים ---
+  // --- לוג קריאות כלים (לא קריטי - נכשל בשקט אם מיגרציה 0036 עוד לא רצה) ---
   if (agent.toolLog.length) {
-    await admin.from("bot_tool_calls").insert(
-      agent.toolLog.map((t) => ({
-        conversation_id: convId,
-        tool: t.tool,
-        args: t.args,
-        ok: t.ok,
-        result_summary: t.summary,
-        ms: t.ms
-      }))
-    );
+    try {
+      await admin.from("bot_tool_calls").insert(
+        agent.toolLog.map((t) => ({
+          conversation_id: convId,
+          tool: t.tool,
+          args: t.args,
+          ok: t.ok,
+          result_summary: t.summary,
+          ms: t.ms
+        }))
+      );
+    } catch {
+      // ignore
+    }
   }
 
   // --- שמירת ההודעות ---
-  const meta = {
-    appCards: agent.appCards,
-    followUps: agent.followUps,
-    proposedAction: agent.proposedAction
-  };
+  const meta = { appCards: agent.appCards, followUps: agent.followUps, proposedAction: agent.proposedAction };
   await admin.from("bot_messages").insert({ conversation_id: convId, role: "user", content: text });
-  const { data: botMsg } = await admin
-    .from("bot_messages")
-    .insert({ conversation_id: convId, role: "assistant", content: agent.text, meta })
-    .select("id")
-    .single();
+  let botMsg: { id: string } | null = null;
+  {
+    const withMeta = await admin
+      .from("bot_messages")
+      .insert({ conversation_id: convId, role: "assistant", content: agent.text, meta })
+      .select("id")
+      .single();
+    if (withMeta.error) {
+      // אין עמודת meta (מיגרציה 0036 לא רצה) - שומרים בלי, כדי שהשיחה לא תישבר
+      const noMeta = await admin
+        .from("bot_messages")
+        .insert({ conversation_id: convId, role: "assistant", content: agent.text })
+        .select("id")
+        .single();
+      botMsg = noMeta.data;
+    } else {
+      botMsg = withMeta.data;
+    }
+  }
   await admin.from("bot_conversations").update({ updated_at: new Date().toISOString() }).eq("id", convId);
 
   return NextResponse.json({

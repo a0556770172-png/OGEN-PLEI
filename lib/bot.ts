@@ -17,13 +17,11 @@ export interface BotConfig {
 }
 
 // קריאת הגדרות הבוט - שרת בלבד (מפתח ה-API אסור שיגיע ללקוח).
+// select("*") בכוונה: אם מיגרציה 0036 עוד לא רצה, עמודות חדשות פשוט חסרות ולא מפילות
+// את כל השאילתה (מה שגרם ל"אין מפתח API" למרות שיש).
 export async function getBotConfig(): Promise<BotConfig> {
   const admin = createAdminSupabase();
-  const { data } = await admin
-    .from("bot_config")
-    .select("enabled, gemini_api_key, model, model_smart, system_prompt, daily_limit, proactive_enabled, max_tool_rounds")
-    .eq("id", true)
-    .single();
+  const { data } = await admin.from("bot_config").select("*").eq("id", true).maybeSingle();
   return {
     enabled: data?.enabled ?? false,
     gemini_api_key: data?.gemini_api_key ?? null,
