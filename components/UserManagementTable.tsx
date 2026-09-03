@@ -1,7 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Ban, ShieldCheck, Crown, Loader2, ShieldOff, UserCog, Trash2, Paperclip, Pencil, ThumbsUp, MessageSquare, Star, Clock } from "lucide-react";
+import { Ban, ShieldCheck, Crown, Loader2, ShieldOff, UserCog, Trash2, Paperclip, Pencil, ThumbsUp, MessageSquare, Star, Clock, Search } from "lucide-react";
 import type { Profile } from "@/types/database";
 
 const ROLE_LABEL: Record<string, string> = { user: "משתמש", developer: "מפתח", admin: "מנהל", moderator: "פיקוח" };
@@ -29,6 +29,18 @@ function lastSeenLabel(dateStr: string | null) {
 export default function UserManagementTable({ profiles, isAdmin = false }: { profiles: Profile[]; isAdmin?: boolean }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return profiles;
+    return profiles.filter(
+      (p) =>
+        p.username.toLowerCase().includes(q) ||
+        (p.email ?? "").toLowerCase().includes(q) ||
+        (p.display_email ?? "").toLowerCase().includes(q)
+    );
+  }, [profiles, query]);
 
   async function act(id: string, action: string, extra?: Record<string, unknown>) {
     setBusyId(id);
@@ -125,20 +137,39 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
   }
 
   return (
-    <div className="card overflow-x-auto p-0">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border text-right text-xs text-gray-500">
-            <th className="px-4 py-3">משתמש</th>
-            <th className="px-4 py-3">תפקיד</th>
-            <th className="px-4 py-3">מוניטין</th>
-            <th className="px-4 py-3">כניסה אחרונה</th>
-            <th className="px-4 py-3">סטטוס</th>
-            <th className="px-4 py-3">פעולות</th>
-          </tr>
-        </thead>
-        <tbody>
-          {profiles.map((p) => (
+    <div className="flex flex-col gap-3">
+      <div className="relative">
+        <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="חיפוש משתמש לפי שם או אימייל..."
+          className="input-field w-full pe-10"
+        />
+      </div>
+      {query.trim() && (
+        <p className="text-xs text-gray-500">{filtered.length} תוצאות מתוך {profiles.length}</p>
+      )}
+
+      <div className="card overflow-x-auto p-0">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-right text-xs text-gray-500">
+              <th className="px-4 py-3">משתמש</th>
+              <th className="px-4 py-3">תפקיד</th>
+              <th className="px-4 py-3">מוניטין</th>
+              <th className="px-4 py-3">כניסה אחרונה</th>
+              <th className="px-4 py-3">סטטוס</th>
+              <th className="px-4 py-3">פעולות</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">לא נמצאו משתמשים</td>
+              </tr>
+            )}
+            {filtered.map((p) => (
             <tr key={p.id} className="border-b border-border/50 last:border-0 hover:bg-surface2/50">
               <td className="px-4 py-3">
                 <div className="font-bold text-white">{p.username}</div>
@@ -250,9 +281,10 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
                 </div>
               </td>
             </tr>
-          ))}
-        </tbody>
-      </table>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

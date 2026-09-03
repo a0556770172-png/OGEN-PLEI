@@ -1,8 +1,9 @@
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, ShieldCheck } from "lucide-react";
 import { getCurrentProfile } from "@/lib/profile";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { isStaff } from "@/lib/auth-helpers";
+import { createAdminSupabase } from "@/lib/supabase/admin";
 import EditAppForm from "@/components/EditAppForm";
 import { getCategoriesServer } from "@/lib/categories";
 import type { AppRow } from "@/types/database";
@@ -12,17 +13,27 @@ export const dynamic = "force-dynamic";
 export default async function EditAppPage({ params }: { params: { id: string } }) {
   const { user, profile } = await getCurrentProfile();
   if (!user || !profile) redirect("/login");
-  if (profile.role !== "developer" && profile.role !== "admin") redirect("/");
 
-  const supabase = createServerSupabase();
-  const { data } = await supabase.from("apps").select("*").eq("id", params.id).single();
-  const app = data as AppRow | null;
+  const staff = isStaff(profile);
+  // מפתח עורך את שלו, או צוות (מנהל/פיקוח) עורך של כל אחד - ראו app/api/apps/[id]/route.ts
+  // ואת נתיבי הגרסאות, שכבר מאשרים צוות בצד השרת.
+  if (!staff && profile.role !== "developer" && profile.role !== "admin") redirect("/");
 
-  if (!app || app.developer_id !== user.id) redirect("/profile");
+  const admin = createAdminSupabase();
+  const { data } = await admin
+    .from("apps")
+    .select("*, developer:profiles!apps_developer_id_fkey(username, is_pro)")
+    .eq("id", params.id)
+    .single();
+  const app = data as (AppRow & { developer?: { username: string; is_pro: boolean } }) | null;
 
-  // אפליקציה שמקורה בהצעה ציבורית שאושרה (לא הועלתה ישירות מהדשבורד הפרטי) לא ניתנת
-  // לעריכה בכלל ע"י מי שהציע אותה - רק העלאה פרטית מקבלת עריכת פרטים/היסטוריית גרסאות.
-  if (app.source === "public_suggestion" && profile.role !== "admin") {
+  if (!app) notFound();
+
+  const isOwner = app.developer_id === user.id;
+  if (!isOwner && !staff) redirect("/profile");
+
+  // אפליקציה שמקורה בהצעה ציבורית שאושרה: מי שהציע אותה לא יכול לערוך, אבל צוות כן.
+  if (app.source === "public_suggestion" && !staff) {
     return (
       <div className="mx-auto max-w-lg">
         <div className="card flex flex-col items-center gap-3 p-8 text-center">
@@ -42,10 +53,18 @@ export default async function EditAppPage({ params }: { params: { id: string } }
   }
 
   const categories = await getCategoriesServer();
+  // מכסת גודל הקובץ לגרסה חדשה נגזרת מהתוכנית של בעל האפליקציה, לא של העורך.
+  const ownerIsPro = isOwner ? profile.is_pro : !!app.developer?.is_pro;
 
   return (
     <div className="mx-auto max-w-2xl">
-      <EditAppForm app={app} isPro={profile.is_pro} categories={categories} />
+      {!isOwner && staff && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary-light">
+          <ShieldCheck className="h-4 w-4 shrink-0" />
+          אתה עורך כצוות את פוסט הפרסום של <b className="mx-1 text-white">{app.developer?.username ?? "מפתח"}</b> — כל שינוי יישמר על שמו.
+        </div>
+      )}
+      <EditAppForm app={app} isPro={ownerIsPro} categories={categories} />
     </div>
   );
 }

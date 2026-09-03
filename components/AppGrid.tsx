@@ -36,11 +36,13 @@ const SORT_OPTIONS: { key: SortKey; label: string; icon: typeof ArrowDownAZ }[] 
 export default function AppGrid({
   items,
   categories,
-  updateAppIds = []
+  updateAppIds = [],
+  viewerIsStaff = false
 }: {
   items: { app: AppRow; iconUrl: string | null }[];
   categories: Category[];
   updateAppIds?: string[];
+  viewerIsStaff?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
@@ -208,6 +210,7 @@ export default function AppGrid({
             app={activeItem.app}
             iconUrl={activeItem.iconUrl}
             categories={categories}
+            viewerIsStaff={viewerIsStaff}
             onClose={() => setActiveId(null)}
           />
         )}

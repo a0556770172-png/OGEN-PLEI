@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Package, User, Calendar, HardDrive, Smartphone, Wifi, WifiOff, HelpCircle, X, ExternalLink, Pin } from "lucide-react";
+import { Package, User, Calendar, HardDrive, Smartphone, Wifi, WifiOff, HelpCircle, X, ExternalLink, Pin, Pencil } from "lucide-react";
 import type { AppRow, Category } from "@/types/database";
 import { formatFileSize } from "@/lib/format";
 import StatusBadge from "./StatusBadge";
@@ -24,11 +24,13 @@ export default function AppModal({
   app,
   iconUrl,
   categories,
+  viewerIsStaff = false,
   onClose
 }: {
   app: AppRow;
   iconUrl?: string | null;
   categories?: Category[];
+  viewerIsStaff?: boolean;
   onClose: () => void;
 }) {
   const category = categories?.find((c) => c.value === app.category)?.label ?? app.category;
@@ -123,6 +125,14 @@ export default function AppModal({
                 }
               />
             </div>
+            {viewerIsStaff && (
+              <Link
+                href={`/dashboard/developer/apps/${app.id}/edit`}
+                className="mt-2 inline-flex items-center gap-1.5 rounded-xl border border-gold/40 bg-gold/10 px-3 py-1.5 text-xs font-bold text-gold transition hover:bg-gold/20"
+              >
+                <Pencil className="h-3.5 w-3.5" /> עריכת פוסט הפרסום (צוות)
+              </Link>
+            )}
           </div>
         </div>
 

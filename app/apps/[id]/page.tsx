@@ -9,7 +9,9 @@ import ReportAppButton from "@/components/ReportAppButton";
 import AppLikeButton from "@/components/AppLikeButton";
 import AppReviews from "@/components/AppReviews";
 import { createAdminSupabase } from "@/lib/supabase/admin";
-import { Package, User, Calendar, HardDrive, Flag, Smartphone, Wifi, WifiOff, HelpCircle } from "lucide-react";
+import { getCurrentProfile } from "@/lib/profile";
+import { isStaff } from "@/lib/auth-helpers";
+import { Package, User, Calendar, HardDrive, Flag, Smartphone, Wifi, WifiOff, HelpCircle, Pencil } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,9 @@ export default async function AppDetailPage({ params }: { params: { id: string }
 
   const iconUrl = await getIconUrl(app.icon_key);
   const categories = await getCategoriesServer();
+  const { user, profile } = await getCurrentProfile();
+  // צוות (מנהל/פיקוח) - וגם הבעלים עצמו - יכולים לערוך את פוסט הפרסום ישירות מכאן.
+  const canEditPost = !!profile && (isStaff(profile) || app.developer_id === user?.id);
   const category = categories.find((c) => c.value === app.category)?.label ?? app.category;
   const isPaused = app.download_paused || (app.download_paused_until ? new Date(app.download_paused_until).getTime() > Date.now() : false);
 
@@ -91,6 +96,14 @@ export default async function AppDetailPage({ params }: { params: { id: string }
                 }
               />
             </div>
+            {canEditPost && (
+              <Link
+                href={`/dashboard/developer/apps/${app.id}/edit`}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-gold/40 bg-gold/10 px-3 py-1.5 text-xs font-bold text-gold transition hover:bg-gold/20"
+              >
+                <Pencil className="h-3.5 w-3.5" /> עריכת פוסט הפרסום
+              </Link>
+            )}
           </div>
         </div>
 

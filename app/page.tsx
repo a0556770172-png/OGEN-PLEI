@@ -7,6 +7,7 @@ import { getCategoriesServer } from "@/lib/categories";
 import { getUsersStats } from "@/lib/users-data";
 import { getTotalSiteVisits } from "@/lib/site-stats";
 import { getCurrentProfile } from "@/lib/profile";
+import { isStaff } from "@/lib/auth-helpers";
 import { getUserAppUpdates } from "@/lib/updates";
 
 export const dynamic = "force-dynamic";
@@ -26,9 +27,11 @@ export default async function HomePage() {
 
   // פיצ'ר 5: למשתמש מחובר - אילו אפליקציות שהוריד קיבלו עדכון גרסה (ל-Badge בכרטיס
   // ולחלונית הכניסה).
-  const { user } = await getCurrentProfile();
+  const { user, profile } = await getCurrentProfile();
   const updates = user ? [...(await getUserAppUpdates(user.id)).values()] : [];
   const updateAppIds = updates.map((u) => u.appId);
+  // צוות (מנהל/פיקוח) יכול לערוך את פוסט הפרסום של כל אפליקציה ישירות מהחנות - ראו AppModal.
+  const viewerIsStaff = !!profile && isStaff(profile);
 
   return (
     <div className="flex flex-col gap-12">
@@ -40,7 +43,7 @@ export default async function HomePage() {
         totalUsers={usersStats.totalUsers}
         totalVisits={totalVisits}
       />
-      <AppGrid items={withIcons} categories={categories} updateAppIds={updateAppIds} />
+      <AppGrid items={withIcons} categories={categories} updateAppIds={updateAppIds} viewerIsStaff={viewerIsStaff} />
     </div>
   );
 }
