@@ -14,9 +14,11 @@ export default function BotWidget() {
   const pathname = usePathname();
   const [loggedIn, setLoggedIn] = useState(false);
   const [live, setLive] = useState(false);
-  const [hasUnread, setHasUnread] = useState(false);
+  const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+
+  const hasUnread = unread > 0;
 
   useEffect(() => {
     let active = true;
@@ -26,13 +28,13 @@ export default function BotWidget() {
       setLoggedIn(!!user);
       if (!user) {
         setLive(false);
-        setHasUnread(false);
+        setUnread(0);
         return;
       }
       fetch("/api/bot/status").then((r) => r.json()).then((j) => active && setLive(!!j.live)).catch(() => {});
       fetch("/api/notifications/unread")
         .then((r) => r.json())
-        .then((j) => active && setHasUnread((j?.totalUnread ?? 0) > 0))
+        .then((j) => active && setUnread(j?.totalUnread ?? 0))
         .catch(() => {});
     }
     check();
@@ -83,27 +85,38 @@ export default function BotWidget() {
                 </div>
                 <span className="text-sm font-black text-white">עוזר עוגן פליי</span>
               </div>
-              <div className="flex items-center gap-1">
-                {live && (
-                  <button
-                    onClick={() => setConversationId(null)}
-                    title="שיחה חדשה"
-                    className="rounded-lg p-1.5 text-gray-400 transition hover:bg-surface2 hover:text-white"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                )}
-                <Link
-                  href="/messages"
-                  onClick={() => setOpen(false)}
-                  title="הודעות בין משתמשים"
-                  className="relative rounded-lg p-1.5 text-gray-400 transition hover:bg-surface2 hover:text-white"
+              {live && (
+                <button
+                  onClick={() => setConversationId(null)}
+                  title="שיחה חדשה"
+                  className="rounded-lg p-1.5 text-gray-400 transition hover:bg-surface2 hover:text-white"
                 >
-                  <MessageCircle className="h-4 w-4" />
-                  {hasUnread && <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-accent" />}
-                </Link>
-              </div>
+                  <Plus className="h-4 w-4" />
+                </button>
+              )}
             </div>
+
+            {/* מעבר בולט להודעות בין משתמשים - כפתור מלא ברוחב עם חיווי הודעות שלא נקראו */}
+            <Link
+              href="/messages"
+              onClick={() => setOpen(false)}
+              className={`mb-3 flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-sm font-bold transition ${
+                hasUnread
+                  ? "border-accent/50 bg-accent/10 text-accent"
+                  : "border-border bg-surface2 text-gray-300 hover:border-primary/40 hover:text-white"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <MessageCircle className="h-4 w-4" /> הודעות בין משתמשים
+              </span>
+              {hasUnread ? (
+                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-accent px-1.5 text-xs font-black text-[#0b0b10]">
+                  {unread > 99 ? "99+" : unread}
+                </span>
+              ) : (
+                <ArrowLeft className="h-4 w-4 opacity-50" />
+              )}
+            </Link>
 
             {live ? (
               <>
@@ -117,14 +130,11 @@ export default function BotWidget() {
                 </Link>
               </>
             ) : (
-              <div className="flex flex-col items-center gap-3 px-2 py-8 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface2 text-gray-500">
-                  <Bot className="h-6 w-6" />
+              <div className="flex flex-col items-center gap-2 px-2 py-6 text-center">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface2 text-gray-500">
+                  <Bot className="h-5 w-5" />
                 </div>
                 <p className="text-sm text-gray-400">העוזר החכם כבוי כרגע.</p>
-                <Link href="/messages" onClick={() => setOpen(false)} className="btn-primary text-sm">
-                  <MessageCircle className="h-4 w-4" /> מעבר להודעות
-                </Link>
               </div>
             )}
           </motion.div>
