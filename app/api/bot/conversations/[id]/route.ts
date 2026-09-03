@@ -21,7 +21,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 
   const { data: messages } = await admin
     .from("bot_messages")
-    .select("id, role, content, created_at")
+    .select("id, role, content, meta, created_at")
     .eq("conversation_id", params.id)
     .order("created_at", { ascending: true });
 

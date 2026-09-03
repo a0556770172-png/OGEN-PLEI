@@ -1,16 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
-import {
-  getBotConfig,
-  botIsLive,
-  buildBotGrounding,
-  callGeminiWithFallback,
-  DEFAULT_BOT_SYSTEM_PROMPT,
-  type GeminiTurn
-} from "@/lib/bot";
+import { getBotConfig, botIsLive, buildBotGrounding, runBotAgent, DEFAULT_BOT_SYSTEM_PROMPT, type GeminiTurn } from "@/lib/bot";
+import { buildBotUserContext } from "@/lib/botContext";
+import type { ToolContext } from "@/lib/botTools";
 
-// כמה הודעות אחרונות מהשיחה לשלוח כהקשר ל-Gemini (מעבר לזה - חותכים כדי לא לנפח).
 const HISTORY_TURNS = 16;
 
 export async function POST(request: Request) {
@@ -19,9 +13,7 @@ export async function POST(request: Request) {
   const { user, profile } = result;
 
   const cfg = await getBotConfig();
-  if (!botIsLive(cfg)) {
-    return NextResponse.json({ error: "הצ'אט-בוט אינו זמין כרגע." }, { status: 503 });
-  }
+  if (!botIsLive(cfg)) return NextResponse.json({ error: "הצ'אט-בוט אינו זמין כרגע." }, { status: 503 });
 
   const { conversationId, message } = await request.json().catch(() => ({}));
   const text = typeof message === "string" ? message.trim() : "";
@@ -31,7 +23,7 @@ export async function POST(request: Request) {
   const admin = createAdminSupabase();
   const staff = isStaff(profile);
 
-  // --- מגבלת קצב: X הודעות משתמש ב-24 שעות מתגלגלות (צוות פטור) ---
+  // --- מגבלת קצב ---
   if (!staff) {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: myConvs } = await admin.from("bot_conversations").select("id").eq("user_id", user.id);
@@ -52,27 +44,21 @@ export async function POST(request: Request) {
     }
   }
 
-  // --- שיחה: קיימת (של המשתמש) או חדשה ---
+  // --- שיחה ---
   let convId: string = typeof conversationId === "string" ? conversationId : "";
   let createdNewConv = false;
   let history: GeminiTurn[] = [];
 
   if (convId) {
-    const { data: conv } = await admin
-      .from("bot_conversations")
-      .select("id, user_id")
-      .eq("id", convId)
-      .single();
-    if (!conv || conv.user_id !== user.id) {
-      return NextResponse.json({ error: "השיחה לא נמצאה" }, { status: 404 });
-    }
+    const { data: conv } = await admin.from("bot_conversations").select("id, user_id").eq("id", convId).single();
+    if (!conv || conv.user_id !== user.id) return NextResponse.json({ error: "השיחה לא נמצאה" }, { status: 404 });
     const { data: msgs } = await admin
       .from("bot_messages")
       .select("role, content")
       .eq("conversation_id", convId)
       .order("created_at", { ascending: false })
       .limit(HISTORY_TURNS);
-    history = ((msgs ?? []).reverse() as GeminiTurn[]);
+    history = (msgs ?? []).reverse() as GeminiTurn[];
   } else {
     const title = text.replace(/\s+/g, " ").slice(0, 60);
     const { data: created, error: convErr } = await admin
@@ -80,26 +66,31 @@ export async function POST(request: Request) {
       .insert({ user_id: user.id, title: title || "שיחה חדשה" })
       .select("id")
       .single();
-    if (convErr || !created) {
-      return NextResponse.json({ error: "שגיאה בפתיחת שיחה" }, { status: 500 });
-    }
+    if (convErr || !created) return NextResponse.json({ error: "שגיאה בפתיחת שיחה" }, { status: 500 });
     convId = created.id;
     createdNewConv = true;
   }
 
-  // --- קריאה ל-Gemini (עם fallback אוטומטי בין מודלים) ---
-  let reply: string;
+  // --- לולאת הסוכן ---
+  let agent;
   try {
-    const grounding = await buildBotGrounding();
-    const systemInstruction = `${cfg.system_prompt?.trim() || DEFAULT_BOT_SYSTEM_PROMPT}\n\n---\nמידע רקע עדכני (השתמש בו כדי לענות, אל תמציא מעבר לזה):\n${grounding}`;
-    const out = await callGeminiWithFallback(cfg, systemInstruction, [...history, { role: "user", content: text }]);
-    reply = out.text;
-    // אם ה-fallback עבר למודל אחר - שומרים אותו כדי שהפעם הבאה תהיה ישירה.
-    if (out.modelUsed && out.modelUsed !== cfg.model) {
-      await admin.from("bot_config").update({ model: out.modelUsed, updated_at: new Date().toISOString() }).eq("id", true);
-    }
+    const [grounding, userCtx] = await Promise.all([buildBotGrounding(), buildBotUserContext(profile)]);
+    const systemInstruction = [
+      cfg.system_prompt?.trim() || DEFAULT_BOT_SYSTEM_PROMPT,
+      "\n---\n## מידע רקע על האתר\n" + grounding,
+      "\n---\n## המשתמש הנוכחי\n" + userCtx.text
+    ].join("\n");
+
+    const ctx: ToolContext = {
+      userId: user.id,
+      profile,
+      isStaff: staff,
+      isDeveloper: profile.role === "developer" || profile.role === "admin",
+      conversationId: convId
+    };
+
+    agent = await runBotAgent(cfg, systemInstruction, [...history, { role: "user", content: text }], ctx);
   } catch (err: any) {
-    // ההודעה של המשתמש עדיין לא נשמרה - לא משאירים שיחה "תלויה" בלי תשובה.
     if (createdNewConv) await admin.from("bot_conversations").delete().eq("id", convId);
     return NextResponse.json(
       { error: "הבוט לא הצליח לענות כרגע.", detail: String(err?.message ?? err).slice(0, 250) },
@@ -107,12 +98,45 @@ export async function POST(request: Request) {
     );
   }
 
-  // --- שמירה ---
-  await admin.from("bot_messages").insert([
-    { conversation_id: convId, role: "user", content: text },
-    { conversation_id: convId, role: "assistant", content: reply }
-  ]);
+  // --- שמירת המודל שעבד ---
+  if (agent.modelUsed && agent.modelUsed !== cfg.model) {
+    await admin.from("bot_config").update({ model: agent.modelUsed, updated_at: new Date().toISOString() }).eq("id", true);
+  }
+
+  // --- לוג קריאות כלים ---
+  if (agent.toolLog.length) {
+    await admin.from("bot_tool_calls").insert(
+      agent.toolLog.map((t) => ({
+        conversation_id: convId,
+        tool: t.tool,
+        args: t.args,
+        ok: t.ok,
+        result_summary: t.summary,
+        ms: t.ms
+      }))
+    );
+  }
+
+  // --- שמירת ההודעות ---
+  const meta = {
+    appCards: agent.appCards,
+    followUps: agent.followUps,
+    proposedAction: agent.proposedAction
+  };
+  await admin.from("bot_messages").insert({ conversation_id: convId, role: "user", content: text });
+  const { data: botMsg } = await admin
+    .from("bot_messages")
+    .insert({ conversation_id: convId, role: "assistant", content: agent.text, meta })
+    .select("id")
+    .single();
   await admin.from("bot_conversations").update({ updated_at: new Date().toISOString() }).eq("id", convId);
 
-  return NextResponse.json({ conversationId: convId, reply });
+  return NextResponse.json({
+    conversationId: convId,
+    messageId: botMsg?.id ?? null,
+    reply: agent.text,
+    appCards: agent.appCards,
+    followUps: agent.followUps,
+    proposedAction: agent.proposedAction
+  });
 }

@@ -1,16 +1,19 @@
 import { createAdminSupabase } from "./supabase/admin";
-import { getApprovedApps } from "./apps-data";
 import { getCategoriesServer } from "./categories";
 import { getSiteSettingsServer } from "./settings";
 import { DEFAULT_SITE_RULES_HTML } from "./siteRulesDefault";
 import { LIMITS, MAX_SUGGESTION_MB, REFERRAL } from "./constants";
+import { toolDeclarations, executeTool, type ToolContext, type BotAppCard, type ProposedAction } from "./botTools";
 
 export interface BotConfig {
   enabled: boolean;
   gemini_api_key: string | null;
   model: string;
+  model_smart: string | null;
   system_prompt: string | null;
   daily_limit: number;
+  proactive_enabled: boolean;
+  max_tool_rounds: number;
 }
 
 // קריאת הגדרות הבוט - שרת בלבד (מפתח ה-API אסור שיגיע ללקוח).
@@ -18,15 +21,18 @@ export async function getBotConfig(): Promise<BotConfig> {
   const admin = createAdminSupabase();
   const { data } = await admin
     .from("bot_config")
-    .select("enabled, gemini_api_key, model, system_prompt, daily_limit")
+    .select("enabled, gemini_api_key, model, model_smart, system_prompt, daily_limit, proactive_enabled, max_tool_rounds")
     .eq("id", true)
     .single();
   return {
     enabled: data?.enabled ?? false,
     gemini_api_key: data?.gemini_api_key ?? null,
     model: data?.model || "gemini-2.5-flash",
+    model_smart: data?.model_smart ?? null,
     system_prompt: data?.system_prompt ?? null,
-    daily_limit: data?.daily_limit ?? 30
+    daily_limit: data?.daily_limit ?? 30,
+    proactive_enabled: data?.proactive_enabled ?? true,
+    max_tool_rounds: data?.max_tool_rounds ?? 5
   };
 }
 
@@ -35,15 +41,29 @@ export function botIsLive(cfg: BotConfig): boolean {
   return cfg.enabled && !!cfg.gemini_api_key;
 }
 
-export const DEFAULT_BOT_SYSTEM_PROMPT = `אתה "עוזר עוגן פליי" - עוזר חכם וידידותי של אתר "עוגן פליי", חנות/מאגר אפליקציות אנדרואיד ותוכנות מחשב מסוננות ומאושרות לציבור החרדי (בסטנדרט "נטפרי").
+export const DEFAULT_BOT_SYSTEM_PROMPT = `אתה "עוזר עוגן פליי" - סוכן חכם וידידותי של אתר "עוגן פליי", מאגר/חנות אפליקציות אנדרואיד ותוכנות מחשב מסוננות ומאושרות לציבור החרדי (בסטנדרט "נטפרי").
 
-הנחיות:
-- ענה תמיד בעברית, בטון נעים, ברור ותמציתי. עדיף תשובה קצרה וממוקדת.
-- אתה עוזר עם: הסבר איך האתר עובד (חוקים, מוניטין, PRO, הפניות, מסלולי העלאה, תמיכה), עזרה בחיפוש אפליקציה/תוכנה מתוך המאגר לפי דרישות המשתמש (קטגוריה, פועל אופליין, גרסת אנדרואיד מינימלית, סוג קובץ APK/תוכנה, פופולריות), והכוונה כללית לשימוש באפליקציות שבמאגר.
-- כשאתה ממליץ על אפליקציה מהמאגר, כתוב את שמה כקישור בפורמט מרקדאון: [שם האפליקציה](/apps/<id>) לפי ה-id שמופיע ברשימה שקיבלת. אל תמציא אפליקציות או id-ים שלא ברשימה.
-- אם המידע אינו ברשימה שקיבלת, אמור בכנות שאינך יודע והפנה לפנייה לצוות דרך עמוד התמיכה (/support).
-- אל תענה על שאלות שאינן קשורות לאתר, לאפליקציות שבו או לשימוש בהן. אם נשאלת משהו לא רלוונטי, לא צנוע, או לא הולם לקהל החרדי - סרב בנימוס והחזר את השיחה לנושא האתר.
-- אינך נציג רשמי ואינך מוסמך לאשר/לדחות אפליקציות, לשנות הרשאות, או להבטיח שדרוגים - להחלטות כאלה הפנה לצוות.`;
+## סגנון
+- ענה תמיד בעברית, בטון נעים, אישי וקצר. אל תמלל - תשובה ממוקדת עדיפה.
+- אתה מכיר את מי שמולך (ראה בלוק "המשתמש הנוכחי"). דבר אליו בגובה העיניים ולפי מצבו.
+
+## כלים
+- יש לך כלים לשליפת מידע אמיתי (חיפוש אפליקציות, פרטי אפליקציה, המלצות, מצב המשתמש, חוקים, קישור הפניה ועוד). השתמש בהם - אל תנחש ואל תמציא.
+- כשאתה ממליץ על אפליקציה, כתוב את שמה כקישור מרקדאון: [שם](/apps/<id>) לפי ה-id שהכלי החזיר. לעולם אל תמציא id.
+- אם משתמש רוצה לפנות לצוות או להציע אפליקציה - השתמש ב-propose_support_ticket / propose_app_suggestion (המשתמש יאשר לפני שנשלח).
+
+## דחיפה לפעולה (חשוב!)
+- כל תשובה חייבת להסתיים בצעד הבא הרלוונטי + קישור. לעולם אל תסיים תשובה בלי כיוון.
+- שלב בעדינות את הדחיפות שמופיעות בבלוק "מה כדאי לדחוף אותו לעשות" - כשזה רלוונטי לשיחה, לא בכוח.
+- דוגמאות: משתמש שמחפש אפליקציות ולא הזמין חברים → הזכר את קישור ההפניה (25 מוניטין לחבר). משתמש רגיל ששואל על העלאה → הצע לו לשדרג לחשבון מפתח. מפתח קרוב ל-PRO → "עוד קצת ואתה שם".
+
+## גבולות
+- ענה רק על עוגן פליי, האפליקציות שבו, והשימוש בהן. סרב בנימוס לכל דבר אחר, לא צנוע, או לא הולם לקהל החרדי, והחזר לנושא.
+- אינך מוסמך לאשר/לדחות אפליקציות, לחסום, או לשנות הרשאות. להחלטות כאלה הפנה לצוות.
+
+## פורמט סיום
+בשורה נפרדת אחרונה, כתוב בדיוק: הצעות המשך: שאלה 1 | שאלה 2 | שאלה 3
+(שלוש שאלות המשך קצרות שהמשתמש עשוי לרצות לשאול. השורה הזו תוסתר מהמשתמש ותוצג ככפתורים.)`;
 
 function stripHtml(html: string): string {
   return html
@@ -55,53 +75,26 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-// בונה את הקשר הידע שנשלח ל-Gemini בכל בקשה: עובדות על האתר, חוקי האתר, ורשימת
-// האפליקציות המאושרות (קומפקטית) כדי שהבוט יוכל להמליץ ולחפש בתוכן.
+// בונה את הקשר הידע הקבוע שנשלח ל-Gemini: עובדות על האתר + חוקי האתר + רשימת הקטגוריות.
+// את מאגר האפליקציות הסוכן שולף לבד דרך הכלי search_apps (RAG-via-tools) ולא בדחיפה.
 export async function buildBotGrounding(): Promise<string> {
-  const [apps, categories, settings] = await Promise.all([
-    getApprovedApps(),
-    getCategoriesServer(),
-    getSiteSettingsServer()
-  ]);
-
-  const categoryLabel = new Map(categories.map((c) => [c.value, c.label]));
+  const [categories, settings] = await Promise.all([getCategoriesServer(), getSiteSettingsServer()]);
   const rulesText = stripHtml(settings.site_rules_html || DEFAULT_SITE_RULES_HTML).slice(0, 6000);
 
   const facts = [
     `מכסות מפתח רגיל: עד ${LIMITS.free.maxApps} אפליקציות/תוכנות, עד ${LIMITS.free.maxFileMb}MB לקובץ.`,
     `מכסות מפתח PRO: עד ${LIMITS.pro.maxApps} אפליקציות/תוכנות, עד ${LIMITS.pro.maxFileMb}MB לקובץ.`,
     `הצעת אפליקציה ציבורית: עד ${MAX_SUGGESTION_MB}MB לקובץ, לא נספרת במכסת המפתח.`,
-    `מקורות מוניטין: +5 על אפליקציה פרטית שאושרה, +5 על הצעה ציבורית שאושרה, +2 על כל הורדה של אפליקציה שהעלית (עד 10 ליום).`,
+    `מקורות מוניטין: +5 על אפליקציה פרטית שאושרה, +5 על הצעה ציבורית שאושרה, +2 על כל הורדה של אפליקציה שהעלית (עד 10 ליום), +${REFERRAL.referrerPoints} על הפניה מוצלחת.`,
     `שדרוג ל-PRO אוטומטי בהגעה ל-300 מוניטין (או בקשה ידנית מהצוות, או תרומה של 3$+).`,
-    `מערכת הפניות: קישור אישי בפרופיל (/?ref=שם-המשתמש). על כל חבר שנרשם דרכו ומאמת מייל - המפנה מקבל ${REFERRAL.referrerPoints} מוניטין + קרדיט העלאה של ${REFERRAL.sizeOverrideMb}MB, והמצטרף מקבל ${REFERRAL.joinerPoints} מוניטין. עד ${REFERRAL.dailyRewardCap} הפניות מתוגמלות ביום.`,
+    `מערכת הפניות: קישור אישי בפרופיל (/?ref=שם-המשתמש). המפנה מקבל ${REFERRAL.referrerPoints} מוניטין + קרדיט העלאה של ${REFERRAL.sizeOverrideMb}MB, והמצטרף ${REFERRAL.joinerPoints} מוניטין. עד ${REFERRAL.dailyRewardCap} הפניות מתוגמלות ביום.`,
     `כתיבת תגובות נפתחת אחרי 5 אפליקציות שאושרו; לייקים אחרי 15; צ'אט בין משתמשים אחרי 10. PRO וצוות - פתוח תמיד.`,
-    `שני מסלולי העלאה: "פרטי" (מפתחים, תוכן עצמי, ניתן לעריכה) מול "הוספה למאגר / הצעה ציבורית" (כל משתמש, אפליקציה מוכרת קיימת, לא ניתן לעריכה אחרי אישור).`,
-    `פנייה לצוות: עמוד התמיכה בכתובת /support.`,
-    `קטגוריות באתר: ${categories.map((c) => c.label).join(", ")}.`
+    `שני מסלולי העלאה: "פרטי" (מפתחים, תוכן עצמי, ניתן לעריכה, /profile) מול "הוספה למאגר / הצעה ציבורית" (כל משתמש, אפליקציה מוכרת קיימת, /suggest-app).`,
+    `דפים: חנות /, בקשות קהילה /community, הסברים /about, חוקי האתר /site-rules, תמיכה /support, פרופיל /profile, הרשמה כמפתח /profile/become-developer.`,
+    `קטגוריות (value → תווית): ${categories.map((c) => `${c.value}→${c.label}`).join(", ")}.`
   ].join("\n");
 
-  const catalog = apps
-    .slice(0, 500)
-    .map((a) => {
-      const isApk = /\.(apk|apks|xapk)$/i.test(a.file_name || "") || /\.(apk|apks|xapk)$/i.test(a.file_key || "");
-      const offline =
-        a.offline_support === "offline" ? "אופליין" : a.offline_support === "online" ? "דורש אינטרנט" : "לא ידוע";
-      const parts = [
-        `id=${a.id}`,
-        `שם="${a.name}"`,
-        `סוג=${isApk ? "אפליקציית אנדרואיד" : "תוכנת מחשב"}`,
-        `קטגוריה=${categoryLabel.get(a.category) ?? a.category}`,
-        `גרסה=${a.version}`,
-        a.min_android_version ? `אנדרואיד-מינ׳=${a.min_android_version}` : "",
-        `אופליין=${offline}`,
-        `הורדות=${a.downloads_count ?? 0}`,
-        a.short_description ? `תיאור="${a.short_description.slice(0, 160)}"` : ""
-      ].filter(Boolean);
-      return parts.join(" | ");
-    })
-    .join("\n");
-
-  return `## עובדות על עוגן פליי\n${facts}\n\n## חוקי האתר (תקציר)\n${rulesText}\n\n## מאגר האפליקציות והתוכנות המאושרות (${apps.length} פריטים)\n${catalog}`;
+  return `## עובדות על עוגן פליי\n${facts}\n\n## חוקי האתר\n${rulesText}`;
 }
 
 export interface GeminiTurn {
@@ -205,6 +198,153 @@ export async function callGeminiWithFallback(
     }
   }
   throw lastErr ?? new Error("Gemini: כל המודלים נכשלו");
+}
+
+// ============================================================
+// לולאת הסוכן (Agent Loop) - function calling
+// ============================================================
+
+async function geminiGenerateRaw(apiKey: string, model: string, body: any): Promise<any> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+    model
+  )}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const raw = await res.text();
+  let data: any = null;
+  try {
+    data = raw ? JSON.parse(raw) : null;
+  } catch {
+    // non-JSON
+  }
+  if (!res.ok) {
+    const errMsg = data?.error?.message || raw.slice(0, 300) || `HTTP ${res.status}`;
+    const retryable = res.status === 404 || /not found|not supported|is not found|unknown name/i.test(errMsg);
+    const e: any = new Error(`Gemini ${res.status} [${model}]: ${errMsg}`);
+    e.retryable = retryable;
+    throw e;
+  }
+  return data;
+}
+
+function splitFollowUps(text: string): { clean: string; followUps: string[] } {
+  const idx = text.lastIndexOf("הצעות המשך:");
+  if (idx === -1) return { clean: text.trim(), followUps: [] };
+  const after = text.slice(idx + "הצעות המשך:".length);
+  const followUps = after.split("|").map((s) => s.trim().replace(/\s+/g, " ")).filter(Boolean).slice(0, 3);
+  return { clean: text.slice(0, idx).trim(), followUps };
+}
+
+export interface BotAgentResult {
+  text: string;
+  followUps: string[];
+  appCards: BotAppCard[];
+  proposedAction: ProposedAction | null;
+  modelUsed: string;
+  toolLog: { tool: string; args: any; ok: boolean; summary: string; ms: number }[];
+}
+
+export async function runBotAgent(
+  cfg: BotConfig,
+  systemInstruction: string,
+  turns: GeminiTurn[],
+  ctx: ToolContext
+): Promise<BotAgentResult> {
+  const apiKey = cfg.gemini_api_key || "";
+  const decls = toolDeclarations(ctx);
+  const contents: any[] = turns.map((t) => ({
+    role: t.role === "assistant" ? "model" : "user",
+    parts: [{ text: t.content }]
+  }));
+
+  const appCards: BotAppCard[] = [];
+  let proposedAction: ProposedAction | null = null;
+  const toolLog: BotAgentResult["toolLog"] = [];
+  const modelCandidates = [cfg.model, ...MODEL_FALLBACKS.filter((m) => m !== cfg.model)];
+  let workingModel: string | null = null;
+  let modelUsed = cfg.model;
+  const maxRounds = Math.min(8, Math.max(1, cfg.max_tool_rounds || 5));
+
+  for (let round = 0; round <= maxRounds; round++) {
+    const body = {
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      contents,
+      tools: [{ functionDeclarations: decls }],
+      generationConfig: { temperature: 0.45, maxOutputTokens: 1600 }
+    };
+
+    let data: any = null;
+    if (workingModel) {
+      data = await geminiGenerateRaw(apiKey, workingModel, body);
+    } else {
+      let lastErr: any = null;
+      for (const m of modelCandidates) {
+        try {
+          data = await geminiGenerateRaw(apiKey, m, body);
+          workingModel = m;
+          modelUsed = m;
+          break;
+        } catch (e: any) {
+          lastErr = e;
+          if (!e?.retryable) throw e;
+        }
+      }
+      if (!data) throw lastErr ?? new Error("Gemini: כל המודלים נכשלו");
+    }
+
+    if (data?.promptFeedback?.blockReason) {
+      return {
+        text: "מצטער, לא אוכל לענות על השאלה הזו. אפשר לשאול אותי על עוגן פליי או על האפליקציות שבמאגר.",
+        followUps: [],
+        appCards,
+        proposedAction,
+        modelUsed,
+        toolLog
+      };
+    }
+
+    const parts: any[] = data?.candidates?.[0]?.content?.parts ?? [];
+    const calls = parts.filter((p) => p.functionCall).map((p) => p.functionCall);
+
+    if (calls.length === 0 || round === maxRounds) {
+      const text = parts.map((p) => p.text).filter(Boolean).join("").trim();
+      const { clean, followUps } = splitFollowUps(text);
+      return {
+        text: clean || "לא הצלחתי לנסח תשובה כרגע. אפשר לנסות שוב, או לפנות לצוות דרך עמוד התמיכה (/support).",
+        followUps,
+        appCards,
+        proposedAction,
+        modelUsed,
+        toolLog
+      };
+    }
+
+    contents.push({ role: "model", parts: calls.map((c: any) => ({ functionCall: c })) });
+
+    const responseParts: any[] = [];
+    for (const c of calls) {
+      const t0 = Date.now();
+      let outcome;
+      try {
+        outcome = await executeTool(c.name, c.args ?? {}, ctx);
+      } catch (e: any) {
+        outcome = { result: { error: String(e?.message ?? e).slice(0, 200) }, summary: `${c.name} threw` };
+      }
+      const ok = !(outcome.result && (outcome.result as any).error);
+      toolLog.push({ tool: c.name, args: c.args ?? {}, ok, summary: outcome.summary, ms: Date.now() - t0 });
+      if (outcome.appCards) {
+        for (const card of outcome.appCards) if (!appCards.find((x) => x.id === card.id)) appCards.push(card);
+      }
+      if (outcome.proposedAction) proposedAction = outcome.proposedAction;
+      responseParts.push({ functionResponse: { name: c.name, response: { data: outcome.result } } });
+    }
+    contents.push({ role: "user", parts: responseParts });
+  }
+
+  return { text: "לא הצלחתי לנסח תשובה כרגע.", followUps: [], appCards, proposedAction, modelUsed, toolLog };
 }
 
 // שמות מודלים שזמינים בפועל למפתח ה-API הזה (לכפתור הבדיקה בניהול).
