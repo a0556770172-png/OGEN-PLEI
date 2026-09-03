@@ -109,18 +109,30 @@ export interface GeminiTurn {
   content: string;
 }
 
-// קריאה ל-Google Gemini (REST, ללא SDK - עקבי עם lib/r2.ts).
-export async function callGemini(
-  cfg: BotConfig,
-  systemInstruction: string,
-  turns: GeminiTurn[]
-): Promise<string> {
+// רשימת מודלים לנסות לפי סדר - אם המודל שהוגדר לא קיים/לא נתמך למפתח הזה, עוברים
+// אוטומטית לבא בתור. השם שהצליח נשמר חזרה ל-bot_config כדי שהפעם הבאה תהיה ישירה.
+const MODEL_FALLBACKS = [
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-flash-latest",
+  "gemini-2.0-flash-001",
+  "gemini-1.5-flash",
+  "gemini-1.5-flash-latest",
+  "gemini-pro-latest"
+];
+
+interface GeminiResult {
+  text: string;
+  modelUsed: string;
+}
+
+async function tryOneModel(apiKey: string, model: string, systemInstruction: string, turns: GeminiTurn[]) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-    cfg.model
-  )}:generateContent?key=${encodeURIComponent(cfg.gemini_api_key || "")}`;
+    model
+  )}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
   const body = {
-    system_instruction: { parts: [{ text: systemInstruction }] },
+    systemInstruction: { parts: [{ text: systemInstruction }] },
     contents: turns.map((t) => ({
       role: t.role === "assistant" ? "model" : "user",
       parts: [{ text: t.content }]
@@ -134,19 +146,79 @@ export async function callGemini(
     body: JSON.stringify(body)
   });
 
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    throw new Error(`Gemini API ${res.status}: ${errText.slice(0, 300)}`);
+  const raw = await res.text();
+  let data: any = null;
+  try {
+    data = raw ? JSON.parse(raw) : null;
+  } catch {
+    // תשובה לא-JSON
   }
 
-  const data = await res.json();
+  if (!res.ok) {
+    const errMsg = data?.error?.message || raw.slice(0, 300) || `HTTP ${res.status}`;
+    // 404 / "not found" / "not supported" -> אפשר לנסות מודל אחר. שאר השגיאות (401/403/מכסה) -> אין טעם.
+    const retryable = res.status === 404 || /not found|not supported|is not found|unknown name/i.test(errMsg);
+    const e: any = new Error(`Gemini ${res.status} [${model}]: ${errMsg}`);
+    e.retryable = retryable;
+    e.status = res.status;
+    throw e;
+  }
+
   const blockReason = data?.promptFeedback?.blockReason;
   if (blockReason) {
-    return "מצטער, לא אוכל לענות על השאלה הזו. אפשר לשאול אותי משהו על עוגן פליי או על האפליקציות שבמאגר.";
+    return { text: "", blocked: true };
   }
-  const text: string | undefined = data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("") ?? undefined;
-  if (!text || !text.trim()) {
-    return "לא הצלחתי לנסח תשובה כרגע. אפשר לנסות שוב, או לפנות לצוות דרך עמוד התמיכה.";
+  const text: string =
+    data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).filter(Boolean).join("") ?? "";
+  return { text: text.trim(), blocked: false };
+}
+
+// קריאה ל-Google Gemini עם fallback אוטומטי בין מודלים.
+export async function callGeminiWithFallback(
+  cfg: BotConfig,
+  systemInstruction: string,
+  turns: GeminiTurn[]
+): Promise<GeminiResult> {
+  const apiKey = cfg.gemini_api_key || "";
+  const candidates = [cfg.model, ...MODEL_FALLBACKS.filter((m) => m !== cfg.model)];
+
+  let lastErr: any = null;
+  for (const model of candidates) {
+    try {
+      const r = await tryOneModel(apiKey, model, systemInstruction, turns);
+      if (r.blocked) {
+        return {
+          text: "מצטער, לא אוכל לענות על השאלה הזו. אפשר לשאול אותי משהו על עוגן פליי או על האפליקציות שבמאגר.",
+          modelUsed: model
+        };
+      }
+      if (!r.text) {
+        return {
+          text: "לא הצלחתי לנסח תשובה כרגע. אפשר לנסות שוב, או לפנות לצוות דרך עמוד התמיכה.",
+          modelUsed: model
+        };
+      }
+      return { text: r.text, modelUsed: model };
+    } catch (err: any) {
+      lastErr = err;
+      if (!err?.retryable) break; // 401/403/quota - אין טעם לנסות מודלים אחרים
+    }
   }
-  return text.trim();
+  throw lastErr ?? new Error("Gemini: כל המודלים נכשלו");
+}
+
+// שמות מודלים שזמינים בפועל למפתח ה-API הזה (לכפתור הבדיקה בניהול).
+export async function listGeminiModels(apiKey: string): Promise<string[]> {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}&pageSize=200`
+  );
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`רשימת המודלים נכשלה (${res.status}): ${t.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  return (data?.models ?? [])
+    .filter((m: any) => (m.supportedGenerationMethods ?? []).includes("generateContent"))
+    .map((m: any) => String(m.name || "").replace(/^models\//, ""))
+    .filter(Boolean);
 }

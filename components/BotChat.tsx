@@ -78,7 +78,7 @@ export default function BotChat({
       });
       const json = await res.json();
       if (!res.ok) {
-        setError(json.error || "שגיאה בשליחת ההודעה");
+        setError([json.error || "שגיאה בשליחת ההודעה", json.detail].filter(Boolean).join(" — "));
         setMessages((m) => m.slice(0, -1)); // מסירים את ההודעה שנכשלה
         return;
       }

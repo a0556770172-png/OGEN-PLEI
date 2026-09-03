@@ -5,7 +5,7 @@ import {
   getBotConfig,
   botIsLive,
   buildBotGrounding,
-  callGemini,
+  callGeminiWithFallback,
   DEFAULT_BOT_SYSTEM_PROMPT,
   type GeminiTurn
 } from "@/lib/bot";
@@ -87,17 +87,22 @@ export async function POST(request: Request) {
     createdNewConv = true;
   }
 
-  // --- קריאה ל-Gemini ---
+  // --- קריאה ל-Gemini (עם fallback אוטומטי בין מודלים) ---
   let reply: string;
   try {
     const grounding = await buildBotGrounding();
     const systemInstruction = `${cfg.system_prompt?.trim() || DEFAULT_BOT_SYSTEM_PROMPT}\n\n---\nמידע רקע עדכני (השתמש בו כדי לענות, אל תמציא מעבר לזה):\n${grounding}`;
-    reply = await callGemini(cfg, systemInstruction, [...history, { role: "user", content: text }]);
+    const out = await callGeminiWithFallback(cfg, systemInstruction, [...history, { role: "user", content: text }]);
+    reply = out.text;
+    // אם ה-fallback עבר למודל אחר - שומרים אותו כדי שהפעם הבאה תהיה ישירה.
+    if (out.modelUsed && out.modelUsed !== cfg.model) {
+      await admin.from("bot_config").update({ model: out.modelUsed, updated_at: new Date().toISOString() }).eq("id", true);
+    }
   } catch (err: any) {
     // ההודעה של המשתמש עדיין לא נשמרה - לא משאירים שיחה "תלויה" בלי תשובה.
     if (createdNewConv) await admin.from("bot_conversations").delete().eq("id", convId);
     return NextResponse.json(
-      { error: "הבוט לא הצליח לענות כרגע. נסו שוב בעוד רגע.", detail: String(err?.message ?? err).slice(0, 200) },
+      { error: "הבוט לא הצליח לענות כרגע.", detail: String(err?.message ?? err).slice(0, 250) },
       { status: 502 }
     );
   }

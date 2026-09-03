@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Bot, Loader2, Save, KeyRound, Search, MessageSquare, ArrowRight } from "lucide-react";
+import { Bot, Loader2, Save, KeyRound, Search, MessageSquare, ArrowRight, Plug, CheckCircle2, AlertCircle } from "lucide-react";
 import BotChat from "./BotChat";
 
 interface Config {
@@ -27,6 +27,28 @@ export default function BotConfigPanel() {
   const [convs, setConvs] = useState<ConvRow[]>([]);
   const [q, setQ] = useState("");
   const [viewId, setViewId] = useState<string | null>(null);
+
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; text: string; models: string[] } | null>(null);
+
+  async function runTest() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/admin/bot-config/test", { method: "POST" });
+      const j = await res.json();
+      if (j.ok) {
+        setTestResult({ ok: true, text: `חיבור תקין! מודל בשימוש: ${j.modelUsed}. תשובת בדיקה: "${j.reply}"`, models: j.availableModels ?? [] });
+        if (cfg && j.modelUsed) setCfg({ ...cfg, model: j.modelUsed });
+      } else {
+        setTestResult({ ok: false, text: j.error || "הבדיקה נכשלה", models: j.availableModels ?? [] });
+      }
+    } catch {
+      setTestResult({ ok: false, text: "שגיאת רשת בבדיקה", models: [] });
+    } finally {
+      setTesting(false);
+    }
+  }
 
   useEffect(() => {
     fetch("/api/admin/bot-config")
@@ -152,6 +174,7 @@ export default function BotConfigPanel() {
               dir="ltr"
               placeholder="gemini-2.5-flash"
             />
+            <p className="mt-1 text-xs text-gray-500">אם המודל לא קיים - המערכת עוברת אוטומטית למודל זמין אחר ושומרת אותו.</p>
           </div>
           <div>
             <label className="mb-1.5 block text-sm text-gray-400">מגבלת שאלות יומית למשתמש</label>
@@ -182,6 +205,41 @@ export default function BotConfigPanel() {
         </div>
 
         {msg && <p className="text-sm text-accent">{msg}</p>}
+
+        <div className="border-t border-border pt-4">
+          <button onClick={runTest} disabled={testing || !cfg.hasKey} className="btn-ghost text-sm">
+            {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plug className="h-4 w-4" />} בדיקת חיבור ל-Gemini
+          </button>
+          {testResult && (
+            <div
+              className={`mt-3 flex items-start gap-2 rounded-xl border px-3 py-2.5 text-xs ${
+                testResult.ok ? "border-accent/30 bg-accent/10 text-accent" : "border-red-500/30 bg-red-500/10 text-red-400"
+              }`}
+            >
+              {testResult.ok ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
+              <span className="whitespace-pre-wrap">{testResult.text}</span>
+            </div>
+          )}
+          {testResult && testResult.models.length > 0 && (
+            <div className="mt-2">
+              <p className="mb-1 text-xs text-gray-500">מודלים זמינים למפתח שלך (לחיצה בוחרת):</p>
+              <div className="flex flex-wrap gap-1.5">
+                {testResult.models.map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => save({ model: m })}
+                    dir="ltr"
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition ${
+                      cfg.model === m ? "bg-primary text-[#fff]" : "bg-surface2 text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="card flex flex-col gap-3 p-6">
