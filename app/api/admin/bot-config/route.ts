@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { countUsableKeys } from "@/lib/botKeys";
 
 // הגדרות הצ'אט-בוט - מנהל בפועל בלבד. מפתח ה-API לעולם לא מוחזר ללקוח (רק hasKey).
 export async function GET() {
@@ -9,8 +10,9 @@ export async function GET() {
   if (result.profile.role !== "admin") return NextResponse.json({ error: "רק מנהל בפועל" }, { status: 403 });
 
   const admin = createAdminSupabase();
-  // select("*") - עמיד לכך שמיגרציה 0036 עוד לא רצה (עמודות חדשות פשוט undefined).
+  // select("*") - עמיד לכך שמיגרציה עוד לא רצה (עמודות חדשות פשוט undefined).
   const { data } = await admin.from("bot_config").select("*").eq("id", true).maybeSingle();
+  const keyCount = await countUsableKeys().catch(() => (data?.gemini_api_key ? 1 : 0));
 
   return NextResponse.json({
     enabled: data?.enabled ?? false,
@@ -20,7 +22,7 @@ export async function GET() {
     dailyLimit: data?.daily_limit ?? 30,
     proactiveEnabled: data?.proactive_enabled ?? true,
     maxToolRounds: data?.max_tool_rounds ?? 5,
-    hasKey: !!data?.gemini_api_key,
+    hasKey: keyCount > 0,
     updatedAt: data?.updated_at ?? null
   });
 }

@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Bot, Loader2, Save, KeyRound, Search, MessageSquare, ArrowRight, Plug, CheckCircle2, AlertCircle, Wrench, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Bot, Loader2, Save, Search, MessageSquare, ArrowRight, Plug, CheckCircle2, AlertCircle, Wrench, ThumbsUp, ThumbsDown } from "lucide-react";
 import BotChat from "./BotChat";
+import BotKeysManager from "./BotKeysManager";
 
 interface Config {
   enabled: boolean;
@@ -31,7 +32,6 @@ interface ConvRow {
 
 export default function BotConfigPanel() {
   const [cfg, setCfg] = useState<Config | null>(null);
-  const [keyInput, setKeyInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -49,20 +49,19 @@ export default function BotConfigPanel() {
     try {
       const res = await fetch("/api/admin/bot-config/test", { method: "POST" });
       const j = await res.json();
+      const lines = (j.results ?? []).map((r: any) => `${r.ok ? "✓" : "✗"} ${r.label}: ${r.detail}`);
       if (j.ok) {
-        setTestResult({ ok: true, text: `חיבור תקין! מודל בשימוש: ${j.modelUsed}. תשובת בדיקה: "${j.reply}"`, models: j.availableModels ?? [] });
-        if (cfg && j.modelUsed) setCfg({ ...cfg, model: j.modelUsed });
+        setTestResult({
+          ok: true,
+          text: `יש חיבור תקין!\n${lines.join("\n")}`,
+          models: j.availableModels ?? []
+        });
       } else {
-        const raw = String(j.error || "הבדיקה נכשלה");
-        let hint = raw;
-        if (/suspended/i.test(raw)) {
-          hint = "מפתח ה-API הושעה ע\"י Google. צור מפתח חדש ב-aistudio.google.com/app/apikey (עדיף בפרויקט חדש) והכנס אותו כאן. " + raw;
-        } else if (/API_KEY_INVALID|API key not valid/i.test(raw)) {
-          hint = "מפתח ה-API לא תקין. ודא שהעתקת אותו במלואו מ-aistudio.google.com/app/apikey. " + raw;
-        } else if (/403|PERMISSION_DENIED/i.test(raw)) {
-          hint = "אין הרשאה - ייתכן ש-Generative Language API לא מופעל בפרויקט, או שהמפתח מוגבל. " + raw;
-        }
-        setTestResult({ ok: false, text: hint, models: j.availableModels ?? [] });
+        setTestResult({
+          ok: false,
+          text: `אף מפתח לא עבד:\n${lines.length ? lines.join("\n") : j.error || "הבדיקה נכשלה"}`,
+          models: j.availableModels ?? []
+        });
       }
     } catch {
       setTestResult({ ok: false, text: "שגיאת רשת בבדיקה", models: [] });
@@ -104,7 +103,7 @@ export default function BotConfigPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function save(partial: Partial<Config> & { geminiApiKey?: string }) {
+  async function save(partial: Partial<Config>) {
     if (!cfg) return;
     setSaving(true);
     setMsg("");
@@ -117,12 +116,7 @@ export default function BotConfigPanel() {
     if (res.ok) {
       setMsg("נשמר");
       setTimeout(() => setMsg(""), 1500);
-      if (partial.geminiApiKey !== undefined) {
-        setKeyInput("");
-        setCfg({ ...cfg, ...partial, hasKey: !!partial.geminiApiKey || (partial.geminiApiKey === "" ? false : cfg.hasKey) });
-      } else {
-        setCfg({ ...cfg, ...partial });
-      }
+      setCfg({ ...cfg, ...partial });
     } else {
       const j = await res.json().catch(() => ({}));
       setMsg(j.error || "שגיאה בשמירה");
@@ -168,35 +162,11 @@ export default function BotConfigPanel() {
           <span className={`text-sm font-bold ${cfg.enabled ? "text-primary-light" : "text-gray-400"}`}>
             {cfg.enabled ? "הבוט פעיל" : "הבוט כבוי"}
           </span>
-          {!cfg.hasKey && <span className="text-xs text-gold">(צריך גם מפתח API כדי שיעבוד)</span>}
+          {!cfg.hasKey && <span className="text-xs text-gold">(צריך גם מפתח API אחד לפחות)</span>}
         </div>
 
-        <div>
-          <label className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-400">
-            <KeyRound className="h-4 w-4" /> מפתח Gemini API {cfg.hasKey && <span className="text-accent">— מוגדר ✓</span>}
-          </label>
-          <div className="flex gap-2">
-            <input
-              type="password"
-              value={keyInput}
-              onChange={(e) => setKeyInput(e.target.value)}
-              placeholder={cfg.hasKey ? "הזן מפתח חדש כדי להחליף" : "AIza..."}
-              className="input-field flex-1"
-              dir="ltr"
-            />
-            <button onClick={() => save({ geminiApiKey: keyInput })} disabled={saving || !keyInput.trim()} className="btn-primary shrink-0 text-sm">
-              שמירה
-            </button>
-          </div>
-          <p className="mt-1 text-xs text-gray-500">
-            מפיקים מפתח חינמי ב-<span dir="ltr">aistudio.google.com/app/apikey</span>. המפתח נשמר בשרת בלבד ואינו נחשף למשתמשים.
-            {cfg.hasKey && (
-              <>
-                {" "}
-                <button onClick={() => save({ geminiApiKey: "" })} className="text-red-400 hover:underline">מחיקת המפתח</button>
-              </>
-            )}
-          </p>
+        <div className="border-t border-border pt-4">
+          <BotKeysManager />
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

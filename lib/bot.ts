@@ -4,10 +4,12 @@ import { getSiteSettingsServer } from "./settings";
 import { DEFAULT_SITE_RULES_HTML } from "./siteRulesDefault";
 import { LIMITS, MAX_SUGGESTION_MB, REFERRAL } from "./constants";
 import { toolDeclarations, executeTool, type ToolContext, type BotAppCard, type ProposedAction, type ClientAction } from "./botTools";
+import { getKeyCandidates, countUsableKeys, markKeyQuota, markKeyBroken, markKeyOk, type KeyCandidate } from "./botKeys";
 
 export interface BotConfig {
   enabled: boolean;
   gemini_api_key: string | null;
+  keyCount: number;
   model: string;
   model_smart: string | null;
   system_prompt: string | null;
@@ -17,14 +19,15 @@ export interface BotConfig {
 }
 
 // קריאת הגדרות הבוט - שרת בלבד (מפתח ה-API אסור שיגיע ללקוח).
-// select("*") בכוונה: אם מיגרציה 0036 עוד לא רצה, עמודות חדשות פשוט חסרות ולא מפילות
-// את כל השאילתה (מה שגרם ל"אין מפתח API" למרות שיש).
+// select("*") בכוונה: אם מיגרציה עוד לא רצה, עמודות חדשות פשוט חסרות ולא מפילות את כל השאילתה.
 export async function getBotConfig(): Promise<BotConfig> {
   const admin = createAdminSupabase();
   const { data } = await admin.from("bot_config").select("*").eq("id", true).maybeSingle();
+  const keyCount = await countUsableKeys().catch(() => (data?.gemini_api_key ? 1 : 0));
   return {
     enabled: data?.enabled ?? false,
     gemini_api_key: data?.gemini_api_key ?? null,
+    keyCount,
     model: data?.model || "gemini-2.5-flash",
     model_smart: data?.model_smart ?? null,
     system_prompt: data?.system_prompt ?? null,
@@ -34,9 +37,9 @@ export async function getBotConfig(): Promise<BotConfig> {
   };
 }
 
-// הבוט "חי" רק אם הופעל בניהול וגם הוגדר מפתח API.
+// הבוט "חי" רק אם הופעל בניהול וגם יש לפחות מפתח API אחד זמין.
 export function botIsLive(cfg: BotConfig): boolean {
-  return cfg.enabled && !!cfg.gemini_api_key;
+  return cfg.enabled && cfg.keyCount > 0;
 }
 
 export const DEFAULT_BOT_SYSTEM_PROMPT = `אתה "עוזר עוגן פליי" - סוכן חכם וידידותי של אתר "עוגן פליי", מאגר/חנות אפליקציות אנדרואיד ותוכנות מחשב מסוננות ומאושרות לציבור החרדי (בסטנדרט "נטפרי").
@@ -178,14 +181,14 @@ async function tryOneModel(apiKey: string, model: string, systemInstruction: str
   return { text: text.trim(), blocked: false };
 }
 
-// קריאה ל-Google Gemini עם fallback אוטומטי בין מודלים.
+// קריאה ל-Google Gemini עם fallback אוטומטי בין מודלים (מפתח בודד - לבדיקת מפתח).
 export async function callGeminiWithFallback(
-  cfg: BotConfig,
+  apiKey: string,
+  preferredModel: string,
   systemInstruction: string,
   turns: GeminiTurn[]
 ): Promise<GeminiResult> {
-  const apiKey = cfg.gemini_api_key || "";
-  const candidates = [cfg.model, ...MODEL_FALLBACKS.filter((m) => m !== cfg.model)];
+  const candidates = [preferredModel, ...MODEL_FALLBACKS.filter((m) => m !== preferredModel)];
 
   let lastErr: any = null;
   for (const model of candidates) {
@@ -233,10 +236,16 @@ async function geminiGenerateRaw(apiKey: string, model: string, body: any): Prom
     // non-JSON
   }
   if (!res.ok) {
-    const errMsg = data?.error?.message || raw.slice(0, 300) || `HTTP ${res.status}`;
-    const retryable = res.status === 404 || /not found|not supported|is not found|unknown name/i.test(errMsg);
+    const errMsg = data?.error?.message || raw.slice(0, 400) || `HTTP ${res.status}`;
     const e: any = new Error(`Gemini ${res.status} [${model}]: ${errMsg}`);
-    e.retryable = retryable;
+    // מודל לא קיים -> נסה מודל אחר (אותו מפתח)
+    e.retryable = res.status === 404 || /not found|not supported|is not found|unknown name/i.test(errMsg);
+    // מכסה / קצב -> החלף מפתח והכנס את הנוכחי לקירור
+    e.keyQuota = res.status === 429 || /RESOURCE_EXHAUSTED|quota|rate limit|too many requests/i.test(errMsg);
+    // מפתח לא תקין / מושעה / חסום -> כבה את המפתח
+    e.keyBroken =
+      res.status === 401 ||
+      /API_KEY_INVALID|API key not valid|suspended|has been suspended|PERMISSION_DENIED|consumer.*suspended/i.test(errMsg);
     throw e;
   }
   return data;
@@ -266,7 +275,6 @@ export async function runBotAgent(
   turns: GeminiTurn[],
   ctx: ToolContext
 ): Promise<BotAgentResult> {
-  const apiKey = cfg.gemini_api_key || "";
   const decls = toolDeclarations(ctx);
   const contents: any[] = turns.map((t) => ({
     role: t.role === "assistant" ? "model" : "user",
@@ -278,9 +286,51 @@ export async function runBotAgent(
   let clientAction: ClientAction | null = null;
   const toolLog: BotAgentResult["toolLog"] = [];
   const modelCandidates = [cfg.model, ...MODEL_FALLBACKS.filter((m) => m !== cfg.model)];
+  const maxRounds = Math.min(8, Math.max(1, cfg.max_tool_rounds || 5));
+
+  // מאגר המפתחות (עם רוטציה). מפתח+מודל שעבדו - "נדבקים" לשאר הסבבים.
+  let keyCandidates: KeyCandidate[] = await getKeyCandidates();
+  if (keyCandidates.length === 0) throw new Error("לא הוגדר אף מפתח Gemini API");
+  let workingKey: KeyCandidate | null = null;
   let workingModel: string | null = null;
   let modelUsed = cfg.model;
-  const maxRounds = Math.min(8, Math.max(1, cfg.max_tool_rounds || 5));
+
+  // מנסה מפתח אחר מפתח ומודל אחר מודל, מסמן כשלונות, ומחזיר את הבקשה שהצליחה.
+  async function generate(body: any): Promise<any> {
+    const keys = workingKey ? [workingKey] : keyCandidates;
+    const models = workingModel ? [workingModel] : modelCandidates;
+    let lastErr: any = null;
+    for (const k of keys) {
+      for (const m of models) {
+        try {
+          const data = await geminiGenerateRaw(k.key, m, body);
+          markKeyOk(k.id).catch(() => {});
+          workingKey = k;
+          workingModel = m;
+          modelUsed = m;
+          return data;
+        } catch (e: any) {
+          lastErr = e;
+          if (e?.keyQuota) {
+            markKeyQuota(k.id, String(e.message)).catch(() => {});
+            break; // המפתח הזה נגמר - למפתח הבא
+          }
+          if (e?.keyBroken) {
+            markKeyBroken(k.id, String(e.message)).catch(() => {});
+            break;
+          }
+          if (e?.retryable) continue; // מודל לא קיים - למודל הבא (אותו מפתח)
+          throw e; // שגיאה אחרת - עוצרים
+        }
+      }
+      // אם המפתח הנוכחי "נדבק" ונכשל - מנקים אותו וממשיכים למאגר המלא
+      if (workingKey && workingKey.id === k.id) {
+        workingKey = null;
+        workingModel = null;
+      }
+    }
+    throw lastErr ?? new Error("Gemini: כל המפתחות והמודלים נכשלו");
+  }
 
   for (let round = 0; round <= maxRounds; round++) {
     const body = {
@@ -290,24 +340,7 @@ export async function runBotAgent(
       generationConfig: { temperature: 0.45, maxOutputTokens: 1600 }
     };
 
-    let data: any = null;
-    if (workingModel) {
-      data = await geminiGenerateRaw(apiKey, workingModel, body);
-    } else {
-      let lastErr: any = null;
-      for (const m of modelCandidates) {
-        try {
-          data = await geminiGenerateRaw(apiKey, m, body);
-          workingModel = m;
-          modelUsed = m;
-          break;
-        } catch (e: any) {
-          lastErr = e;
-          if (!e?.retryable) throw e;
-        }
-      }
-      if (!data) throw lastErr ?? new Error("Gemini: כל המודלים נכשלו");
-    }
+    const data: any = await generate(body);
 
     if (data?.promptFeedback?.blockReason) {
       return {
