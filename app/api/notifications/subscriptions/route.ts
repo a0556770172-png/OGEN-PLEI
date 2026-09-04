@@ -18,13 +18,16 @@ export async function GET() {
   const rows = subs ?? [];
   const devIds = rows.filter((r) => r.type === "developer").map((r) => r.target_id);
   const catValues = rows.filter((r) => r.type === "category").map((r) => r.target_id);
+  const appIds = rows.filter((r) => r.type === "app").map((r) => r.target_id);
 
-  const [{ data: devs }, { data: cats }] = await Promise.all([
+  const [{ data: devs }, { data: cats }, { data: apps }] = await Promise.all([
     devIds.length ? admin.from("profiles").select("id, username").in("id", devIds) : Promise.resolve({ data: [] as any[] }),
-    catValues.length ? admin.from("categories").select("value, label").in("value", catValues) : Promise.resolve({ data: [] as any[] })
+    catValues.length ? admin.from("categories").select("value, label").in("value", catValues) : Promise.resolve({ data: [] as any[] }),
+    appIds.length ? admin.from("apps").select("id, name").in("id", appIds) : Promise.resolve({ data: [] as any[] })
   ]);
   const devMap = new Map((devs ?? []).map((d: any) => [d.id, d.username]));
   const catMap = new Map((cats ?? []).map((c: any) => [c.value, c.label]));
+  const appMap = new Map((apps ?? []).map((a: any) => [a.id, a.name]));
 
   return NextResponse.json({
     subscriptions: rows.map((r) => ({
@@ -35,6 +38,8 @@ export async function GET() {
           ? devMap.get(r.target_id) ?? "מפתח"
           : r.type === "category"
           ? catMap.get(r.target_id) ?? r.target_id
+          : r.type === "app"
+          ? appMap.get(r.target_id) ?? "אפליקציה"
           : r.type === "new_public"
           ? "כל אפליקציה ציבורית חדשה"
           : "כל אפליקציה חדשה באתר"

@@ -11,6 +11,7 @@ import AppReviews from "@/components/AppReviews";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { getCurrentProfile } from "@/lib/profile";
 import { isStaff } from "@/lib/auth-helpers";
+import NotifyButton from "@/components/NotifyButton";
 import { Package, User, Calendar, HardDrive, Flag, Smartphone, Wifi, WifiOff, HelpCircle, Pencil } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,19 @@ export default async function AppDetailPage({ params }: { params: { id: string }
   const { user, profile } = await getCurrentProfile();
   // צוות (מנהל/פיקוח) - וגם הבעלים עצמו - יכולים לערוך את פוסט הפרסום ישירות מכאן.
   const canEditPost = !!profile && (isStaff(profile) || app.developer_id === user?.id);
+
+  // מנוי התראות לגרסה חדשה - רק לאפליקציה פרטית מאושרת, ורק אם המשתמש לא הבעלים.
+  const canNotify = !!user && app.status === "approved" && app.source !== "public_suggestion" && app.developer_id !== user.id;
+  let notifySubscribed = false;
+  if (canNotify) {
+    const { count } = await createAdminSupabase()
+      .from("notification_subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("type", "app")
+      .eq("target_id", app.id);
+    notifySubscribed = (count ?? 0) > 0;
+  }
   const category = categories.find((c) => c.value === app.category)?.label ?? app.category;
   const isPaused = app.download_paused || (app.download_paused_until ? new Date(app.download_paused_until).getTime() > Date.now() : false);
 
@@ -96,14 +110,25 @@ export default async function AppDetailPage({ params }: { params: { id: string }
                 }
               />
             </div>
-            {canEditPost && (
-              <Link
-                href={`/dashboard/developer/apps/${app.id}/edit`}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-gold/40 bg-gold/10 px-3 py-1.5 text-xs font-bold text-gold transition hover:bg-gold/20"
-              >
-                <Pencil className="h-3.5 w-3.5" /> עריכת פוסט הפרסום
-              </Link>
-            )}
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+              {canNotify && (
+                <NotifyButton
+                  type="app"
+                  targetId={app.id}
+                  label="קבל התראה על גרסה חדשה"
+                  subscribed={notifySubscribed}
+                  size="sm"
+                />
+              )}
+              {canEditPost && (
+                <Link
+                  href={`/dashboard/developer/apps/${app.id}/edit`}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-gold/40 bg-gold/10 px-3 py-1.5 text-xs font-bold text-gold transition hover:bg-gold/20"
+                >
+                  <Pencil className="h-3.5 w-3.5" /> עריכת פוסט הפרסום
+                </Link>
+              )}
+            </div>
           </div>
         </div>
 

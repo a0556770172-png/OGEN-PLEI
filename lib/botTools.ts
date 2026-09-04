@@ -143,6 +143,29 @@ export function toolDeclarations(ctx: ToolContext) {
       parameters: { type: "object", properties: {} }
     },
     {
+      name: "get_my_notifications",
+      description: "ההתראות של המשתמש במרכז ההתראות באתר - מה חדש, מה עדיין לא ראה. משתמשים בזה לשאלות 'מה פספסתי', 'יש לי התראות', 'מה חדש מהמפתחים שאני עוקב'.",
+      parameters: { type: "object", properties: {} }
+    },
+    {
+      name: "get_my_notification_subscriptions",
+      description: "למי/למה המשתמש רשום לקבל התראות (מפתחים, קטגוריות, אפליקציות ספציפיות, כל חדש).",
+      parameters: { type: "object", properties: {} }
+    },
+    {
+      name: "manage_notification",
+      description: "רושם או מבטל מנוי התראות למשתמש. developer=לפי שם מפתח, app=לפי שם אפליקציה, category=לפי שם קטגוריה, new_public=כל אפליקציה ציבורית חדשה, all_new=כל אפליקציה חדשה. פעולה זו הפיכה ולא דורשת אישור.",
+      parameters: {
+        type: "object",
+        properties: {
+          action: { type: "string", enum: ["subscribe", "unsubscribe"] },
+          target_type: { type: "string", enum: ["developer", "app", "category", "new_public", "all_new"] },
+          target_name: { type: "string", description: "שם המפתח / האפליקציה / הקטגוריה (לא צריך לסוגים הגלובליים)" }
+        },
+        required: ["action", "target_type"]
+      }
+    },
+    {
       name: "get_my_progress",
       description: "מצב המשתמש: מוניטין, כמה חסר ל-PRO וללייק/תגובה/צ'אט, כמה חברים הזמין, וסטטוס האפליקציות שלו. משתמשים בזה לשאלות על 'איפה אני עומד' או כשרוצים לדחוף אותו לפעולה.",
       parameters: { type: "object", properties: {} }
@@ -404,6 +427,116 @@ export async function executeTool(name: string, rawArgs: any, ctx: ToolContext):
         result: rows.map((r) => ({ id: r.id, name: r.name, current_version: r.version })),
         appCards: await toCards(rows),
         summary: `whats_updated → ${rows.length}`
+      };
+    }
+
+    case "get_my_notifications": {
+      const { data: items } = await admin
+        .from("user_notifications")
+        .select("kind, title, url, seen_at, created_at")
+        .eq("user_id", ctx.userId)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      const list = items ?? [];
+      return {
+        result: {
+          unseen: list.filter((i: any) => !i.seen_at).length,
+          recent: list.map((i: any) => ({
+            title: i.title,
+            new: !i.seen_at,
+            url: i.url,
+            when: i.created_at
+          }))
+        },
+        summary: `get_my_notifications → ${list.length}`
+      };
+    }
+
+    case "get_my_notification_subscriptions": {
+      const { data: subs } = await admin
+        .from("notification_subscriptions")
+        .select("type, target_id")
+        .eq("user_id", ctx.userId);
+      const rows = subs ?? [];
+      const devIds = rows.filter((r: any) => r.type === "developer").map((r: any) => r.target_id);
+      const appIds = rows.filter((r: any) => r.type === "app").map((r: any) => r.target_id);
+      const [{ data: devs }, { data: apps }, cats] = await Promise.all([
+        devIds.length ? admin.from("profiles").select("id, username").in("id", devIds) : Promise.resolve({ data: [] as any[] }),
+        appIds.length ? admin.from("apps").select("id, name").in("id", appIds) : Promise.resolve({ data: [] as any[] }),
+        getCategoriesServer()
+      ]);
+      const devMap = new Map((devs ?? []).map((d: any) => [d.id, d.username]));
+      const appMap = new Map((apps ?? []).map((a: any) => [a.id, a.name]));
+      const catMap = new Map(cats.map((c) => [c.value, c.label]));
+      return {
+        result: {
+          subscriptions: rows.map((r: any) => ({
+            type: r.type,
+            name:
+              r.type === "developer"
+                ? devMap.get(r.target_id) ?? "מפתח"
+                : r.type === "app"
+                ? appMap.get(r.target_id) ?? "אפליקציה"
+                : r.type === "category"
+                ? catMap.get(r.target_id) ?? r.target_id
+                : r.type === "new_public"
+                ? "כל אפליקציה ציבורית חדשה"
+                : "כל אפליקציה חדשה"
+          }))
+        },
+        summary: `get_my_notification_subscriptions → ${rows.length}`
+      };
+    }
+
+    case "manage_notification": {
+      const action = args.action === "unsubscribe" ? "unsubscribe" : "subscribe";
+      const tt = String(args.target_type || "");
+      const name = String(args.target_name || "").trim();
+
+      let type = tt;
+      let target = "";
+      if (tt === "developer") {
+        if (!name) return { result: { error: "צריך שם מפתח" }, summary: "manage_notification → no name" };
+        const { data: dev } = await admin.from("profiles").select("id").ilike("username", name).limit(1).maybeSingle();
+        if (!dev) return { result: { error: `לא נמצא מפתח בשם "${name}"` }, summary: "manage_notification → dev not found" };
+        target = (dev as any).id;
+      } else if (tt === "app") {
+        if (!name) return { result: { error: "צריך שם אפליקציה" }, summary: "manage_notification → no name" };
+        const { data: ap } = await admin
+          .from("apps")
+          .select("id")
+          .eq("status", "approved")
+          .ilike("name", `%${name.replace(/[%,()]/g, " ")}%`)
+          .limit(1)
+          .maybeSingle();
+        if (!ap) return { result: { error: `לא נמצאה אפליקציה בשם "${name}"` }, summary: "manage_notification → app not found" };
+        target = (ap as any).id;
+      } else if (tt === "category") {
+        const cats = await getCategoriesServer();
+        const match = cats.find((c) => c.label === name || c.value === name || c.label.includes(name));
+        if (!match) return { result: { error: `לא נמצאה קטגוריה בשם "${name}"` }, summary: "manage_notification → cat not found" };
+        target = match.value;
+      } else if (tt === "new_public" || tt === "all_new") {
+        target = "";
+      } else {
+        return { result: { error: "סוג מנוי לא חוקי" }, summary: "manage_notification → bad type" };
+      }
+
+      if (action === "subscribe") {
+        await admin
+          .from("notification_subscriptions")
+          .upsert({ user_id: ctx.userId, type, target_id: target }, { onConflict: "user_id,type,target_id" });
+      } else {
+        await admin
+          .from("notification_subscriptions")
+          .delete()
+          .eq("user_id", ctx.userId)
+          .eq("type", type)
+          .eq("target_id", target);
+      }
+      return {
+        result: { ok: true, action, type, name: name || (tt === "new_public" ? "אפליקציות ציבוריות חדשות" : "כל אפליקציה חדשה") },
+        summary: `manage_notification → ${action} ${type}`
       };
     }
 

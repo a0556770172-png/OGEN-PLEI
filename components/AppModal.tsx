@@ -10,6 +10,7 @@ import DownloadButton from "./DownloadButton";
 import ReportAppButton from "./ReportAppButton";
 import AppLikeButton from "./AppLikeButton";
 import AppReviews from "./AppReviews";
+import NotifyButton from "./NotifyButton";
 
 // פיצ'ר 2a: עמוד האפליקציה נפתח בחלונית צפה מעל הדף הנוכחי (במקום ניווט מלא), כדי לשמור
 // על רצף הגלישה ומקום הגלילה. הנתונים כבר קיימים בכרטיס (מהעמוד הראשי), ורכיבי הלקוח
@@ -25,12 +26,14 @@ export default function AppModal({
   iconUrl,
   categories,
   viewerIsStaff = false,
+  viewerLoggedIn = false,
   onClose
 }: {
   app: AppRow;
   iconUrl?: string | null;
   categories?: Category[];
   viewerIsStaff?: boolean;
+  viewerLoggedIn?: boolean;
   onClose: () => void;
 }) {
   const category = categories?.find((c) => c.value === app.category)?.label ?? app.category;
@@ -125,14 +128,24 @@ export default function AppModal({
                 }
               />
             </div>
-            {viewerIsStaff && (
-              <Link
-                href={`/dashboard/developer/apps/${app.id}/edit`}
-                className="mt-2 inline-flex items-center gap-1.5 rounded-xl border border-gold/40 bg-gold/10 px-3 py-1.5 text-xs font-bold text-gold transition hover:bg-gold/20"
-              >
-                <Pencil className="h-3.5 w-3.5" /> עריכת פוסט הפרסום (צוות)
-              </Link>
-            )}
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+              {viewerLoggedIn && app.status === "approved" && app.source !== "public_suggestion" && (
+                <NotifyButton
+                  type="app"
+                  targetId={app.id}
+                  label="קבל התראה על גרסה חדשה"
+                  size="sm"
+                />
+              )}
+              {viewerIsStaff && (
+                <Link
+                  href={`/dashboard/developer/apps/${app.id}/edit`}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-gold/40 bg-gold/10 px-3 py-1.5 text-xs font-bold text-gold transition hover:bg-gold/20"
+                >
+                  <Pencil className="h-3.5 w-3.5" /> עריכת פוסט הפרסום (צוות)
+                </Link>
+              )}
+            </div>
           </div>
         </div>
 

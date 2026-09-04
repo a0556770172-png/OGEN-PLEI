@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 
-const TYPES = ["developer", "category", "new_public", "all_new"] as const;
+const TYPES = ["developer", "category", "new_public", "all_new", "app"] as const;
 
 function normalize(type: string, targetId: unknown): { type: string; target: string } | null {
   if (!TYPES.includes(type as any)) return null;
-  if (type === "developer" || type === "category") {
+  if (type === "developer" || type === "category" || type === "app") {
     const t = typeof targetId === "string" ? targetId.trim() : "";
     if (!t) return null;
     return { type, target: t.slice(0, 100) };

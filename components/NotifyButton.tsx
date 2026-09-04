@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell, BellRing, Loader2 } from "lucide-react";
 
-// כפתור הרשמה/ביטול למנוי התראות. subscribed מגיע מהשרת (הדף שמכיל את הכפתור).
+// כפתור הרשמה/ביטול למנוי התראות.
+// אם subscribed לא סופק - הכפתור בודק את המצב בעצמו (fetch על טעינה).
 export default function NotifyButton({
   type,
   targetId,
@@ -10,14 +11,30 @@ export default function NotifyButton({
   subscribed: initial,
   size = "md"
 }: {
-  type: "developer" | "category" | "new_public" | "all_new";
+  type: "developer" | "category" | "new_public" | "all_new" | "app";
   targetId?: string;
   label: string;
-  subscribed: boolean;
+  subscribed?: boolean;
   size?: "sm" | "md";
 }) {
-  const [subscribed, setSubscribed] = useState(initial);
+  const [subscribed, setSubscribed] = useState(!!initial);
+  const [ready, setReady] = useState(initial !== undefined);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (initial !== undefined) return;
+    fetch("/api/notifications/subscriptions")
+      .then((r) => r.json())
+      .then((j) => {
+        const on = (j.subscriptions ?? []).some(
+          (s: any) => s.type === type && (targetId ? s.targetId === targetId : true)
+        );
+        setSubscribed(on);
+      })
+      .catch(() => {})
+      .finally(() => setReady(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function toggle() {
     if (busy) return;
@@ -34,6 +51,8 @@ export default function NotifyButton({
   }
 
   const pad = size === "sm" ? "px-2.5 py-1 text-xs" : "px-3.5 py-2 text-sm";
+
+  if (!ready) return null;
 
   return (
     <button

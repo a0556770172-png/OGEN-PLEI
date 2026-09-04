@@ -1,7 +1,7 @@
 import { createAdminSupabase } from "./supabase/admin";
 import { sendPushToUser } from "./push";
 
-export type SubType = "developer" | "category" | "new_public" | "all_new";
+export type SubType = "developer" | "category" | "new_public" | "all_new" | "app";
 
 // מוסיף שורות ל-feed באתר ושולח Web Push (best-effort) לכל הנמענים.
 async function deliver(userIds: string[], notif: { kind: string; title: string; body: string; url: string }) {
@@ -50,6 +50,8 @@ export async function notifyForApprovedApp(appId: string): Promise<void> {
     { type: "all_new", target: "" }
   ];
   if (isPublic && !isUpdate) conditions.push({ type: "new_public", target: "" });
+  // מנוי לאפליקציה ספציפית - רלוונטי רק לגרסה חדשה (אפליקציה חדשה עדיין אין למי לעקוב אחריה).
+  if (isUpdate) conditions.push({ type: "app", target: app.id });
 
   const userIds: string[] = [];
   for (const c of conditions) {

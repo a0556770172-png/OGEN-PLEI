@@ -258,6 +258,7 @@ export default function AppGrid({
             iconUrl={activeItem.iconUrl}
             categories={categories}
             viewerIsStaff={viewerIsStaff}
+            viewerLoggedIn={loggedIn}
             onClose={() => setActiveId(null)}
           />
         )}
