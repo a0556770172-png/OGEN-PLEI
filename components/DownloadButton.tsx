@@ -92,7 +92,7 @@ export default function DownloadButton({
       setConfirmOpen(true);
       return;
     }
-    // "פרסומת" קצרה של 3 שניות לפני ההורדה בפועל - קידום אפשרות הפרסום באתר.
+    // "פרסומת" קצרה לפני ההורדה בפועל - קידום אפשרות הפרסום באתר.
     // עד 3 פעמים ביום לכל דפדפן, כדי לא להטריד יותר מדי משתמשים שמורידים הרבה.
     if (shouldShowAd()) setShowAd(true);
     else await actuallyDownload();

@@ -235,7 +235,7 @@ export default function BotChat({
     }
   }
 
-  // "פרסומת" קצרה של 3 שניות לפני שהורדה שיזם הבוט מתחילה בפועל - עד 3 פעמים ביום.
+  // "פרסומת" קצרה לפני שהורדה שיזם הבוט מתחילה בפועל - עד 3 פעמים ביום.
   const [adTarget, setAdTarget] = useState<{ appId: string; msgId?: string } | null>(null);
   function doDownload(appId: string, msgId?: string) {
     if (shouldShowAd()) setAdTarget({ appId, msgId });
