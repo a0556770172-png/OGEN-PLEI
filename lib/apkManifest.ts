@@ -20,7 +20,6 @@ function apiLevelToAndroidMajor(api: number): number {
 export function minSdkToLabel(api: number): string {
   const label = `אנדרואיד ${apiLevelToAndroidMajor(api)} ומעלה`;
   if (MIN_ANDROID_VERSIONS.includes(label)) return label;
-  // מחוץ לטווח הרשימה - נצמדים לגבול העליון/תחתון הרלוונטי.
   return api <= 20 ? "אנדרואיד 4 ומעלה" : MIN_ANDROID_VERSIONS[MIN_ANDROID_VERSIONS.length - 1];
 }
 
@@ -30,35 +29,10 @@ export interface ApkFormInfo {
   packageName?: string;
 }
 
-// מנתח קובץ APK בדפדפן ומחזיר מה שאפשר למלא בטופס אוטומטית.
-// best-effort בלבד: כל כשל (לא APK, קובץ מפוצל, פרסר לא נטען) מחזיר {} בשקט.
-export async function parseApkForForm(file: File): Promise<ApkFormInfo> {
-  const lower = file.name.toLowerCase();
-  // .apks / .xapk הם חבילות מפוצלות - הפרסר לא תמיד מסתדר איתן, ומדלגים.
-  if (!lower.endsWith(".apk")) return {};
-
-  try {
-    const mod = await import("app-info-parser");
-    const AppInfoParser: any = (mod as any).default ?? mod;
-    const parser = new AppInfoParser(file);
-    const res: any = await parser.parse();
-
-    const minSdkRaw =
-      res?.minSdkVersion ??
-      res?.usesSdk?.minSdkVersion ??
-      res?.manifest?.usesSdk?.minSdkVersion ??
-      res?.manifest?.usesSdk?.["android:minSdkVersion"];
-    const minSdk = Number(minSdkRaw);
-
-    const versionName = res?.versionName ?? res?.manifest?.versionName;
-    const packageName = res?.package ?? res?.manifest?.package;
-
-    return {
-      minSdkLabel: Number.isFinite(minSdk) && minSdk > 0 ? minSdkToLabel(minSdk) : undefined,
-      versionName: typeof versionName === "string" && versionName.trim() ? versionName.trim() : undefined,
-      packageName: typeof packageName === "string" && packageName.trim() ? packageName.trim() : undefined
-    };
-  } catch {
-    return {};
-  }
+// זיהוי אוטומטי של גרסת אנדרואיד/גרסה מתוך APK בדפדפן.
+// מושבת כרגע: app-info-parser עושה require('fs') ולא ניתן לאגד אותו לדפדפן (שבר את הבנייה).
+// הפונקציה נשארת כ-hook - הטפסים כבר מטפלים ב-{} (נופלים לבחירה ידנית).
+// TODO: לממש דרך נתיב שרת שקורא רק את AndroidManifest.xml מה-APK ב-R2, או פרסר AXML קליל.
+export async function parseApkForForm(_file: File): Promise<ApkFormInfo> {
+  return {};
 }
