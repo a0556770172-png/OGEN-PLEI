@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Loader2, Lock, Share2, Check, AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import AdInterstitial from "./AdInterstitial";
 import type { AppStatus } from "@/types/database";
 
 function ShareButton({ appId }: { appId: string }) {
@@ -53,6 +54,7 @@ export default function DownloadButton({
   const [count, setCount] = useState(downloadsCount);
   const [alreadyDownloaded, setAlreadyDownloaded] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [showAd, setShowAd] = useState(false);
 
   useEffect(() => {
     fetch(`/api/apps/${appId}/download-status`)
@@ -89,7 +91,8 @@ export default function DownloadButton({
       setConfirmOpen(true);
       return;
     }
-    await actuallyDownload();
+    // "פרסומת" קצרה של 3 שניות לפני ההורדה בפועל - קידום אפשרות הפרסום באתר.
+    setShowAd(true);
   }
 
   if (status !== "approved") {
@@ -142,7 +145,7 @@ export default function DownloadButton({
                 אל תוריד
               </button>
               <button
-                onClick={() => { setConfirmOpen(false); actuallyDownload(); }}
+                onClick={() => { setConfirmOpen(false); setShowAd(true); }}
                 className="btn-primary flex-1 justify-center"
               >
                 הורד בכל זאת
@@ -151,6 +154,8 @@ export default function DownloadButton({
           </div>
         </div>
       )}
+
+      {showAd && <AdInterstitial onDone={() => { setShowAd(false); actuallyDownload(); }} />}
     </div>
   );
 }

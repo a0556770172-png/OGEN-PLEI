@@ -5,6 +5,7 @@ import { Send, Loader2, Bot, User as UserIcon, AlertCircle, ThumbsUp, ThumbsDown
 import BotMessageBody from "./BotMessageBody";
 import BotAppCard, { type BotAppCardData } from "./BotAppCard";
 import BotPersonaPicker from "./BotPersonaPicker";
+import AdInterstitial from "./AdInterstitial";
 import { getPersona, DEFAULT_PERSONA_ID } from "@/lib/botPersonas";
 
 const PERSONA_KEY = "ogen-bot-persona";
@@ -217,7 +218,7 @@ export default function BotChat({
     router.push(url);
   }
 
-  async function doDownload(appId: string, msgId?: string) {
+  async function runDownload(appId: string, msgId?: string) {
     setMessages((m) => m.map((x) => (x.id === msgId ? { ...x, actionDone: "מתחיל הורדה…" } : x)));
     try {
       const res = await fetch(`/api/download/${appId}`, { method: "POST" });
@@ -231,6 +232,12 @@ export default function BotChat({
     } catch {
       setMessages((m) => m.map((x) => (x.id === msgId ? { ...x, actionDone: "שגיאת רשת בהורדה" } : x)));
     }
+  }
+
+  // "פרסומת" קצרה של 3 שניות לפני שהורדה שיזם הבוט מתחילה בפועל.
+  const [adTarget, setAdTarget] = useState<{ appId: string; msgId?: string } | null>(null);
+  function doDownload(appId: string, msgId?: string) {
+    setAdTarget({ appId, msgId });
   }
 
   async function confirmAction(msg: Msg) {
@@ -307,6 +314,16 @@ export default function BotChat({
           </div>
           <BotPersonaPicker value={persona} onPick={choosePersona} compact />
         </div>
+      )}
+
+      {adTarget && (
+        <AdInterstitial
+          onDone={() => {
+            const t = adTarget;
+            setAdTarget(null);
+            runDownload(t.appId, t.msgId);
+          }}
+        />
       )}
 
       <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-1 pe-2">
