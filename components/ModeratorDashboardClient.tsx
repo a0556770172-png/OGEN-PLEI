@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning, ScrollText, History } from "lucide-react";
+import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning, ScrollText, History, Star } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import TicketsPanel from "./TicketsPanel";
 import SuggestionsQueue from "./SuggestionsQueue";
@@ -14,9 +14,11 @@ import SizeOverridePanel from "./SizeOverridePanel";
 import BanAppealsPanel from "./BanAppealsPanel";
 import SiteRulesEditorPanel from "./SiteRulesEditorPanel";
 import AuditLogPanel from "./AuditLogPanel";
+import SiteReviewsPanel from "./SiteReviewsPanel";
+import type { SiteReviewRow } from "@/lib/siteReviews";
 import type { AppRow, Profile, BanAppeal } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "tickets" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals" | "teamTracking" | "siteRules";
+type TabKey = "notifications" | "review" | "allApps" | "tickets" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals" | "teamTracking" | "siteRules" | "siteReviews";
 
 export default function ModeratorDashboardClient({
   apps,
@@ -25,7 +27,8 @@ export default function ModeratorDashboardClient({
   ticketsNeedingReplyCount,
   profiles,
   currentProfile,
-  banAppeals
+  banAppeals,
+  siteReviews
 }: {
   apps: AppRow[];
   allApps: AppRow[];
@@ -34,6 +37,7 @@ export default function ModeratorDashboardClient({
   profiles: Profile[];
   currentProfile: Profile;
   banAppeals: BanAppeal[];
+  siteReviews: SiteReviewRow[];
 }) {
   const [tab, setTab] = useState<TabKey>("notifications");
 
@@ -60,6 +64,7 @@ export default function ModeratorDashboardClient({
     { key: "sizeOverrides", label: "הרשאות גודל", icon: HardDrive },
     { key: "banAppeals", label: `ערעורי חסימה${pendingBanAppealsCount ? ` (${pendingBanAppealsCount})` : ""}`, icon: MessageSquareWarning },
     { key: "teamTracking", label: "מעקב צוותים", icon: History },
+    { key: "siteReviews", label: "תגובות על האתר", icon: Star },
     { key: "siteRules", label: "חוקי האתר", icon: ScrollText }
   ] as const;
 
@@ -107,6 +112,9 @@ export default function ModeratorDashboardClient({
       {/* "מעקב צוותים" - אותו לוג בדיוק כמו "מעקב פיקוח" של הניהול, אבל ללא כפתור ביטול
           פעולה: כל חבר צוות רואה מה כל אחד עשה, ורק מנהל בפועל יכול לבטל פעולות. */}
       {tab === "teamTracking" && <AuditLogPanel readOnly={true} />}
+      {/* שליטה בתגובות/ביקורות על האתר - הסתרה, הצגה ומחיקה. אותו פאנל של הניהול;
+          ה-API כבר מתיר לכל חבר צוות (isStaff), וכל פעולה נרשמת ב"מעקב צוותים". */}
+      {tab === "siteReviews" && <SiteReviewsPanel reviews={siteReviews} />}
       {tab === "siteRules" && <SiteRulesEditorPanel isAdmin={false} />}
     </div>
   );

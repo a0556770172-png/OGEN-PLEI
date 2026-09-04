@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { requireProfile } from "@/lib/auth-helpers";
+import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { canComment, COMMENT_UNLOCK_THRESHOLD } from "@/lib/engagement-eligibility";
+import { logAudit } from "@/lib/audit";
 
 // GET: כל הביקורות (כוכבים + תגובה) על אפליקציה - ציבורי.
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
@@ -64,13 +65,32 @@ export async function POST(request: Request, { params }: { params: { id: string 
   return NextResponse.json({ ok: true });
 }
 
-// DELETE: מחיקת הביקורת של המשתמש המחובר על האפליקציה הזו בלבד.
-export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+// DELETE: מחיקת הביקורת של המשתמש המחובר על האפליקציה הזו. צוות (מנהל/פיקוח) יכול למחוק
+// גם ביקורת של משתמש אחר ע"י שליחת { targetUserId } בגוף הבקשה - לצורך שליטה בתגובות.
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   const result = await requireProfile();
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
-  const { user } = result;
+  const { user, profile } = result;
 
+  const body = await request.json().catch(() => ({}));
+  const targetUserId = typeof body?.targetUserId === "string" ? body.targetUserId : null;
   const admin = createAdminSupabase();
+
+  if (targetUserId && targetUserId !== user.id) {
+    if (!isStaff(profile)) return NextResponse.json({ error: "רק צוות יכול למחוק תגובות של אחרים" }, { status: 403 });
+    const { data: victim } = await admin.from("profiles").select("username").eq("id", targetUserId).maybeSingle();
+    await admin.from("app_reviews").delete().eq("app_id", params.id).eq("user_id", targetUserId);
+    await logAudit({
+      actorId: user.id,
+      action: "delete_app_review",
+      targetType: "app",
+      targetId: params.id,
+      targetLabel: victim?.username ?? null
+    });
+    revalidatePath(`/apps/${params.id}`);
+    return NextResponse.json({ ok: true });
+  }
+
   await admin.from("app_reviews").delete().eq("app_id", params.id).eq("user_id", user.id);
 
   revalidatePath(`/apps/${params.id}`);

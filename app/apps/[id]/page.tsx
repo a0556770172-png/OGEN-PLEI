@@ -154,7 +154,7 @@ export default async function AppDetailPage({ params }: { params: { id: string }
           </div>
         )}
 
-        <AppReviews appId={app.id} />
+        <AppReviews appId={app.id} viewerIsStaff={!!profile && isStaff(profile)} />
       </div>
     </div>
   );

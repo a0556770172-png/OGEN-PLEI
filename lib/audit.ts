@@ -13,7 +13,9 @@ export type AuditAction =
   | "grant_unlimited_public_upload" | "revoke_unlimited_public_upload"
   | "reply_ban_appeal"
   | "release_referral" | "revoke_referral"
-  | "edit_site_rules" | "publish_site_rules_update";
+  | "edit_site_rules" | "publish_site_rules_update"
+  | "hide_site_review" | "unhide_site_review" | "delete_site_review"
+  | "delete_app_review";
 
 // רושם שורה בלוג הביקורת עבור כל פעולת ניהול/פיקוח משמעותית - כדי שהמנהל יוכל לראות בדיוק
 // מי עשה מה, מתי, ולמי, ובמידה וניתן - לבטל את הפעולה. undoable מסמן אם יש כפתור "בטל" זמין.

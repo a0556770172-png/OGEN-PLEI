@@ -28,7 +28,11 @@ const ACTION_LABELS: Record<string, string> = {
   release_referral: "שחרור ידני של הפניה",
   revoke_referral: "ביטול תגמול הפניה",
   edit_site_rules: "עריכת חוקי האתר",
-  publish_site_rules_update: "פרסום עדכון לחוקי האתר"
+  publish_site_rules_update: "פרסום עדכון לחוקי האתר",
+  hide_site_review: "הסתרת ביקורת על האתר",
+  unhide_site_review: "הצגת ביקורת על האתר",
+  delete_site_review: "מחיקת ביקורת על האתר",
+  delete_app_review: "מחיקת תגובה על אפליקציה"
 };
 
 interface AuditItem {

@@ -156,7 +156,7 @@ export default function AppModal({
           </div>
         )}
 
-        <AppReviews appId={app.id} />
+        <AppReviews appId={app.id} viewerIsStaff={viewerIsStaff} />
 
         <div className="mt-6 border-t border-border pt-4 text-center">
           <Link href={`/apps/${app.id}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-light transition hover:underline">

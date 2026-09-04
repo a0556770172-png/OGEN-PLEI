@@ -32,7 +32,7 @@ function StarRow({ value, onChange, size = "h-5 w-5" }: { value: number; onChang
 
 // כפתור/שורה מעוצבת "תגובות" בעמוד האפליקציה - כוכבים פתוחים לכל משתמש מחובר, תגובת
 // טקסט חופשית נפתחת אוטומטית אחרי 5 אפליקציות/תוכנות שהמדרג עצמו העלה (נבדק בשרת).
-export default function AppReviews({ appId }: { appId: string }) {
+export default function AppReviews({ appId, viewerIsStaff = false }: { appId: string; viewerIsStaff?: boolean }) {
   const [open, setOpen] = useState(false);
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [avgRating, setAvgRating] = useState(0);
@@ -85,10 +85,27 @@ export default function AppReviews({ appId }: { appId: string }) {
 
   async function removeMine() {
     setBusy(true);
-    await fetch(`/api/apps/${appId}/reviews`, { method: "DELETE" });
+    await fetch(`/api/apps/${appId}/reviews`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: "{}"
+    });
     setBusy(false);
     setMyRating(0);
     setMyComment("");
+    await load();
+  }
+
+  // מחיקת תגובה של משתמש אחר - צוות פיקוח/ניהול בלבד.
+  async function removeReview(targetUserId: string) {
+    if (!confirm("למחוק את התגובה והדירוג של המשתמש הזה?")) return;
+    setBusy(true);
+    await fetch(`/api/apps/${appId}/reviews`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetUserId })
+    });
+    setBusy(false);
     await load();
   }
 
@@ -151,6 +168,16 @@ export default function AppReviews({ appId }: { appId: string }) {
                     <StarRow value={r.rating} size="h-3.5 w-3.5" />
                     <span className="text-xs font-bold text-gray-300">{r.user?.username ?? "משתמש"}</span>
                     <span className="text-xs text-gray-500">{new Date(r.created_at).toLocaleDateString("he-IL")}</span>
+                    {viewerIsStaff && r.user_id !== userId && (
+                      <button
+                        onClick={() => removeReview(r.user_id)}
+                        disabled={busy}
+                        className="ms-auto inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-bold text-red-400 hover:bg-red-500/10"
+                        title="מחיקת התגובה (פיקוח)"
+                      >
+                        <Trash2 className="h-3 w-3" /> מחיקה
+                      </button>
+                    )}
                   </div>
                   {r.comment && <p className="mt-1.5 text-sm text-gray-300">{r.comment}</p>}
                 </div>
