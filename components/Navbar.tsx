@@ -173,6 +173,7 @@ export default function Navbar() {
                 <Link href="/profile" onClick={() => setOpen(false)}>הפרופיל שלי</Link>
                 {adminHref && <Link href={adminHref} onClick={() => setOpen(false)}>ניהול</Link>}
                 {moderatorHref && <Link href={moderatorHref} onClick={() => setOpen(false)}>פיקוח</Link>}
+                <div className="py-1"><PushNotificationsSetup variant="full" /></div>
                 <button onClick={logout} className="text-right text-red-400">יציאה</button>
               </>
             )}

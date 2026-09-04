@@ -14,7 +14,7 @@ function urlBase64ToUint8Array(base64String: string) {
 // כפתור קטן שמאפשר להפעיל/לכבות התראות דפדפן אמיתיות (Web Push) - מוצג לכל משתמש מחובר,
 // כדי שגם מנויי התראות (מפתח פרסם, קטגוריה חדשה וכו') יגיעו כשלא נמצאים באתר. לוחצים פעם
 // אחת, מאשרים הרשאה בדפדפן, וזהו.
-export default function PushNotificationsSetup() {
+export default function PushNotificationsSetup({ variant = "icon" }: { variant?: "icon" | "full" }) {
   const [supported, setSupported] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -87,7 +87,36 @@ export default function PushNotificationsSetup() {
     }
   }
 
-  if (!supported) return null;
+  if (!supported) {
+    if (variant === "full") {
+      return (
+        <p className="rounded-xl border border-border bg-surface2/50 px-3 py-2 text-xs text-gray-500">
+          הדפדפן הזה לא תומך בהתראות דפדפן (Web Push). ההתראות עדיין יופיעו בפעמון באתר.
+        </p>
+      );
+    }
+    return null;
+  }
+
+  if (variant === "full") {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <button
+          onClick={toggle}
+          disabled={busy}
+          className={`flex w-fit items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-bold transition ${
+            subscribed
+              ? "border-accent/50 bg-accent/10 text-accent"
+              : "border-border bg-surface2 text-gray-300 hover:border-primary/50 hover:text-white"
+          }`}
+        >
+          {subscribed ? <BellRing className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+          {subscribed ? "התראות דפדפן מופעלות (לחצו לכיבוי)" : "הפעלת התראות דפדפן (גם כשלא באתר)"}
+        </button>
+        {error && <p className="text-xs text-red-400">{error}</p>}
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex items-center">

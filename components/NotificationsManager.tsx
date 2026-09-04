@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Bell, BellRing, Loader2, X, Package, Tag } from "lucide-react";
+import { Bell, Loader2, X, Package, Tag } from "lucide-react";
+import PushNotificationsSetup from "./PushNotificationsSetup";
 
 interface Sub {
   type: "developer" | "category" | "new_public" | "all_new";
@@ -56,8 +57,9 @@ export default function NotificationsManager() {
         <Bell className="h-5 w-5 text-primary-light" /> ההתראות שלי
       </div>
       <p className="-mt-2 text-xs text-gray-500">
-        מקבלים התראה בפעמון באתר וגם ב-Web Push (אם אישרתם). כדי לקבל Push גם כשלא באתר — לחצו על "הפעלת התראות" בפינת המסך.
+        ההתראות מופיעות תמיד בפעמון למעלה. כדי לקבל אותן גם כהתראת דפדפן (גם כשלא נמצאים באתר) — הפעילו כאן:
       </p>
+      <PushNotificationsSetup variant="full" />
 
       {loading ? (
         <div className="flex justify-center p-4">
