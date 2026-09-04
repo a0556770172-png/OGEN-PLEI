@@ -11,7 +11,7 @@ export default function NotifyButton({
   subscribed: initial,
   size = "md"
 }: {
-  type: "developer" | "category" | "new_public" | "all_new" | "app";
+  type: "developer" | "category" | "new_public" | "all_new" | "app" | "community";
   targetId?: string;
   label: string;
   subscribed?: boolean;

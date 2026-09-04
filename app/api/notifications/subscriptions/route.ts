@@ -40,6 +40,8 @@ export async function GET() {
           ? catMap.get(r.target_id) ?? r.target_id
           : r.type === "app"
           ? appMap.get(r.target_id) ?? "אפליקציה"
+          : r.type === "community"
+          ? "בקשות קהילה חדשות"
           : r.type === "new_public"
           ? "כל אפליקציה ציבורית חדשה"
           : "כל אפליקציה חדשה באתר"

@@ -25,7 +25,7 @@ export default function NotificationsManager() {
 
   const has = (type: string) => subs.some((s) => s.type === type);
 
-  async function toggleGlobal(type: "all_new" | "new_public") {
+  async function toggleGlobal(type: "all_new" | "new_public" | "community") {
     const on = !has(type);
     setBusy(type);
     await fetch("/api/notifications/subscribe", {
@@ -67,9 +67,14 @@ export default function NotificationsManager() {
         </div>
       ) : (
         <>
-          {(["all_new", "new_public"] as const).map((type) => {
+          {(["all_new", "new_public", "community"] as const).map((type) => {
             const on = has(type);
-            const title = type === "all_new" ? "כל אפליקציה חדשה באתר" : "כל אפליקציה ציבורית חדשה";
+            const title =
+              type === "all_new"
+                ? "כל אפליקציה חדשה באתר"
+                : type === "new_public"
+                ? "כל אפליקציה ציבורית חדשה"
+                : "בקשות קהילה חדשות";
             return (
               <div key={type} className="flex items-center gap-3">
                 <button

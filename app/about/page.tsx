@@ -75,6 +75,15 @@ export default function AboutPage() {
             </div>
           </div>
           <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent"><Users className="h-4 w-4" /></div>
+            <div>
+              <p className="font-bold text-white">מילוי בקשת קהילה — 20 מוניטין</p>
+              <p className="text-sm text-gray-400">
+                בלוח <Link href="/community" className="text-primary-light hover:underline">בקשות הקהילה</Link> משתמשים מבקשים אפליקציות ותוכנות. מי שמתנדב ומעלה אפליקציה שממלאת בקשה מקבל 20 מוניטין — בנוסף למוניטין הרגיל על ההעלאה.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-light"><Share2 className="h-4 w-4" /></div>
             <div>
               <p className="font-bold text-white">הזמנת חבר שנרשם דרך הקישור שלכם — {REFERRAL.referrerPoints} מוניטין</p>

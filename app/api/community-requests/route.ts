@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { notifyForCommunityRequest } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -73,5 +74,12 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: `שגיאה ביצירת הבקשה: ${error.message}` }, { status: 500 });
+
+  try {
+    await notifyForCommunityRequest(data.id, title, user.id);
+  } catch {
+    // התראות לא מכשילות את יצירת הבקשה
+  }
+
   return NextResponse.json({ request: data });
 }

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { addPoints } from "@/lib/points";
+
+const COMMUNITY_FULFILL_POINTS = 20;
 
 // פיצ'ר 4: פעולות על בקשה קהילתית - התנדבות/ביטול/סימון בוצע/סגירה/פתיחה מחדש, ומחיקה.
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
@@ -44,6 +47,18 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       patch.fulfilled_by = user.id;
       patch.fulfilled_at = now;
       if (typeof fulfilledAppId === "string" && fulfilledAppId) patch.fulfilled_app_id = fulfilledAppId;
+      // +20 מוניטין למי שמילא את הבקשה (המתנדב שהתנדב, ואם אין - מי שסימן בוצע).
+      // נפרד לגמרי ממוניטין ההעלאה הרגיל, ומשולם פעם אחת לכל בקשה (points_awarded).
+      if (!req.points_awarded && req.status !== "fulfilled") {
+        const rewardee = req.claimed_by || user.id;
+        patch.points_awarded = true;
+        await admin.from("points_log").insert({
+          profile_id: rewardee,
+          delta: COMMUNITY_FULFILL_POINTS,
+          reason: "community_request_fulfilled"
+        });
+        await addPoints(rewardee, COMMUNITY_FULFILL_POINTS);
+      }
       break;
 
     // סגירת הבקשה (כבר לא רלוונטית) - המבקש או צוות.
@@ -61,6 +76,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       patch.fulfilled_by = null;
       patch.fulfilled_at = null;
       patch.fulfilled_app_id = null;
+      // הבקשה לא באמת מולאה - מאפסים גם את דגל התשלום כדי שהממלא הבא יזוכה.
+      patch.points_awarded = false;
       break;
 
     default:

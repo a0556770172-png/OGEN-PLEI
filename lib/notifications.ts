@@ -1,7 +1,7 @@
 import { createAdminSupabase } from "./supabase/admin";
 import { sendPushToUser } from "./push";
 
-export type SubType = "developer" | "category" | "new_public" | "all_new" | "app";
+export type SubType = "developer" | "category" | "new_public" | "all_new" | "app" | "community";
 
 // מוסיף שורות ל-feed באתר ושולח Web Push (best-effort) לכל הנמענים.
 async function deliver(userIds: string[], notif: { kind: string; title: string; body: string; url: string }) {
@@ -78,5 +78,19 @@ export async function notifyForApprovedApp(appId: string): Promise<void> {
     title,
     body: "לחצו לצפייה בחנות",
     url: `/apps/${app.id}`
+  });
+}
+
+// נקרא כשמתפרסמת בקשת קהילה חדשה.
+export async function notifyForCommunityRequest(requestId: string, title: string, byUserId: string): Promise<void> {
+  const admin = createAdminSupabase();
+  const { data } = await admin.from("notification_subscriptions").select("user_id").eq("type", "community").eq("target_id", "");
+  const targets = [...new Set((data ?? []).map((r) => r.user_id))].filter((id) => id !== byUserId);
+  if (targets.length === 0) return;
+  await deliver(targets, {
+    kind: "community_request",
+    title: `בקשת קהילה חדשה: ${title}`,
+    body: "מישהו מבקש אפליקציה/תוכנה - אולי תוכלו לעזור",
+    url: "/community"
   });
 }

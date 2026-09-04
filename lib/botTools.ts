@@ -154,12 +154,12 @@ export function toolDeclarations(ctx: ToolContext) {
     },
     {
       name: "manage_notification",
-      description: "רושם או מבטל מנוי התראות למשתמש. developer=לפי שם מפתח, app=לפי שם אפליקציה, category=לפי שם קטגוריה, new_public=כל אפליקציה ציבורית חדשה, all_new=כל אפליקציה חדשה. פעולה זו הפיכה ולא דורשת אישור.",
+      description: "רושם או מבטל מנוי התראות למשתמש. developer=לפי שם מפתח, app=לפי שם אפליקציה, category=לפי שם קטגוריה, community=בקשות קהילה חדשות, new_public=כל אפליקציה ציבורית חדשה, all_new=כל אפליקציה חדשה. פעולה זו הפיכה ולא דורשת אישור.",
       parameters: {
         type: "object",
         properties: {
           action: { type: "string", enum: ["subscribe", "unsubscribe"] },
-          target_type: { type: "string", enum: ["developer", "app", "category", "new_public", "all_new"] },
+          target_type: { type: "string", enum: ["developer", "app", "category", "community", "new_public", "all_new"] },
           target_name: { type: "string", description: "שם המפתח / האפליקציה / הקטגוריה (לא צריך לסוגים הגלובליים)" }
         },
         required: ["action", "target_type"]
@@ -516,7 +516,7 @@ export async function executeTool(name: string, rawArgs: any, ctx: ToolContext):
         const match = cats.find((c) => c.label === name || c.value === name || c.label.includes(name));
         if (!match) return { result: { error: `לא נמצאה קטגוריה בשם "${name}"` }, summary: "manage_notification → cat not found" };
         target = match.value;
-      } else if (tt === "new_public" || tt === "all_new") {
+      } else if (tt === "new_public" || tt === "all_new" || tt === "community") {
         target = "";
       } else {
         return { result: { error: "סוג מנוי לא חוקי" }, summary: "manage_notification → bad type" };
@@ -672,7 +672,9 @@ export async function executeTool(name: string, rawArgs: any, ctx: ToolContext):
         referral: "הזמנת חבר",
         referral_join: "בונוס הצטרפות",
         referral_revoked: "ביטול תגמול הפניה",
-        suggestion: "הצעת אפליקציה שאושרה"
+        suggestion: "הצעת אפליקציה שאושרה",
+        app_suggestion_approved: "הצעת אפליקציה שאושרה",
+        community_request_fulfilled: "מילוי בקשת קהילה"
       };
       return {
         result: {

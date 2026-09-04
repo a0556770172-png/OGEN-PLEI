@@ -13,6 +13,7 @@ import {
   getReferralEvents
 } from "@/lib/admin-data";
 import { getSiteSettingsServer } from "@/lib/settings";
+import { getSiteReviews } from "@/lib/siteReviews";
 import AdminDashboardClient from "@/components/AdminDashboardClient";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +38,8 @@ export default async function AdminDashboard() {
       getReferralEvents()
     ]);
 
+  const siteReviewsData = await getSiteReviews({ includeHidden: true });
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -56,6 +59,7 @@ export default async function AdminDashboard() {
         currentProfile={profile}
         banAppeals={banAppeals}
         referralEvents={referralEvents}
+        siteReviews={siteReviewsData.reviews}
       />
     </div>
   );
