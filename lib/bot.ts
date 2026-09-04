@@ -126,8 +126,10 @@ export interface GeminiTurn {
 // אוטומטית לבא בתור. השם שהצליח נשמר חזרה ל-bot_config כדי שהפעם הבאה תהיה ישירה.
 const MODEL_FALLBACKS = [
   "gemini-2.5-flash",
-  "gemini-2.0-flash",
+  "gemini-2.5-flash-lite",
   "gemini-flash-latest",
+  "gemini-flash-lite-latest",
+  "gemini-2.0-flash",
   "gemini-2.0-flash-001",
   "gemini-1.5-flash",
   "gemini-1.5-flash-latest",
@@ -137,6 +139,56 @@ const MODEL_FALLBACKS = [
 interface GeminiResult {
   text: string;
   modelUsed: string;
+}
+
+// ============================================================
+// סיווג שגיאות Gemini + עקיפת מודל עמוס
+// ============================================================
+
+// מודלים שהחזירו לאחרונה 503/עומס - נדחוף אותם לסוף התור לזמן קצר כדי שבקשות
+// עוקבות לא יבזבזו זמן על מודל שכרגע "חם". נשמר בזיכרון של המופע (מספיק לתקלה זמנית).
+const overloadedUntil = new Map<string, number>();
+const OVERLOAD_COOLDOWN_MS = 90 * 1000;
+
+function markModelOverloaded(model: string) {
+  overloadedUntil.set(model, Date.now() + OVERLOAD_COOLDOWN_MS);
+}
+
+// מסדר רשימת מודלים כך שמודלים שכרגע עמוסים יורדים לסוף (בלי להיזרק לגמרי).
+function orderModels(models: string[]): string[] {
+  const now = Date.now();
+  return models
+    .map((m, i) => ({ m, i, hot: (overloadedUntil.get(m) ?? 0) > now }))
+    .sort((a, b) => (a.hot === b.hot ? a.i - b.i : a.hot ? 1 : -1))
+    .map((x) => x.m);
+}
+
+// מחליט מה לעשות בעקבות שגיאת HTTP מ-Gemini:
+// - keyBroken: מפתח לא תקין/מושעה -> כבה אותו.
+// - keyQuota: מכסה/קצב -> החלף מפתח, קירור.
+// - retryable: מודל לא נתמך, או עומס/תקלה זמנית בצד גוגל (500/503/504) -> נסה מודל אחר ואז מפתח אחר.
+function classifyGeminiError(status: number, msg: string): {
+  retryable: boolean;
+  keyQuota: boolean;
+  keyBroken: boolean;
+  overloaded: boolean;
+} {
+  const m = msg || "";
+  const keyBroken =
+    status === 401 ||
+    /API_KEY_INVALID|API key not valid|suspended|has been suspended|PERMISSION_DENIED|consumer.*suspended/i.test(m);
+  const keyQuota = !keyBroken && (status === 429 || /RESOURCE_EXHAUSTED|quota|rate limit|too many requests/i.test(m));
+  const overloaded =
+    status === 500 ||
+    status === 503 ||
+    status === 504 ||
+    /overloaded|high demand|experiencing high|try again later|UNAVAILABLE|INTERNAL|backend error|deadline exceeded|timed out|temporarily/i.test(
+      m
+    );
+  const modelMissing =
+    status === 404 || /not found|not supported|is not found|unknown name/i.test(m);
+  const retryable = !keyBroken && !keyQuota && (modelMissing || overloaded);
+  return { retryable, keyQuota, keyBroken, overloaded };
 }
 
 async function tryOneModel(apiKey: string, model: string, systemInstruction: string, turns: GeminiTurn[]) {
@@ -169,10 +221,13 @@ async function tryOneModel(apiKey: string, model: string, systemInstruction: str
 
   if (!res.ok) {
     const errMsg = data?.error?.message || raw.slice(0, 300) || `HTTP ${res.status}`;
-    // 404 / "not found" / "not supported" -> אפשר לנסות מודל אחר. שאר השגיאות (401/403/מכסה) -> אין טעם.
-    const retryable = res.status === 404 || /not found|not supported|is not found|unknown name/i.test(errMsg);
+    const cls = classifyGeminiError(res.status, errMsg);
+    if (cls.overloaded) markModelOverloaded(model);
     const e: any = new Error(`Gemini ${res.status} [${model}]: ${errMsg}`);
-    e.retryable = retryable;
+    // מודל לא נתמך או עומס/תקלה זמנית -> שווה לנסות מודל אחר.
+    e.retryable = cls.retryable;
+    e.keyQuota = cls.keyQuota;
+    e.keyBroken = cls.keyBroken;
     e.status = res.status;
     throw e;
   }
@@ -193,7 +248,7 @@ export async function callGeminiWithFallback(
   systemInstruction: string,
   turns: GeminiTurn[]
 ): Promise<GeminiResult> {
-  const candidates = [preferredModel, ...MODEL_FALLBACKS.filter((m) => m !== preferredModel)];
+  const candidates = orderModels([preferredModel, ...MODEL_FALLBACKS.filter((m) => m !== preferredModel)]);
 
   let lastErr: any = null;
   for (const model of candidates) {
@@ -242,15 +297,16 @@ async function geminiGenerateRaw(apiKey: string, model: string, body: any): Prom
   }
   if (!res.ok) {
     const errMsg = data?.error?.message || raw.slice(0, 400) || `HTTP ${res.status}`;
+    const cls = classifyGeminiError(res.status, errMsg);
+    if (cls.overloaded) markModelOverloaded(model);
     const e: any = new Error(`Gemini ${res.status} [${model}]: ${errMsg}`);
-    // מודל לא קיים -> נסה מודל אחר (אותו מפתח)
-    e.retryable = res.status === 404 || /not found|not supported|is not found|unknown name/i.test(errMsg);
+    e.status = res.status;
+    // מודל לא קיים / עומס זמני בצד גוגל (503/500) -> נסה מודל אחר, ואז מפתח אחר
+    e.retryable = cls.retryable;
     // מכסה / קצב -> החלף מפתח והכנס את הנוכחי לקירור
-    e.keyQuota = res.status === 429 || /RESOURCE_EXHAUSTED|quota|rate limit|too many requests/i.test(errMsg);
+    e.keyQuota = cls.keyQuota;
     // מפתח לא תקין / מושעה / חסום -> כבה את המפתח
-    e.keyBroken =
-      res.status === 401 ||
-      /API_KEY_INVALID|API key not valid|suspended|has been suspended|PERMISSION_DENIED|consumer.*suspended/i.test(errMsg);
+    e.keyBroken = cls.keyBroken;
     throw e;
   }
   return data;
@@ -301,11 +357,17 @@ export async function runBotAgent(
   let modelUsed = cfg.model;
 
   // מנסה מפתח אחר מפתח ומודל אחר מודל, מסמן כשלונות, ומחזיר את הבקשה שהצליחה.
+  // גם אם מפתח/מודל "נדבקו" מסבב קודם - בכשלון נסרוק את כל המאגר, כדי שבעומס
+  // זמני (503) או מכסה שנגמרה הבוט תמיד ימצא מפתח/מודל שעובד.
   async function generate(body: any): Promise<any> {
-    const keys = workingKey ? [workingKey] : keyCandidates;
-    const models = workingModel ? [workingModel] : modelCandidates;
+    const keys = workingKey
+      ? [workingKey, ...keyCandidates.filter((k) => k.id !== workingKey!.id)]
+      : keyCandidates;
     let lastErr: any = null;
     for (const k of keys) {
+      const models = orderModels(
+        workingModel ? [workingModel, ...modelCandidates.filter((m) => m !== workingModel)] : modelCandidates
+      );
       for (const m of models) {
         try {
           const data = await geminiGenerateRaw(k.key, m, body);
@@ -324,16 +386,14 @@ export async function runBotAgent(
             markKeyBroken(k.id, String(e.message)).catch(() => {});
             break;
           }
-          if (e?.retryable) continue; // מודל לא קיים - למודל הבא (אותו מפתח)
-          throw e; // שגיאה אחרת - עוצרים
+          if (e?.retryable) continue; // מודל לא קיים / עומס זמני - למודל הבא (אותו מפתח)
+          throw e; // שגיאה אחרת (למשל 400) - עוצרים
         }
       }
-      // אם המפתח הנוכחי "נדבק" ונכשל - מנקים אותו וממשיכים למאגר המלא
-      if (workingKey && workingKey.id === k.id) {
-        workingKey = null;
-        workingModel = null;
-      }
     }
+    // הכל נכשל - מאפסים הידבקות כדי שהסבב/הבקשה הבאים יתחילו נקי
+    workingKey = null;
+    workingModel = null;
     throw lastErr ?? new Error("Gemini: כל המפתחות והמודלים נכשלו");
   }
 
@@ -415,7 +475,7 @@ export async function geminiOneShot(systemInstruction: string, userText: string)
   const cfg = await getBotConfig();
   const keys = await getKeyCandidates();
   if (keys.length === 0) throw new Error("אין מפתח Gemini");
-  const models = [cfg.model, ...MODEL_FALLBACKS.filter((m) => m !== cfg.model)];
+  const models = orderModels([cfg.model, ...MODEL_FALLBACKS.filter((m) => m !== cfg.model)]);
   const body = {
     systemInstruction: { parts: [{ text: systemInstruction }] },
     contents: [{ role: "user", parts: [{ text: userText }] }],
