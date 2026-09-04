@@ -1,9 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Send, Loader2, Bot, User as UserIcon, AlertCircle, ThumbsUp, ThumbsDown, Mic, Check, X, Sparkles, Download, ArrowLeft } from "lucide-react";
+import { Send, Loader2, Bot, User as UserIcon, AlertCircle, ThumbsUp, ThumbsDown, Mic, Check, X, Sparkles, Download, ArrowLeft, ChevronDown } from "lucide-react";
 import BotMessageBody from "./BotMessageBody";
 import BotAppCard, { type BotAppCardData } from "./BotAppCard";
+import BotPersonaPicker from "./BotPersonaPicker";
+import { getPersona, DEFAULT_PERSONA_ID } from "@/lib/botPersonas";
+
+const PERSONA_KEY = "ogen-bot-persona";
 
 interface ProposedAction {
   kind: "support_ticket" | "app_suggestion";
@@ -61,8 +65,37 @@ export default function BotChat({
   const [busyAction, setBusyAction] = useState(false);
   const [listening, setListening] = useState(false);
   const [opener, setOpener] = useState<{ text: string; followUps: string[] } | null>(null);
+  const [persona, setPersona] = useState<string>(DEFAULT_PERSONA_ID);
+  const [personaChosen, setPersonaChosen] = useState(true); // עד שנקרא מ-localStorage - לא מציגים בורר
+  const [showPicker, setShowPicker] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const recRef = useRef<any>(null);
+
+  // קריאת סגנון העוזר שנשמר. אין ערך שמור -> נציג את בורר הסגנון בשיחה חדשה.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(PERSONA_KEY);
+      if (saved) {
+        setPersona(saved);
+        setPersonaChosen(true);
+      } else {
+        setPersonaChosen(false);
+      }
+    } catch {
+      setPersonaChosen(true);
+    }
+  }, []);
+
+  function choosePersona(id: string) {
+    setPersona(id);
+    setPersonaChosen(true);
+    setShowPicker(false);
+    try {
+      localStorage.setItem(PERSONA_KEY, id);
+    } catch {
+      // ignore
+    }
+  }
 
   // הודעת פתיחה יזומה - רק בשיחה חדשה, לא ב-readOnly.
   useEffect(() => {
@@ -136,7 +169,7 @@ export default function BotChat({
       const res = await fetch("/api/bot/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId, message: msg })
+        body: JSON.stringify({ conversationId, message: msg, personaId: persona })
       });
       const json = await res.json();
       if (!res.ok) {
@@ -248,11 +281,52 @@ export default function BotChat({
   const lastAssistantIdx = [...messages].reverse().findIndex((m) => m.role === "assistant");
   const lastAssistant = lastAssistantIdx >= 0 ? messages.length - 1 - lastAssistantIdx : -1;
   const heightClass = variant === "widget" ? "h-[58vh] max-h-[520px]" : "h-[calc(100vh-17rem)] min-h-[420px]";
+  const currentPersona = getPersona(persona);
+  const showPersonaGate = !readOnly && !personaChosen && !conversationId && messages.length === 0 && !sending && !autoSend;
 
   return (
-    <div className={`flex flex-col ${heightClass}`}>
+    <div className={`relative flex flex-col ${heightClass}`}>
+      {!readOnly && personaChosen && !showPicker && (
+        <button
+          onClick={() => setShowPicker(true)}
+          title="שינוי סגנון העוזר"
+          className="mb-1.5 inline-flex w-fit items-center gap-1.5 self-start rounded-full border border-border bg-surface2 px-2.5 py-1 text-[11px] font-semibold text-gray-400 transition hover:border-primary/40 hover:text-white"
+        >
+          <span className="text-sm leading-none">{currentPersona.emoji}</span> {currentPersona.name}
+          <ChevronDown className="h-3 w-3" />
+        </button>
+      )}
+
+      {showPicker && (
+        <div className="absolute inset-0 z-20 flex flex-col overflow-y-auto rounded-xl border border-border bg-bg/98 p-3 backdrop-blur-sm">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-sm font-black text-white">סגנון העוזר</span>
+            <button onClick={() => setShowPicker(false)} className="rounded-md p-1 text-gray-500 transition hover:text-white">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <BotPersonaPicker value={persona} onPick={choosePersona} compact />
+        </div>
+      )}
+
       <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-1 pe-2">
-        {messages.length === 0 && !sending && opener && (
+        {showPersonaGate && (
+          <div className="flex h-full flex-col justify-center py-2">
+            <div className="mb-4 flex flex-col items-center gap-2 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent text-[#fff] shadow-glow">
+                <Bot className="h-6 w-6" />
+              </div>
+              <p className="text-sm text-gray-400">לפני שמתחילים —</p>
+            </div>
+            <BotPersonaPicker
+              value={persona}
+              onPick={choosePersona}
+              onSkip={() => choosePersona(DEFAULT_PERSONA_ID)}
+            />
+          </div>
+        )}
+
+        {!showPersonaGate && messages.length === 0 && !sending && opener && (
           <div className="flex flex-col gap-3">
             <div className="flex gap-2.5">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-[#fff]">
@@ -278,7 +352,7 @@ export default function BotChat({
           </div>
         )}
 
-        {messages.length === 0 && !sending && !opener && (
+        {!showPersonaGate && messages.length === 0 && !sending && !opener && (
           <div className="flex h-full flex-col items-center justify-center gap-4 px-4 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent text-[#fff] shadow-glow">
               <Bot className="h-7 w-7" />

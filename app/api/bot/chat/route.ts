@@ -3,6 +3,7 @@ import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { getBotConfig, botIsLive, buildBotGrounding, runBotAgent, DEFAULT_BOT_SYSTEM_PROMPT, type GeminiTurn } from "@/lib/bot";
 import { buildBotUserContext } from "@/lib/botContext";
+import { personaSystemBlock } from "@/lib/botPersonas";
 import type { ToolContext } from "@/lib/botTools";
 
 const HISTORY_TURNS = 16;
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
   const cfg = await getBotConfig();
   if (!botIsLive(cfg)) return NextResponse.json({ error: "הצ'אט-בוט אינו זמין כרגע." }, { status: 503 });
 
-  const { conversationId, message } = await request.json().catch(() => ({}));
+  const { conversationId, message, personaId } = await request.json().catch(() => ({}));
   const text = typeof message === "string" ? message.trim() : "";
   if (!text) return NextResponse.json({ error: "יש לכתוב הודעה" }, { status: 400 });
   if (text.length > 4000) return NextResponse.json({ error: "ההודעה ארוכה מדי" }, { status: 400 });
@@ -79,7 +80,8 @@ export async function POST(request: Request) {
     const systemInstruction = [
       cfg.system_prompt?.trim() || DEFAULT_BOT_SYSTEM_PROMPT,
       "\n---\n## מידע רקע על האתר\n" + grounding,
-      "\n---\n## המשתמש הנוכחי\n" + userCtx.text
+      "\n---\n## המשתמש הנוכחי\n" + userCtx.text,
+      personaSystemBlock(typeof personaId === "string" ? personaId : null)
     ].join("\n");
 
     const ctx: ToolContext = {
