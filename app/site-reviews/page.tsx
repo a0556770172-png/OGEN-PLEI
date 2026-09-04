@@ -1,7 +1,8 @@
-import { User as UserIcon, Star, Crown, ShieldCheck, Package, MessageSquareQuote } from "lucide-react";
+import { Star, MessageSquareQuote } from "lucide-react";
 import { getCurrentProfile } from "@/lib/profile";
-import { getSiteReviews, getMySiteReview } from "@/lib/siteReviews";
+import { getSiteReviews, getMySiteReview, getMyLikedReviews } from "@/lib/siteReviews";
 import SiteReviewForm from "@/components/SiteReviewForm";
+import SiteReviewsCarousel from "@/components/SiteReviewsCarousel";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
@@ -19,18 +20,11 @@ function Stars({ value, size = "h-4 w-4" }: { value: number; size?: string }) {
   );
 }
 
-function timeAgo(dateStr: string) {
-  const d = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-  if (d < 1) return "היום";
-  if (d === 1) return "אתמול";
-  if (d < 30) return `לפני ${d} ימים`;
-  if (d < 365) return `לפני ${Math.floor(d / 30)} חודשים`;
-  return new Date(dateStr).toLocaleDateString("he-IL");
-}
-
 export default async function SiteReviewsPage() {
   const [{ user }, data] = await Promise.all([getCurrentProfile(), getSiteReviews()]);
-  const myReview = user ? await getMySiteReview(user.id) : null;
+  const [myReview, likedIds] = user
+    ? await Promise.all([getMySiteReview(user.id), getMyLikedReviews(user.id)])
+    : [null, [] as string[]];
 
   const maxBar = Math.max(1, ...Object.values(data.distribution));
 
@@ -72,38 +66,10 @@ export default async function SiteReviewsPage() {
 
       <SiteReviewForm loggedIn={!!user} initial={myReview} />
 
-      {/* הרשימה */}
+      {/* הרשימה - קרוסלה */}
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-bold">מה כותבים ({data.reviews.filter((r) => r.comment).length})</h2>
-        {data.reviews.filter((r) => r.comment).length === 0 ? (
-          <div className="card p-8 text-center text-gray-500">עדיין אין חוות דעת כתובות. היו הראשונים!</div>
-        ) : (
-          data.reviews
-            .filter((r) => r.comment)
-            .map((r) => (
-              <div key={r.id} className="card flex gap-3 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface2 ring-1 ring-border">
-                  {r.avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={r.avatarUrl} alt={r.username} className="h-full w-full object-cover" />
-                  ) : (
-                    <UserIcon className="h-4 w-4 text-primary-light" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                    <span className="font-bold text-white">{r.username}</span>
-                    {r.role === "admin" && <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-400">מנהל</span>}
-                    {(r.role === "developer" || r.role === "admin") && <Package className="h-3 w-3 text-accent" />}
-                    {r.isPro && <Crown className="h-3 w-3 text-gold" />}
-                    <span className="text-xs text-gray-600">· {timeAgo(r.created_at)}</span>
-                  </div>
-                  <Stars value={r.rating} />
-                  <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-gray-300">{r.comment}</p>
-                </div>
-              </div>
-            ))
-        )}
+        <SiteReviewsCarousel reviews={data.reviews} likedIds={likedIds} loggedIn={!!user} />
       </section>
     </div>
   );

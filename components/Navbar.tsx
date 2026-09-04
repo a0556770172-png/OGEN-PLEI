@@ -99,9 +99,6 @@ export default function Navbar() {
           <Link href="/site-rules" className="text-sm font-medium text-gray-300 transition hover:text-white">
             חוקי האתר
           </Link>
-          <Link href="/site-reviews" className="text-sm font-medium text-gray-300 transition hover:text-white">
-            דירוגים
-          </Link>
           {!loading && profile && (
             <div className="flex items-center gap-3">
               <NotificationBell dashboardBase={adminHref ?? moderatorHref ?? null} />
@@ -171,7 +168,6 @@ export default function Navbar() {
             <Link href="/community" onClick={() => setOpen(false)}>בקשות קהילה</Link>
             <Link href="/about" onClick={() => setOpen(false)}>הסברים</Link>
             <Link href="/site-rules" onClick={() => setOpen(false)}>חוקי האתר</Link>
-            <Link href="/site-reviews" onClick={() => setOpen(false)}>דירוגים וחוות דעת</Link>
             {profile && (
               <>
                 <Link href="/profile" onClick={() => setOpen(false)}>הפרופיל שלי</Link>

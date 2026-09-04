@@ -11,6 +11,7 @@ export interface SiteReviewRow {
   role: string;
   isPro: boolean;
   hidden: boolean;
+  likeCount: number;
 }
 
 export interface SiteReviewsData {
@@ -31,6 +32,16 @@ export async function getSiteReviews(opts: { includeHidden?: boolean } = {}): Pr
   const { data } = await q;
 
   const rows = (data ?? []) as any[];
+
+  // ספירת לייקים לכל ביקורת
+  const likeCounts = new Map<string, number>();
+  if (rows.length) {
+    const { data: likes } = await admin
+      .from("site_review_likes")
+      .select("review_id")
+      .in("review_id", rows.map((r) => r.id));
+    for (const l of likes ?? []) likeCounts.set(l.review_id, (likeCounts.get(l.review_id) ?? 0) + 1);
+  }
   const distribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   let sum = 0;
   for (const r of rows) {
@@ -48,7 +59,8 @@ export async function getSiteReviews(opts: { includeHidden?: boolean } = {}): Pr
       created_at: r.created_at,
       role: r.user?.role ?? "user",
       isPro: !!r.user?.is_pro,
-      hidden: !!r.hidden
+      hidden: !!r.hidden,
+      likeCount: likeCounts.get(r.id) ?? 0
     }))
   );
 
@@ -64,4 +76,11 @@ export async function getMySiteReview(userId: string): Promise<{ rating: number;
   const admin = createAdminSupabase();
   const { data } = await admin.from("site_reviews").select("rating, comment").eq("user_id", userId).maybeSingle();
   return data ? { rating: data.rating, comment: data.comment } : null;
+}
+
+// אילו ביקורות המשתמש הנוכחי סימן בלייק.
+export async function getMyLikedReviews(userId: string): Promise<string[]> {
+  const admin = createAdminSupabase();
+  const { data } = await admin.from("site_review_likes").select("review_id").eq("user_id", userId);
+  return (data ?? []).map((r) => r.review_id);
 }
