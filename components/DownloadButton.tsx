@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Download, Loader2, Lock, Share2, Check, AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import AdInterstitial from "./AdInterstitial";
+import { shouldShowAd } from "@/lib/adThrottle";
 import type { AppStatus } from "@/types/database";
 
 function ShareButton({ appId }: { appId: string }) {
@@ -92,7 +93,9 @@ export default function DownloadButton({
       return;
     }
     // "פרסומת" קצרה של 3 שניות לפני ההורדה בפועל - קידום אפשרות הפרסום באתר.
-    setShowAd(true);
+    // עד 3 פעמים ביום לכל דפדפן, כדי לא להטריד יותר מדי משתמשים שמורידים הרבה.
+    if (shouldShowAd()) setShowAd(true);
+    else await actuallyDownload();
   }
 
   if (status !== "approved") {
@@ -145,7 +148,11 @@ export default function DownloadButton({
                 אל תוריד
               </button>
               <button
-                onClick={() => { setConfirmOpen(false); setShowAd(true); }}
+                onClick={() => {
+                  setConfirmOpen(false);
+                  if (shouldShowAd()) setShowAd(true);
+                  else actuallyDownload();
+                }}
                 className="btn-primary flex-1 justify-center"
               >
                 הורד בכל זאת

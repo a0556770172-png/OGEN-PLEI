@@ -7,6 +7,7 @@ import BotAppCard, { type BotAppCardData } from "./BotAppCard";
 import BotPersonaPicker from "./BotPersonaPicker";
 import AdInterstitial from "./AdInterstitial";
 import { getPersona, DEFAULT_PERSONA_ID } from "@/lib/botPersonas";
+import { shouldShowAd } from "@/lib/adThrottle";
 
 const PERSONA_KEY = "ogen-bot-persona";
 
@@ -234,10 +235,11 @@ export default function BotChat({
     }
   }
 
-  // "פרסומת" קצרה של 3 שניות לפני שהורדה שיזם הבוט מתחילה בפועל.
+  // "פרסומת" קצרה של 3 שניות לפני שהורדה שיזם הבוט מתחילה בפועל - עד 3 פעמים ביום.
   const [adTarget, setAdTarget] = useState<{ appId: string; msgId?: string } | null>(null);
   function doDownload(appId: string, msgId?: string) {
-    setAdTarget({ appId, msgId });
+    if (shouldShowAd()) setAdTarget({ appId, msgId });
+    else runDownload(appId, msgId);
   }
 
   async function confirmAction(msg: Msg) {
