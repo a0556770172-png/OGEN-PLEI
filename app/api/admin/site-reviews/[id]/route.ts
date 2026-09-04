@@ -10,7 +10,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   const { hidden } = await request.json().catch(() => ({}));
   const admin = createAdminSupabase();
-  const { error } = await admin.from("site_reviews").update({ hidden: !!hidden }).eq("id", params.id);
+  // כשמפרסמים ביקורת שנחסמה ע"י ה-AI - מנקים גם את הדגל האוטומטי כדי שלא תיראה כ"נחסם".
+  const patch: Record<string, any> = { hidden: !!hidden };
+  if (!hidden) {
+    patch.auto_hidden = false;
+    patch.moderation_reason = null;
+  }
+  const { error } = await admin.from("site_reviews").update(patch).eq("id", params.id);
   if (error) return NextResponse.json({ error: `שגיאה: ${error.message}` }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

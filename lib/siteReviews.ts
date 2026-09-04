@@ -11,6 +11,8 @@ export interface SiteReviewRow {
   role: string;
   isPro: boolean;
   hidden: boolean;
+  autoHidden: boolean;
+  moderationReason: string | null;
   likeCount: number;
 }
 
@@ -25,7 +27,7 @@ export async function getSiteReviews(opts: { includeHidden?: boolean } = {}): Pr
   const admin = createAdminSupabase();
   let q = admin
     .from("site_reviews")
-    .select("id, rating, comment, hidden, created_at, user:profiles!site_reviews_user_id_fkey(username, avatar_key, role, is_pro)")
+    .select("id, rating, comment, hidden, auto_hidden, moderation_reason, created_at, user:profiles!site_reviews_user_id_fkey(username, avatar_key, role, is_pro)")
     .order("created_at", { ascending: false })
     .limit(300);
   if (!opts.includeHidden) q = q.eq("hidden", false);
@@ -60,6 +62,8 @@ export async function getSiteReviews(opts: { includeHidden?: boolean } = {}): Pr
       role: r.user?.role ?? "user",
       isPro: !!r.user?.is_pro,
       hidden: !!r.hidden,
+      autoHidden: !!r.auto_hidden,
+      moderationReason: r.moderation_reason ?? null,
       likeCount: likeCounts.get(r.id) ?? 0
     }))
   );

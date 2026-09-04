@@ -41,8 +41,13 @@ export default function SiteReviewsPanel({ reviews }: { reviews: SiteReviewRow[]
                 ))}
               </span>
               <span className="text-xs text-gray-600">{new Date(r.created_at).toLocaleDateString("he-IL")}</span>
-              {r.hidden && <span className="rounded-full bg-gray-500/15 px-2 py-0.5 text-[10px] font-bold text-gray-400">מוסתר</span>}
+              {r.autoHidden ? (
+                <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-400">נחסם ע"י סינון AI</span>
+              ) : r.hidden ? (
+                <span className="rounded-full bg-gray-500/15 px-2 py-0.5 text-[10px] font-bold text-gray-400">מוסתר ידנית</span>
+              ) : null}
             </div>
+            {r.moderationReason && <p className="text-xs text-red-400">סיבת הסינון: {r.moderationReason}</p>}
             {r.comment && <p className="whitespace-pre-wrap text-sm text-gray-300">{r.comment}</p>}
             <div className="flex gap-2">
               <button

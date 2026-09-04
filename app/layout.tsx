@@ -8,6 +8,7 @@ import ModeratorAgreementGate from "@/components/ModeratorAgreementGate";
 import SiteRulesGate from "@/components/SiteRulesGate";
 import SiteVisitTracker from "@/components/SiteVisitTracker";
 import ReferralCapture from "@/components/ReferralCapture";
+import FeatureAnnounce from "@/components/FeatureAnnounce";
 
 const heebo = Heebo({ subsets: ["hebrew", "latin"], weight: ["300","400","500","700","900"], variable: "--font-heebo" });
 
@@ -106,6 +107,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AnimatedBackground />
         <SiteVisitTracker />
         <ReferralCapture />
+        <FeatureAnnounce />
         <SiteRulesGate />
         <ModeratorAgreementGate />
         <Navbar />

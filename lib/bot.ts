@@ -53,7 +53,8 @@ export const DEFAULT_BOT_SYSTEM_PROMPT = `אתה "עוזר עוגן פליי" - 
 
 ## כלים
 - יש לך כלים לשליפת מידע אמיתי (חיפוש אפליקציות, פרטי אפליקציה, המלצות, מצב המשתמש, חוקים, קישור הפניה, התראות ועוד). השתמש בהם - אל תנחש ואל תמציא.
-- **התראות:** get_my_notifications = מה חדש/מה פספס המשתמש. get_my_notification_subscriptions = למי הוא עוקב. manage_notification = רישום/ביטול מנוי (למפתח, לאפליקציה ספציפית לגרסה חדשה, לקטגוריה, או לכל חדש). אם משתמש אומר "תעדכן אותי כשיוצא עדכון ל-X" / "תרשם אותי להתראות מהמפתח Y" - פשוט תעשה את זה עם manage_notification.
+- **התראות:** get_my_notifications = מה חדש/מה פספס המשתמש. get_my_notification_subscriptions = למי הוא עוקב. manage_notification = רישום/ביטול מנוי (למפתח, לאפליקציה ספציפית לגרסה חדשה, לקטגוריה, לבקשות קהילה, או לכל חדש). אם משתמש אומר "תעדכן אותי כשיוצא עדכון ל-X" / "תרשם אותי להתראות מהמפתח Y" - פשוט תעשה את זה עם manage_notification.
+- **דעת הקהל:** get_site_reviews = מה משתמשים חושבים על עוגן פליי (דירוג ממוצע + ביקורות שכתבו). השתמש בזה לשאלות "מה אומרים על האתר", "כדאי להירשם?", וכו'. אם המשתמש רוצה לדרג בעצמו - הפנה אותו ל-/site-reviews.
 - כשאתה ממליץ על אפליקציה, כתוב את שמה כקישור מרקדאון: [שם](/apps/<id>) לפי ה-id שהכלי החזיר. לעולם אל תמציא id.
 - אם משתמש רוצה לפנות לצוות או להציע אפליקציה - השתמש ב-propose_support_ticket / propose_app_suggestion (המשתמש יאשר לפני שנשלח).
 
@@ -406,6 +407,43 @@ export async function runBotAgent(
   }
 
   return { text: "לא הצלחתי לנסח תשובה כרגע.", followUps: [], appCards, proposedAction, clientAction, modelUsed, toolLog };
+}
+
+// קריאה חד-פעמית ל-Gemini (בלי כלים, בלי היסטוריה) - עם רוטציית מפתחות ומודלים.
+// משמש למשימות רקע כמו סינון ביקורות (lib/reviewModeration.ts).
+export async function geminiOneShot(systemInstruction: string, userText: string): Promise<string> {
+  const cfg = await getBotConfig();
+  const keys = await getKeyCandidates();
+  if (keys.length === 0) throw new Error("אין מפתח Gemini");
+  const models = [cfg.model, ...MODEL_FALLBACKS.filter((m) => m !== cfg.model)];
+  const body = {
+    systemInstruction: { parts: [{ text: systemInstruction }] },
+    contents: [{ role: "user", parts: [{ text: userText }] }],
+    generationConfig: { temperature: 0, maxOutputTokens: 400 }
+  };
+  let lastErr: any = null;
+  for (const k of keys) {
+    for (const m of models) {
+      try {
+        const data = await geminiGenerateRaw(k.key, m, body);
+        markKeyOk(k.id).catch(() => {});
+        return (data?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).filter(Boolean).join("") ?? "").trim();
+      } catch (e: any) {
+        lastErr = e;
+        if (e?.keyQuota) {
+          markKeyQuota(k.id, String(e.message)).catch(() => {});
+          break;
+        }
+        if (e?.keyBroken) {
+          markKeyBroken(k.id, String(e.message)).catch(() => {});
+          break;
+        }
+        if (e?.retryable) continue;
+        throw e;
+      }
+    }
+  }
+  throw lastErr ?? new Error("Gemini: כל המפתחות נכשלו");
 }
 
 // שמות מודלים שזמינים בפועל למפתח ה-API הזה (לכפתור הבדיקה בניהול).

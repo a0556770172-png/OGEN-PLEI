@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { moderateReviewText } from "@/lib/reviewModeration";
 
 // הוספה/עדכון של ביקורת המשתמש על האתר. ביקורת אחת לכל משתמש (upsert).
 export async function POST(request: Request) {
@@ -15,16 +16,40 @@ export async function POST(request: Request) {
   }
   const c = typeof comment === "string" ? comment.trim().slice(0, 1500) : "";
 
+  // סינון AI - רק אם יש טקסט. fail-open: אם הסינון לא זמין, מפרסמים כרגיל.
+  let autoHidden = false;
+  let moderationReason: string | null = null;
+  if (c) {
+    const verdict = await moderateReviewText(r, c);
+    if (verdict.flag) {
+      autoHidden = true;
+      moderationReason = verdict.reason || "סומן ע\"י סינון אוטומטי";
+    }
+  }
+
   const admin = createAdminSupabase();
-  const { error } = await admin
-    .from("site_reviews")
-    .upsert(
-      { user_id: user.id, rating: r, comment: c || null, updated_at: new Date().toISOString() },
-      { onConflict: "user_id" }
-    );
+  const row: Record<string, any> = {
+    user_id: user.id,
+    rating: r,
+    comment: c || null,
+    updated_at: new Date().toISOString()
+  };
+  // מעדכנים את מצב ההסתרה רק כשיש טקסט שנבדק (עדכון דירוג בלבד לא נוגע בסטטוס הסינון).
+  if (c) {
+    row.hidden = autoHidden;
+    row.auto_hidden = autoHidden;
+    row.moderation_reason = moderationReason;
+  }
+  const { error } = await admin.from("site_reviews").upsert(row, { onConflict: "user_id" });
   if (error) return NextResponse.json({ error: `שגיאה בשמירת הביקורת: ${error.message}` }, { status: 500 });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    held: autoHidden,
+    message: autoHidden
+      ? "הביקורת נשמרה אך לא פורסמה - היא לא עברה את הסינון האוטומטי. אם לדעתך זו טעות, פנו לצוות."
+      : undefined
+  });
 }
 
 // מחיקת הביקורת של המשתמש עצמו.

@@ -18,6 +18,7 @@ export default function SiteReviewForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [held, setHeld] = useState("");
 
   if (!loggedIn) {
     return (
@@ -35,20 +36,25 @@ export default function SiteReviewForm({
     }
     setBusy(true);
     setError("");
+    setHeld("");
     const res = await fetch("/api/site-reviews", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rating, comment })
     });
+    const j = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
       setError(j.error || "שגיאה בשמירה");
       return;
     }
-    setSaved(true);
+    if (j.held) {
+      setHeld(j.message || "הביקורת נשמרה אך לא פורסמה - היא לא עברה את הסינון האוטומטי.");
+    } else {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    }
     router.refresh();
-    setTimeout(() => setSaved(false), 2500);
   }
 
   async function remove() {
@@ -95,6 +101,9 @@ export default function SiteReviewForm({
       />
 
       {error && <p className="text-sm text-red-400">{error}</p>}
+      {held && (
+        <p className="rounded-xl border border-gold/30 bg-gold/10 px-3 py-2 text-sm text-gold">{held}</p>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <button onClick={save} disabled={busy} className="btn-primary">

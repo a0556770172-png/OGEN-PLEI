@@ -216,6 +216,11 @@ export function toolDeclarations(ctx: ToolContext) {
       parameters: { type: "object", properties: {} }
     },
     {
+      name: "get_site_reviews",
+      description: "הדירוגים והביקורות שמשתמשים כתבו על עוגן פליי עצמו (לא על אפליקציות): הדירוג הממוצע, כמה דירגו, ומה הם כתבו - מי כתב, כמה כוכבים, וכמה לייקים קיבלה כל ביקורת.",
+      parameters: { type: "object", properties: { limit: { type: "number" } } }
+    },
+    {
       name: "offer_download",
       description: "מציע למשתמש להוריד אפליקציה ספציפית - מציג כפתור הורדה בולט בצ'אט. השתמש בזה כשהמשתמש מחפש אפליקציה, מצאת אותה, והוא רוצה להתקין. אם המשתמש אמר במפורש 'תוריד לי' / 'כן תוריד' - קבע auto=true והצ'אט יתחיל את ההורדה לבד.",
       parameters: {
@@ -711,6 +716,33 @@ export async function executeTool(name: string, rawArgs: any, ctx: ToolContext):
         .order("created_at", { ascending: false })
         .limit(15);
       return { result: { requests: data ?? [] }, summary: `list_community_requests → ${(data ?? []).length}` };
+    }
+
+    case "get_site_reviews": {
+      const { data: reviews } = await admin
+        .from("site_reviews")
+        .select("rating, comment, created_at, user:profiles!site_reviews_user_id_fkey(username)")
+        .eq("hidden", false)
+        .order("created_at", { ascending: false })
+        .limit(Math.min(30, Math.max(1, Number(args.limit) || 15)));
+      const rows = (reviews ?? []) as any[];
+      // ממוצע כללי (כל הביקורות הגלויות, לא רק אלה שנשלפו)
+      const { data: allRatings } = await admin.from("site_reviews").select("rating").eq("hidden", false);
+      const ratings = (allRatings ?? []).map((x: any) => x.rating);
+      const avg = ratings.length ? Math.round((ratings.reduce((s: number, n: number) => s + n, 0) / ratings.length) * 10) / 10 : 0;
+      return {
+        result: {
+          average: avg,
+          total: ratings.length,
+          reviews: rows.map((r) => ({
+            by: r.user?.username ?? "משתמש",
+            stars: r.rating,
+            text: r.comment,
+            at: r.created_at
+          }))
+        },
+        summary: `get_site_reviews → ${rows.length}`
+      };
     }
 
     case "get_site_stats": {
