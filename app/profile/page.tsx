@@ -59,7 +59,9 @@ export default async function ProfilePage() {
         <p className="text-sm text-gray-400">שלום {profile.username}, כאן תוכלו לנהל את הפרטים שלכם{isDeveloper ? " ואת האפליקציות שלכם" : ""}.</p>
       </div>
 
-      <ReferralCard username={profile.username} stats={referralStats} />
+      <div id="referrals" className="scroll-mt-24">
+        <ReferralCard username={profile.username} stats={referralStats} />
+      </div>
 
       {/* "ג'וקר" - תג ויזואלי שמוצג רק למי שקיבל מהמנהל הרשאת גודל חד-פעמית (ראו טאב "הרשאות
           גודל" בניהול). המטרה: שהמשתמש עצמו ידע בבירור שיש לו את זה פעיל, ומה בדיוק מותר לו,
@@ -95,7 +97,9 @@ export default async function ProfilePage() {
 
       <MitmachimConnect initialUrl={profile.mitmachim_url ?? null} />
 
-      <NotificationsManager />
+      <div id="notifications" className="scroll-mt-24">
+        <NotificationsManager />
+      </div>
 
       <div className="card mx-auto flex w-full max-w-xl flex-col gap-4 p-6">
         <div className="flex items-center gap-4">
