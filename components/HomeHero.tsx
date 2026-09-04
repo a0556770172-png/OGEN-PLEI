@@ -2,6 +2,7 @@
 import { motion } from "framer-motion";
 import { Sparkles, ShieldCheck, Rocket, Gift, Download, Heart, Package, Users, Eye, Star } from "lucide-react";
 import Link from "next/link";
+import CountUp from "./CountUp";
 
 interface StatItem {
   icon: typeof Package;
@@ -10,13 +11,15 @@ interface StatItem {
   color: string;
 }
 
-function StatCard({ icon: Icon, value, label, color }: StatItem) {
+function StatCard({ icon: Icon, value, label, color, delay }: StatItem & { delay: number }) {
   return (
     <div className="card flex flex-1 flex-col items-center gap-1.5 px-4 py-5 text-center">
       <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${color}`}>
         <Icon className="h-5 w-5" />
       </div>
-      <p className="text-2xl font-black text-white">{value.toLocaleString("he-IL")}</p>
+      <p className="text-2xl font-black text-white">
+        <CountUp value={value} delay={delay} />
+      </p>
       <p className="text-xs font-medium text-gray-500">{label}</p>
     </div>
   );
@@ -49,7 +52,7 @@ export default function HomeHero({
         className="mx-auto flex max-w-3xl flex-col items-center gap-6"
       >
         <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-bold text-primary-light">
-          <Sparkles className="h-3.5 w-3.5" /> {total.toLocaleString("he-IL")} אפליקציות ותוכנות בחנות
+          <Sparkles className="h-3.5 w-3.5" /> <CountUp value={total} delay={0} /> אפליקציות ותוכנות בחנות
         </span>
         <h1 className="text-4xl font-black leading-tight sm:text-5xl">
           חנות האפליקציות והתוכנות
@@ -61,8 +64,8 @@ export default function HomeHero({
         </p>
 
         <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-4">
-          {stats.map((s) => (
-            <StatCard key={s.label} {...s} />
+          {stats.map((s, i) => (
+            <StatCard key={s.label} {...s} delay={120 + i * 140} />
           ))}
         </div>
 
