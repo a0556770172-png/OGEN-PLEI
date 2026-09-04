@@ -4,9 +4,9 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Megaphone, ArrowLeft } from "lucide-react";
 
-const DURATION_MS = 6000;
+const DURATION_MS = 9000;
 
-// "פרסומת" קצרה של 6 שניות שרצה לפני שהורדה בפועל מתחילה - קידום עצמי של אפשרות
+// "פרסומת" קצרה של 9 שניות שרצה לפני שהורדה בפועל מתחילה - קידום עצמי של אפשרות
 // הפרסום באתר (עסק שרוצה לפרסם רואה בדיוק את החשיפה שהוא יקבל). ממשיכה אוטומטית
 // בתום הזמן - אין כפתור דילוג, כדי לשמור על חשיפה עקבית.
 export default function AdInterstitial({ onDone }: { onDone: () => void }) {
