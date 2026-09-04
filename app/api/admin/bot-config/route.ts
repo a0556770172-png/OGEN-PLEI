@@ -14,6 +14,10 @@ export async function GET() {
   const { data } = await admin.from("bot_config").select("*").eq("id", true).maybeSingle();
   const keyCount = await countUsableKeys().catch(() => (data?.gemini_api_key ? 1 : 0));
 
+  // עקיפת מודל זמנית פעילה? (המודל המועדף נכשל והבוט עבר זמנית לאחר)
+  const fbUntil = data?.model_fallback_until ?? null;
+  const fallbackActive = !!(data?.model_fallback && fbUntil && new Date(fbUntil).getTime() > Date.now());
+
   return NextResponse.json({
     enabled: data?.enabled ?? false,
     model: data?.model ?? "gemini-2.5-flash",
@@ -23,6 +27,8 @@ export async function GET() {
     proactiveEnabled: data?.proactive_enabled ?? true,
     maxToolRounds: data?.max_tool_rounds ?? 5,
     hasKey: keyCount > 0,
+    fallbackModel: fallbackActive ? data!.model_fallback : null,
+    fallbackUntil: fallbackActive ? fbUntil : null,
     updatedAt: data?.updated_at ?? null
   });
 }
@@ -36,7 +42,17 @@ export async function PATCH(request: Request) {
   const patch: Record<string, any> = { updated_at: new Date().toISOString() };
 
   if (typeof body.enabled === "boolean") patch.enabled = body.enabled;
-  if (typeof body.model === "string" && body.model.trim()) patch.model = body.model.trim();
+  if (typeof body.model === "string" && body.model.trim()) {
+    patch.model = body.model.trim();
+    // בחירת מודל ידנית מבטלת כל עקיפה זמנית - הבחירה החדשה נכנסת לתוקף מיד.
+    patch.model_fallback = null;
+    patch.model_fallback_until = null;
+  }
+  // כפתור "חזור עכשיו למודל המועדף" - ניקוי יזום של העקיפה הזמנית.
+  if (body.clearFallback === true) {
+    patch.model_fallback = null;
+    patch.model_fallback_until = null;
+  }
   if (typeof body.modelSmart === "string") patch.model_smart = body.modelSmart.trim() || null;
   if (typeof body.systemPrompt === "string") patch.system_prompt = body.systemPrompt.trim() || null;
   if (typeof body.proactiveEnabled === "boolean") patch.proactive_enabled = body.proactiveEnabled;
@@ -62,8 +78,8 @@ export async function PATCH(request: Request) {
 
   // אם מיגרציה 0036 עוד לא רצה, עמודות חדשות עלולות להכשיל את השמירה - מנסים שוב בלעדיהן,
   // כדי שלפחות מפתח ה-API וההגדרות הבסיסיות ישמרו.
-  if (error && /column .* does not exist|model_smart|proactive_enabled|max_tool_rounds/i.test(error.message || "")) {
-    const { model_smart, proactive_enabled, max_tool_rounds, ...safe } = patch as any;
+  if (error && /column .* does not exist|model_smart|proactive_enabled|max_tool_rounds|model_fallback/i.test(error.message || "")) {
+    const { model_smart, proactive_enabled, max_tool_rounds, model_fallback, model_fallback_until, ...safe } = patch as any;
     const retry = await admin.from("bot_config").upsert({ id: true, ...safe });
     error = retry.error;
   }

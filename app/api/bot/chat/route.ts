@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
-import { getBotConfig, botIsLive, buildBotGrounding, runBotAgent, DEFAULT_BOT_SYSTEM_PROMPT, BOT_HARD_RULES, type GeminiTurn } from "@/lib/bot";
+import {
+  getBotConfig,
+  botIsLive,
+  buildBotGrounding,
+  runBotAgent,
+  effectiveBotModel,
+  MODEL_FALLBACK_MINUTES,
+  DEFAULT_BOT_SYSTEM_PROMPT,
+  BOT_HARD_RULES,
+  type GeminiTurn
+} from "@/lib/bot";
 import { buildBotUserContext } from "@/lib/botContext";
 import { personaSystemBlock } from "@/lib/botPersonas";
 import type { ToolContext } from "@/lib/botTools";
@@ -94,8 +104,11 @@ export async function POST(request: Request) {
     };
 
     // ניתוב מודלים: מפתחים מקבלים את המודל החזק (אם הוגדר) - עזרה בתיאורים/ניסוח/הסקה.
+    // אחרת: effectiveBotModel - המודל המועדף, או המודל החלופי אם יש עקיפה זמנית בתוקף.
     usedSmartModel = !!(ctx.isDeveloper && cfg.model_smart);
-    const effectiveCfg = usedSmartModel ? { ...cfg, model: cfg.model_smart! } : cfg;
+    const effectiveCfg = usedSmartModel
+      ? { ...cfg, model: cfg.model_smart! }
+      : { ...cfg, model: effectiveBotModel(cfg) };
     agent = await runBotAgent(effectiveCfg, systemInstruction, [...history, { role: "user", content: text }], ctx);
   } catch (err: any) {
     if (createdNewConv) await admin.from("bot_conversations").delete().eq("id", convId);
@@ -105,9 +118,32 @@ export async function POST(request: Request) {
     );
   }
 
-  // --- שמירת המודל שעבד (רק במסלול הרגיל, לא כשהשתמשנו במודל החזק) ---
-  if (!usedSmartModel && agent.modelUsed && agent.modelUsed !== cfg.model) {
-    await admin.from("bot_config").update({ model: agent.modelUsed, updated_at: new Date().toISOString() }).eq("id", true);
+  // --- ניהול העקיפה הזמנית של המודל (רק במסלול הרגיל) ---
+  // אם המודל המועדף עבד -> מנקים כל עקיפה (הוא חזר לעצמו).
+  // אם המודל המועדף עדיין נכשל והשתמשנו במודל אחר -> מאריכים עקיפה זמנית ל-MODEL_FALLBACK_MINUTES,
+  //   כך שאחריה הבוט ינסה שוב אוטומטית את המודל המועדף לבדוק אם תוקן.
+  if (!usedSmartModel && agent.modelUsed) {
+    try {
+      if (agent.modelUsed === cfg.model) {
+        if (cfg.model_fallback || cfg.model_fallback_until) {
+          await admin
+            .from("bot_config")
+            .update({ model_fallback: null, model_fallback_until: null, updated_at: new Date().toISOString() })
+            .eq("id", true);
+        }
+      } else {
+        await admin
+          .from("bot_config")
+          .update({
+            model_fallback: agent.modelUsed,
+            model_fallback_until: new Date(Date.now() + MODEL_FALLBACK_MINUTES * 60_000).toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", true);
+      }
+    } catch {
+      // מיגרציה 0045 עוד לא רצה - לא קריטי
+    }
   }
 
   // --- לוג קריאות כלים (לא קריטי - נכשל בשקט אם מיגרציה 0036 עוד לא רצה) ---

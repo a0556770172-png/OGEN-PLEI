@@ -13,6 +13,8 @@ interface Config {
   proactiveEnabled: boolean;
   maxToolRounds: number;
   hasKey: boolean;
+  fallbackModel?: string | null;
+  fallbackUntil?: string | null;
 }
 
 interface Insights {
@@ -82,7 +84,9 @@ export default function BotConfigPanel() {
           dailyLimit: j.dailyLimit,
           proactiveEnabled: j.proactiveEnabled ?? true,
           maxToolRounds: j.maxToolRounds ?? 5,
-          hasKey: j.hasKey
+          hasKey: j.hasKey,
+          fallbackModel: j.fallbackModel ?? null,
+          fallbackUntil: j.fallbackUntil ?? null
         })
       )
       .catch(() => {});
@@ -103,7 +107,7 @@ export default function BotConfigPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function save(partial: Partial<Config>) {
+  async function save(partial: Partial<Config> & { clearFallback?: boolean }) {
     if (!cfg) return;
     setSaving(true);
     setMsg("");
@@ -116,7 +120,8 @@ export default function BotConfigPanel() {
     if (res.ok) {
       setMsg("נשמר");
       setTimeout(() => setMsg(""), 1500);
-      setCfg({ ...cfg, ...partial });
+      const clearsFallback = partial.clearFallback || typeof partial.model === "string";
+      setCfg({ ...cfg, ...partial, ...(clearsFallback ? { fallbackModel: null, fallbackUntil: null } : {}) });
     } else {
       const j = await res.json().catch(() => ({}));
       setMsg(j.error || "שגיאה בשמירה");
@@ -180,7 +185,22 @@ export default function BotConfigPanel() {
               dir="ltr"
               placeholder="gemini-2.5-flash"
             />
-            <p className="mt-1 text-xs text-gray-500">אם המודל לא קיים - עוברים אוטומטית למודל זמין אחר.</p>
+            <p className="mt-1 text-xs text-gray-500">אם המודל לא קיים או עמוס - עוברים אוטומטית למודל זמין אחר, וחוזרים לבדוק את המועדף אחרי כ-20 דק'.</p>
+            {cfg.fallbackModel && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-gold/30 bg-gold/10 px-3 py-2 text-xs text-gold">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>
+                  כרגע פועל זמנית על <b dir="ltr">{cfg.fallbackModel}</b>
+                  {cfg.fallbackUntil ? ` (בדיקה חוזרת של המועדף בסביבות ${new Date(cfg.fallbackUntil).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })})` : ""}.
+                </span>
+                <button
+                  onClick={() => save({ clearFallback: true })}
+                  className="rounded-md border border-gold/40 px-2 py-0.5 font-bold transition hover:bg-gold/20"
+                >
+                  חזור עכשיו למועדף
+                </button>
+              </div>
+            )}
           </div>
           <div>
             <label className="mb-1.5 block text-sm text-gray-400">מודל חזק (עזרה למפתחים/ניסוח) — ריק = כמו הראשי</label>

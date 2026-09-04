@@ -16,6 +16,10 @@ export interface BotConfig {
   daily_limit: number;
   proactive_enabled: boolean;
   max_tool_rounds: number;
+  /** מודל שהבוט עבר אליו זמנית אחרי שהמודל המועדף נכשל (עומס וכו') */
+  model_fallback: string | null;
+  /** עד מתי העקיפה הזמנית בתוקף; אחריה מנסים שוב את המודל המועדף */
+  model_fallback_until: string | null;
 }
 
 // קריאת הגדרות הבוט - שרת בלבד (מפתח ה-API אסור שיגיע ללקוח).
@@ -33,7 +37,9 @@ export async function getBotConfig(): Promise<BotConfig> {
     system_prompt: data?.system_prompt ?? null,
     daily_limit: data?.daily_limit ?? 30,
     proactive_enabled: data?.proactive_enabled ?? true,
-    max_tool_rounds: data?.max_tool_rounds ?? 5
+    max_tool_rounds: data?.max_tool_rounds ?? 5,
+    model_fallback: data?.model_fallback ?? null,
+    model_fallback_until: data?.model_fallback_until ?? null
   };
 }
 
@@ -41,6 +47,22 @@ export async function getBotConfig(): Promise<BotConfig> {
 export function botIsLive(cfg: BotConfig): boolean {
   return cfg.enabled && cfg.keyCount > 0;
 }
+
+// המודל שבו כדאי להתחיל עכשיו: אם יש עקיפה זמנית בתוקף - המודל שאליו עברנו;
+// אחרת (או אחרי שפג התוקף) - המודל המועדף, כדי לבדוק אם הוא חזר לעבוד.
+export function effectiveBotModel(cfg: BotConfig): string {
+  if (
+    cfg.model_fallback &&
+    cfg.model_fallback_until &&
+    new Date(cfg.model_fallback_until).getTime() > Date.now()
+  ) {
+    return cfg.model_fallback;
+  }
+  return cfg.model;
+}
+
+// כמה זמן להישאר על מודל חלופי לפני שבודקים שוב את המודל המועדף.
+export const MODEL_FALLBACK_MINUTES = 20;
 
 export const DEFAULT_BOT_SYSTEM_PROMPT = `אתה "עוזר עוגן פליי" - הסוכן החכם של אתר "עוגן פליי", מאגר/חנות אפליקציות אנדרואיד ותוכנות מחשב מסוננות ומאושרות לציבור החרדי (בסטנדרט "נטפרי").
 
@@ -488,7 +510,8 @@ export async function geminiOneShot(systemInstruction: string, userText: string)
   const cfg = await getBotConfig();
   const keys = await getKeyCandidates();
   if (keys.length === 0) throw new Error("אין מפתח Gemini");
-  const models = orderModels([cfg.model, ...MODEL_FALLBACKS.filter((m) => m !== cfg.model)]);
+  const startModel = effectiveBotModel(cfg);
+  const models = orderModels([startModel, ...MODEL_FALLBACKS.filter((m) => m !== startModel)]);
   const body = {
     systemInstruction: { parts: [{ text: systemInstruction }] },
     contents: [{ role: "user", parts: [{ text: userText }] }],
