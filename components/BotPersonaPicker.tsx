@@ -19,7 +19,7 @@ export default function BotPersonaPicker({
     <div className="flex flex-col gap-3">
       {!compact && (
         <div className="text-center">
-          <p className="text-base font-black text-white">איך בא לך שאדבר איתך?</p>
+          <p className="text-base font-black text-white">איזה עוזר בא לך?</p>
           <p className="mt-0.5 text-xs text-gray-400">אפשר לשנות בכל רגע תוך כדי שיחה.</p>
         </div>
       )}

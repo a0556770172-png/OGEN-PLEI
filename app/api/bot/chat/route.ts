@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
-import { getBotConfig, botIsLive, buildBotGrounding, runBotAgent, DEFAULT_BOT_SYSTEM_PROMPT, type GeminiTurn } from "@/lib/bot";
+import { getBotConfig, botIsLive, buildBotGrounding, runBotAgent, DEFAULT_BOT_SYSTEM_PROMPT, BOT_HARD_RULES, type GeminiTurn } from "@/lib/bot";
 import { buildBotUserContext } from "@/lib/botContext";
 import { personaSystemBlock } from "@/lib/botPersonas";
 import type { ToolContext } from "@/lib/botTools";
@@ -81,7 +81,8 @@ export async function POST(request: Request) {
       cfg.system_prompt?.trim() || DEFAULT_BOT_SYSTEM_PROMPT,
       "\n---\n## מידע רקע על האתר\n" + grounding,
       "\n---\n## המשתמש הנוכחי\n" + userCtx.text,
-      personaSystemBlock(typeof personaId === "string" ? personaId : null)
+      personaSystemBlock(typeof personaId === "string" ? personaId : null),
+      BOT_HARD_RULES
     ].join("\n");
 
     const ctx: ToolContext = {
