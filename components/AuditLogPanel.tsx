@@ -32,7 +32,12 @@ const ACTION_LABELS: Record<string, string> = {
   hide_site_review: "הסתרת ביקורת על האתר",
   unhide_site_review: "הצגת ביקורת על האתר",
   delete_site_review: "מחיקת ביקורת על האתר",
-  delete_app_review: "מחיקת תגובה על אפליקציה"
+  delete_app_review: "מחיקת תגובה על אפליקציה",
+  hide_forum_post: "הסתרת פוסט בפורום",
+  unhide_forum_post: "הצגת פוסט בפורום",
+  delete_forum_post: "מחיקת פוסט בפורום",
+  pin_forum_post: "נעיצת פוסט בפורום",
+  unpin_forum_post: "ביטול נעיצת פוסט בפורום"
 };
 
 interface AuditItem {

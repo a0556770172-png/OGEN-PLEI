@@ -93,6 +93,9 @@ export default function Navbar() {
           <Link href="/community" className="text-sm font-medium text-gray-300 transition hover:text-white">
             בקשות קהילה
           </Link>
+          <Link href="/forum" className="text-sm font-medium text-gray-300 transition hover:text-white">
+            פורום
+          </Link>
           <Link href="/about" className="text-sm font-medium text-gray-300 transition hover:text-white">
             הסברים
           </Link>
@@ -166,6 +169,7 @@ export default function Navbar() {
             <Link href="/" onClick={() => setOpen(false)}>החנות</Link>
             <Link href="/users" onClick={() => setOpen(false)}>משתמשים</Link>
             <Link href="/community" onClick={() => setOpen(false)}>בקשות קהילה</Link>
+            <Link href="/forum" onClick={() => setOpen(false)}>פורום</Link>
             <Link href="/about" onClick={() => setOpen(false)}>הסברים</Link>
             <Link href="/site-rules" onClick={() => setOpen(false)}>חוקי האתר</Link>
             {profile && (

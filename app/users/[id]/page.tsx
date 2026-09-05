@@ -6,10 +6,12 @@ import { parseMitmachimUrl } from "@/lib/mitmachim";
 import { getIconUrl } from "@/lib/apps-data";
 import { getCurrentProfile } from "@/lib/profile";
 import { isDmUnlocked } from "@/lib/dm-eligibility";
+import { getFollowCounts, isFollowing } from "@/lib/follows";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import StatusBadge from "@/components/StatusBadge";
 import DmButton from "@/components/DmButton";
 import NotifyButton from "@/components/NotifyButton";
+import FollowButton from "@/components/FollowButton";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +38,11 @@ export default async function PublicUserPage({ params }: { params: { id: string 
   );
 
   const { user: viewer } = await getCurrentProfile();
-  const canOpenDm = viewer && viewer.id !== user.id ? await isDmUnlocked(viewer.id) : false;
+  const isSelf = !!viewer && viewer.id === user.id;
+  const canOpenDm = viewer && !isSelf ? await isDmUnlocked(viewer.id) : false;
+
+  const followCounts = await getFollowCounts(user.id);
+  const viewerFollows = viewer && !isSelf ? await isFollowing(viewer.id, user.id) : false;
 
   // האם הצופה כבר רשום להתראות מהמפתח הזה
   let followsDeveloper = false;
@@ -76,7 +82,11 @@ export default async function PublicUserPage({ params }: { params: { id: string 
             <span className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-3 py-1 text-xs font-bold text-gold"><Crown className="h-3.5 w-3.5" /> PRO</span>
           )}
         </div>
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs text-gray-500">
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-sm">
+          <span className="text-gray-300"><b className="text-white">{followCounts.followers.toLocaleString("he-IL")}</b> עוקבים</span>
+          <span className="text-gray-300"><b className="text-white">{followCounts.following.toLocaleString("he-IL")}</b> עוקב/ת אחרי</span>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-4 text-xs text-gray-500">
           <span className="inline-flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> הצטרפ/ה ב-{new Date(user.createdAt).toLocaleDateString("he-IL")}</span>
           <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {timeAgoLabel(user.lastSeenAt)}</span>
         </div>
@@ -105,10 +115,11 @@ export default async function PublicUserPage({ params }: { params: { id: string 
           </div>
         )}
 
-        {(canOpenDm || (viewer && viewer.id !== user.id && isDeveloper)) && (
+        {viewer && !isSelf && (
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <FollowButton targetUserId={user.id} initialFollowing={viewerFollows} />
             {canOpenDm && <DmButton targetUserId={user.id} />}
-            {viewer && viewer.id !== user.id && isDeveloper && (
+            {isDeveloper && (
               <NotifyButton type="developer" targetId={user.id} label="קבל התראות מהמפתח הזה" subscribed={followsDeveloper} />
             )}
           </div>

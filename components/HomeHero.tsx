@@ -1,6 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
-import { Sparkles, ShieldCheck, Rocket, Gift, Download, Heart, Package, Users, Eye, Star } from "lucide-react";
+import { Sparkles, ShieldCheck, Rocket, Gift, Download, Heart, Package, Users, Eye, Star, Lightbulb } from "lucide-react";
 import Link from "next/link";
 import CountUp from "./CountUp";
 
@@ -100,6 +100,12 @@ export default function HomeHero({
             className="group inline-flex items-center gap-2 rounded-full border-2 border-gold/50 bg-gold/15 px-5 py-2 text-sm font-bold text-gold shadow-[0_0_20px_rgba(234,179,8,0.2)] transition-all duration-300 hover:border-gold/80 hover:bg-gold/25 hover:shadow-[0_0_30px_rgba(234,179,8,0.35)]"
           >
             <Star className="h-4 w-4 transition-transform group-hover:scale-110" /> דרגו והשפיעו
+          </Link>
+          <Link
+            href="/forum"
+            className="group inline-flex items-center gap-2 rounded-full border-2 border-gold/50 bg-gold/15 px-5 py-2 text-sm font-bold text-gold shadow-[0_0_20px_rgba(234,179,8,0.2)] transition-all duration-300 hover:border-gold/80 hover:bg-gold/25 hover:shadow-[0_0_30px_rgba(234,179,8,0.35)]"
+          >
+            <Lightbulb className="h-4 w-4 transition-transform group-hover:scale-110" /> הצעות לשיפור ורעיונות
           </Link>
         </div>
       </motion.div>
