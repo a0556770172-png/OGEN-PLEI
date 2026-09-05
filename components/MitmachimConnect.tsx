@@ -37,7 +37,7 @@ export default function MitmachimConnect({ initialUrl }: { initialUrl: string | 
   }
 
   return (
-    <div className="card mx-auto flex w-full max-w-xl flex-col gap-3 p-6">
+    <div className="card flex w-full flex-col gap-3 p-6">
       <div className="flex items-center gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-light">
           <Link2 className="h-5 w-5" />

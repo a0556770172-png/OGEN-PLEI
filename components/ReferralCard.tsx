@@ -74,7 +74,7 @@ export default function ReferralCard({ username, stats }: { username: string; st
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-primary/40 bg-gradient-to-br from-primary/15 via-surface to-surface p-6 shadow-glow sm:p-8"
+      className="relative w-full overflow-hidden rounded-2xl border border-primary/40 bg-gradient-to-br from-primary/15 via-surface to-surface p-6 shadow-glow sm:p-8"
     >
       {/* הילה מעוצבת ברקע */}
       <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-primary/20 blur-3xl" />

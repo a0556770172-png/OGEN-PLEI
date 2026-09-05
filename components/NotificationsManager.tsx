@@ -52,7 +52,7 @@ export default function NotificationsManager() {
   const catSubs = subs.filter((s) => s.type === "category");
 
   return (
-    <div className="card mx-auto flex w-full max-w-xl flex-col gap-4 p-6">
+    <div className="card flex w-full flex-col gap-4 p-6">
       <div className="flex items-center gap-2 text-lg font-bold text-white">
         <Bell className="h-5 w-5 text-primary-light" /> ההתראות שלי
       </div>
