@@ -9,13 +9,15 @@ export default function NotifyButton({
   targetId,
   label,
   subscribed: initial,
-  size = "md"
+  size = "md",
+  activeLabel = "מנוי פעיל"
 }: {
-  type: "developer" | "category" | "new_public" | "all_new" | "app" | "community";
+  type: "developer" | "category" | "new_public" | "all_new" | "app" | "community" | "forum_thread";
   targetId?: string;
   label: string;
   subscribed?: boolean;
   size?: "sm" | "md";
+  activeLabel?: string;
 }) {
   const [subscribed, setSubscribed] = useState(!!initial);
   const [ready, setReady] = useState(initial !== undefined);
@@ -72,7 +74,7 @@ export default function NotifyButton({
       ) : (
         <Bell className="h-4 w-4" />
       )}
-      {subscribed ? "מנוי פעיל" : label}
+      {subscribed ? activeLabel : label}
     </button>
   );
 }

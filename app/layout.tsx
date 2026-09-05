@@ -9,6 +9,7 @@ import SiteRulesGate from "@/components/SiteRulesGate";
 import SiteVisitTracker from "@/components/SiteVisitTracker";
 import ReferralCapture from "@/components/ReferralCapture";
 import FeatureAnnounce from "@/components/FeatureAnnounce";
+import NewNotificationsPeek from "@/components/NewNotificationsPeek";
 
 const heebo = Heebo({ subsets: ["hebrew", "latin"], weight: ["300","400","500","700","900"], variable: "--font-heebo" });
 
@@ -108,6 +109,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SiteVisitTracker />
         <ReferralCapture />
         <FeatureAnnounce />
+        <NewNotificationsPeek />
         <SiteRulesGate />
         <ModeratorAgreementGate />
         <Navbar />

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { notifyForNewForumThread, notifyForForumReply } from "@/lib/notifications";
 
 const MAX_BODY = 5000;
 const MAX_TITLE = 140;
@@ -50,6 +51,25 @@ export async function POST(request: Request) {
     .select("id")
     .single();
   if (error || !created) return NextResponse.json({ error: "שגיאה בשמירה" }, { status: 500 });
+
+  // מעקב אוטומטי אחרי הדיון + התראות. best-effort - לא מפיל את הבקשה.
+  const threadId = parent ?? created.id;
+  try {
+    await admin
+      .from("notification_subscriptions")
+      .upsert(
+        { user_id: user.id, type: "forum_thread", target_id: threadId },
+        { onConflict: "user_id,type,target_id" }
+      );
+  } catch {
+    // ignore
+  }
+  try {
+    if (parent) await notifyForForumReply(created.id);
+    else await notifyForNewForumThread(created.id);
+  } catch {
+    // ignore
+  }
 
   return NextResponse.json({ ok: true, id: created.id });
 }

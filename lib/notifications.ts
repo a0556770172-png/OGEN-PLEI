@@ -1,7 +1,14 @@
 import { createAdminSupabase } from "./supabase/admin";
 import { sendPushToUser } from "./push";
 
-export type SubType = "developer" | "category" | "new_public" | "all_new" | "app" | "community";
+export type SubType =
+  | "developer"
+  | "category"
+  | "new_public"
+  | "all_new"
+  | "app"
+  | "community"
+  | "forum_thread";
 
 // מוסיף שורות ל-feed באתר ושולח Web Push (best-effort) לכל הנמענים.
 async function deliver(userIds: string[], notif: { kind: string; title: string; body: string; url: string }) {
@@ -63,6 +70,15 @@ export async function notifyForApprovedApp(appId: string): Promise<void> {
     for (const r of data ?? []) userIds.push(r.user_id);
   }
 
+  // עוקבים חברתיים של המפתח (user_follows) - מקבלים התראה על אפליקציה חדשה שלו (לא על עדכון).
+  if (!isUpdate) {
+    const { data: followers } = await admin
+      .from("user_follows")
+      .select("follower_id")
+      .eq("following_id", app.developer_id);
+    for (const r of followers ?? []) userIds.push(r.follower_id);
+  }
+
   // לא מתריעים למפתח על האפליקציה של עצמו.
   const targets = [...new Set(userIds)].filter((id) => id !== app.developer_id);
   if (targets.length === 0) return;
@@ -78,6 +94,61 @@ export async function notifyForApprovedApp(appId: string): Promise<void> {
     title,
     body: "לחצו לצפייה בחנות",
     url: `/apps/${app.id}`
+  });
+}
+
+// נקרא כשמשתמש מפרסם פוסט ראשי חדש בפורום - מתריע לעוקבים החברתיים שלו (user_follows).
+export async function notifyForNewForumThread(postId: string): Promise<void> {
+  const admin = createAdminSupabase();
+  const { data: post } = await admin
+    .from("forum_posts")
+    .select("id, user_id, title, body, hidden, author:profiles!forum_posts_user_id_fkey(username)")
+    .eq("id", postId)
+    .maybeSingle();
+  if (!post || post.hidden) return;
+
+  const { data: followers } = await admin.from("user_follows").select("follower_id").eq("following_id", post.user_id);
+  const targets = [...new Set((followers ?? []).map((r) => r.follower_id))].filter((id) => id !== post.user_id);
+  if (targets.length === 0) return;
+
+  const name = (post as any).author?.username ?? "משתמש";
+  const snippet = (post.title || post.body).slice(0, 70);
+  await deliver(targets, {
+    kind: "forum_post",
+    title: `${name} כתב בפורום: ${snippet}`,
+    body: "לחצו לצפייה ולתגובה",
+    url: `/forum/${post.id}`
+  });
+}
+
+// נקרא כשמתפרסמת תגובה חדשה בפורום - מתריע לעוקבי הדיון (type='forum_thread').
+export async function notifyForForumReply(replyId: string): Promise<void> {
+  const admin = createAdminSupabase();
+  const { data: reply } = await admin
+    .from("forum_posts")
+    .select("id, user_id, parent_id, body, hidden, author:profiles!forum_posts_user_id_fkey(username)")
+    .eq("id", replyId)
+    .maybeSingle();
+  if (!reply || reply.hidden || !reply.parent_id) return;
+
+  const { data: root } = await admin.from("forum_posts").select("id, title, body").eq("id", reply.parent_id).maybeSingle();
+  if (!root) return;
+
+  const { data: subs } = await admin
+    .from("notification_subscriptions")
+    .select("user_id")
+    .eq("type", "forum_thread")
+    .eq("target_id", reply.parent_id);
+  const targets = [...new Set((subs ?? []).map((r) => r.user_id))].filter((id) => id !== reply.user_id);
+  if (targets.length === 0) return;
+
+  const name = (reply as any).author?.username ?? "משתמש";
+  const threadTitle = (root.title || root.body).slice(0, 60);
+  await deliver(targets, {
+    kind: "forum_reply",
+    title: `${name} הגיב ל: ${threadTitle}`,
+    body: reply.body.slice(0, 90),
+    url: `/forum/${reply.parent_id}`
   });
 }
 
