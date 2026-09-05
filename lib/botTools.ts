@@ -679,7 +679,8 @@ export async function executeTool(name: string, rawArgs: any, ctx: ToolContext):
         referral_revoked: "ביטול תגמול הפניה",
         suggestion: "הצעת אפליקציה שאושרה",
         app_suggestion_approved: "הצעת אפליקציה שאושרה",
-        community_request_fulfilled: "מילוי בקשת קהילה"
+        community_request_fulfilled: "מילוי בקשת קהילה",
+        forum_post_liked: "לייק על פוסט שלך בפורום"
       };
       return {
         result: {

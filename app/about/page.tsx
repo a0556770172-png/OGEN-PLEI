@@ -84,6 +84,15 @@ export default function AboutPage() {
             </div>
           </div>
           <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gold/15 text-gold"><ThumbsUp className="h-4 w-4" /></div>
+            <div>
+              <p className="font-bold text-white">לייק על פוסט שלכם בפורום — 1 מוניטין לכל לייק</p>
+              <p className="text-sm text-gray-400">
+                בעמוד <Link href="/forum" className="text-primary-light hover:underline">"הצעות לשיפור ורעיונות"</Link> כל משתמש כותב פוסטים ומגיב. כל לייק שפוסט ראשי שלכם מקבל = מוניטין אחד (פעם אחת לכל נותן-לייק).
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-light"><Share2 className="h-4 w-4" /></div>
             <div>
               <p className="font-bold text-white">הזמנת חבר שנרשם דרך הקישור שלכם — {REFERRAL.referrerPoints} מוניטין</p>
