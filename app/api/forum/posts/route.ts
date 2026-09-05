@@ -12,7 +12,14 @@ const RATE_MAX = 4; // עד 4 פוסטים/תגובות בדקה למשתמש
 export async function POST(request: Request) {
   const result = await requireProfile();
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
-  const { user } = result;
+  const { user, profile } = result;
+
+  if ((profile as any).forum_banned) {
+    return NextResponse.json(
+      { error: "אין לך כרגע אפשרות לכתוב בפורום. אם לדעתך זו טעות, פנו לצוות דרך עמוד התמיכה." },
+      { status: 403 }
+    );
+  }
 
   const { title, body, parentId } = await request.json().catch(() => ({}));
   const cleanBody = typeof body === "string" ? body.trim() : "";

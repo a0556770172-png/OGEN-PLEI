@@ -37,7 +37,10 @@ const ACTION_LABELS: Record<string, string> = {
   unhide_forum_post: "הצגת פוסט בפורום",
   delete_forum_post: "מחיקת פוסט בפורום",
   pin_forum_post: "נעיצת פוסט בפורום",
-  unpin_forum_post: "ביטול נעיצת פוסט בפורום"
+  unpin_forum_post: "ביטול נעיצת פוסט בפורום",
+  forum_ban_user: "חסימת משתמש מהפורום",
+  forum_unban_user: "ביטול חסימת משתמש מהפורום",
+  bot_block_user: "חסימת בוט אוטומטית (ניסיון מניפולציה)"
 };
 
 interface AuditItem {

@@ -11,6 +11,7 @@ export interface ForumAuthor {
   role: string;
   isModerator: boolean;
   isPro: boolean;
+  forumBanned: boolean;
 }
 
 export interface ForumPost {
@@ -38,7 +39,7 @@ async function enrich(rows: any[], viewerId: string | null): Promise<ForumPost[]
   const authorIds = [...new Set(rows.map((r) => r.user_id))];
 
   const [{ data: authors }, { data: likes }, { data: replyCounts }] = await Promise.all([
-    admin.from("profiles").select("id, username, avatar_key, role, is_moderator, is_pro").in("id", authorIds),
+    admin.from("profiles").select("id, username, avatar_key, role, is_moderator, is_pro, forum_banned").in("id", authorIds),
     admin.from("forum_post_likes").select("post_id, user_id").in("post_id", ids),
     admin.from("forum_posts").select("parent_id").in("parent_id", ids).eq("hidden", false)
   ]);
@@ -53,7 +54,8 @@ async function enrich(rows: any[], viewerId: string | null): Promise<ForumPost[]
           avatarUrl: await getAvatarUrl(a.avatar_key, a.role),
           role: a.role,
           isModerator: !!a.is_moderator,
-          isPro: !!a.is_pro
+          isPro: !!a.is_pro,
+          forumBanned: !!a.forum_banned
         }
       ]
     )
@@ -77,7 +79,8 @@ async function enrich(rows: any[], viewerId: string | null): Promise<ForumPost[]
     avatarUrl: null,
     role: "user",
     isModerator: false,
-    isPro: false
+    isPro: false,
+    forumBanned: false
   };
 
   return rows.map((r) => ({
@@ -133,6 +136,17 @@ export async function getForumThread(
 
   const [[post], replies] = await Promise.all([enrich([root], viewerId), enrich(replyRows ?? [], viewerId)]);
   return { post, replies };
+}
+
+// לפאנל הפיקוח: כל מה שנכתב בפורום (פוסטים ותגובות, כולל מוסתרים), החדש קודם.
+export async function getForumModerationFeed(limit = 150): Promise<ForumPost[]> {
+  const admin = createAdminSupabase();
+  const { data } = await admin
+    .from("forum_posts")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return enrich(data ?? [], null);
 }
 
 export async function getForumStats(): Promise<{ threads: number; posters: number }> {

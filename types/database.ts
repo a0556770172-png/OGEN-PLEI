@@ -31,6 +31,10 @@ export interface Profile {
   size_override_mb: number | null;
   unlimited_public_upload_until: string | null;
   can_send_attachments: boolean;
+  // חסימת כתיבה בפורום (צוות) + חסימת בוט אוטומטית (זיהוי ניסיון מניפולציה, שעה).
+  forum_banned: boolean;
+  forum_ban_reason: string | null;
+  bot_blocked_until: string | null;
   // מתי המשתמש קרא ואישר את "חוקי האתר" (שער חובה חד-פעמי לכל חשבון - ראו
   // components/SiteRulesGate.tsx). null = עדיין לא אישר, ייחסם עד שיאשר.
   site_rules_accepted_at: string | null;

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning, ScrollText, History, Star } from "lucide-react";
+import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning, ScrollText, History, Star, Lightbulb } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import TicketsPanel from "./TicketsPanel";
 import SuggestionsQueue from "./SuggestionsQueue";
@@ -15,10 +15,12 @@ import BanAppealsPanel from "./BanAppealsPanel";
 import SiteRulesEditorPanel from "./SiteRulesEditorPanel";
 import AuditLogPanel from "./AuditLogPanel";
 import SiteReviewsPanel from "./SiteReviewsPanel";
+import ForumModerationPanel from "./ForumModerationPanel";
 import type { SiteReviewRow } from "@/lib/siteReviews";
+import type { ForumPost } from "@/lib/forum";
 import type { AppRow, Profile, BanAppeal } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "tickets" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals" | "teamTracking" | "siteRules" | "siteReviews";
+type TabKey = "notifications" | "review" | "allApps" | "tickets" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals" | "teamTracking" | "siteRules" | "siteReviews" | "forum";
 
 export default function ModeratorDashboardClient({
   apps,
@@ -28,7 +30,8 @@ export default function ModeratorDashboardClient({
   profiles,
   currentProfile,
   banAppeals,
-  siteReviews
+  siteReviews,
+  forumPosts
 }: {
   apps: AppRow[];
   allApps: AppRow[];
@@ -38,6 +41,7 @@ export default function ModeratorDashboardClient({
   currentProfile: Profile;
   banAppeals: BanAppeal[];
   siteReviews: SiteReviewRow[];
+  forumPosts: ForumPost[];
 }) {
   const [tab, setTab] = useState<TabKey>("notifications");
 
@@ -65,6 +69,7 @@ export default function ModeratorDashboardClient({
     { key: "banAppeals", label: `ערעורי חסימה${pendingBanAppealsCount ? ` (${pendingBanAppealsCount})` : ""}`, icon: MessageSquareWarning },
     { key: "teamTracking", label: "מעקב צוותים", icon: History },
     { key: "siteReviews", label: "תגובות על האתר", icon: Star },
+    { key: "forum", label: "פורום", icon: Lightbulb },
     { key: "siteRules", label: "חוקי האתר", icon: ScrollText }
   ] as const;
 
@@ -115,6 +120,9 @@ export default function ModeratorDashboardClient({
       {/* שליטה בתגובות/ביקורות על האתר - הסתרה, הצגה ומחיקה. אותו פאנל של הניהול;
           ה-API כבר מתיר לכל חבר צוות (isStaff), וכל פעולה נרשמת ב"מעקב צוותים". */}
       {tab === "siteReviews" && <SiteReviewsPanel reviews={siteReviews} />}
+      {/* גישה מלאה לפורום: כל הפוסטים והתגובות (כולל מוסתרים), הסתרה/מחיקה, וחסימת
+          משתמשים מכתיבה. אותן פעולות זמינות גם ישירות מעמוד הפורום (תפריט ⋯). */}
+      {tab === "forum" && <ForumModerationPanel posts={forumPosts} />}
       {tab === "siteRules" && <SiteRulesEditorPanel isAdmin={false} />}
     </div>
   );

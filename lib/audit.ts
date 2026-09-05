@@ -17,7 +17,9 @@ export type AuditAction =
   | "hide_site_review" | "unhide_site_review" | "delete_site_review"
   | "delete_app_review"
   | "hide_forum_post" | "unhide_forum_post" | "delete_forum_post"
-  | "pin_forum_post" | "unpin_forum_post";
+  | "pin_forum_post" | "unpin_forum_post"
+  | "forum_ban_user" | "forum_unban_user"
+  | "bot_block_user";
 
 // רושם שורה בלוג הביקורת עבור כל פעולת ניהול/פיקוח משמעותית - כדי שהמנהל יוכל לראות בדיוק
 // מי עשה מה, מתי, ולמי, ובמידה וניתן - לבטל את הפעולה. undoable מסמן אם יש כפתור "בטל" זמין.

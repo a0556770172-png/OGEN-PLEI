@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/profile";
 import { getReviewQueueApps, getAllAppsForAdmin, getPendingSuggestionsCount, getTicketsNeedingReplyCount, getAllProfiles, getBanAppeals } from "@/lib/admin-data";
 import { getSiteReviews } from "@/lib/siteReviews";
+import { getForumModerationFeed } from "@/lib/forum";
 import ModeratorDashboardClient from "@/components/ModeratorDashboardClient";
 
 export const dynamic = "force-dynamic";
@@ -13,15 +14,17 @@ export default async function ModeratorDashboard() {
   // לפיקוח מגיע לכאן, ולא מאבד את הגישה לאזור המפתח שלו אם יש לו כזה.
   if (!profile.is_moderator && profile.role !== "admin") redirect("/");
 
-  const [apps, allApps, suggestionsPendingCount, ticketsNeedingReplyCount, profiles, banAppeals, siteReviews] = await Promise.all([
-    getReviewQueueApps(),
-    getAllAppsForAdmin(),
-    getPendingSuggestionsCount(),
-    getTicketsNeedingReplyCount(),
-    getAllProfiles(),
-    getBanAppeals(),
-    getSiteReviews({ includeHidden: true })
-  ]);
+  const [apps, allApps, suggestionsPendingCount, ticketsNeedingReplyCount, profiles, banAppeals, siteReviews, forumPosts] =
+    await Promise.all([
+      getReviewQueueApps(),
+      getAllAppsForAdmin(),
+      getPendingSuggestionsCount(),
+      getTicketsNeedingReplyCount(),
+      getAllProfiles(),
+      getBanAppeals(),
+      getSiteReviews({ includeHidden: true }),
+      getForumModerationFeed()
+    ]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -38,6 +41,7 @@ export default async function ModeratorDashboard() {
         currentProfile={profile}
         banAppeals={banAppeals}
         siteReviews={siteReviews.reviews}
+        forumPosts={forumPosts}
       />
     </div>
   );

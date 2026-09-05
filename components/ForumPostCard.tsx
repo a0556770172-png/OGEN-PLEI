@@ -16,7 +16,8 @@ import {
   Pencil,
   Loader2,
   X,
-  Check
+  Check,
+  Ban
 } from "lucide-react";
 import ForumLikeButton from "./ForumLikeButton";
 import type { ForumPost } from "@/lib/forum";
@@ -65,6 +66,26 @@ export default function ForumPostCard({
       });
       if (res.ok) {
         setEditing(false);
+        setMenuOpen(false);
+        router.refresh();
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleForumBan() {
+    const ban = !post.author.forumBanned;
+    if (!confirm(ban ? `לחסום את ${post.author.username} מכתיבה בפורום?` : `לבטל את החסימה של ${post.author.username}?`))
+      return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/forum/ban", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: post.author.id, banned: ban })
+      });
+      if (res.ok) {
         setMenuOpen(false);
         router.refresh();
       }
@@ -242,6 +263,16 @@ export default function ForumPostCard({
                         className="flex w-full items-center gap-2 px-3 py-1.5 text-gray-300 hover:bg-surface2"
                       >
                         <Pin className="h-3.5 w-3.5" /> {post.pinned ? "ביטול נעיצה" : "נעיצה"}
+                      </button>
+                    )}
+                    {!post.isMine && post.author.role !== "admin" && (
+                      <button
+                        onClick={toggleForumBan}
+                        disabled={busy}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-gray-300 hover:bg-surface2"
+                      >
+                        <Ban className="h-3.5 w-3.5" />
+                        {post.author.forumBanned ? "בטל חסימה מהפורום" : "חסום כותב מהפורום"}
                       </button>
                     )}
                   </>

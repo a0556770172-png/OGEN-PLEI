@@ -14,6 +14,7 @@ import {
 } from "@/lib/admin-data";
 import { getSiteSettingsServer } from "@/lib/settings";
 import { getSiteReviews } from "@/lib/siteReviews";
+import { getForumModerationFeed } from "@/lib/forum";
 import AdminDashboardClient from "@/components/AdminDashboardClient";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,7 @@ export default async function AdminDashboard() {
     ]);
 
   const siteReviewsData = await getSiteReviews({ includeHidden: true });
+  const forumPosts = await getForumModerationFeed();
 
   return (
     <div className="flex flex-col gap-8">
@@ -60,6 +62,7 @@ export default async function AdminDashboard() {
         banAppeals={banAppeals}
         referralEvents={referralEvents}
         siteReviews={siteReviewsData.reviews}
+        forumPosts={forumPosts}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2, Archive, Bot, Star } from "lucide-react";
+import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2, Archive, Bot, Star, Lightbulb } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import UserManagementTable from "./UserManagementTable";
 import ProRequestsQueue from "./ProRequestsQueue";
@@ -20,10 +20,12 @@ import SiteRulesEditorPanel from "./SiteRulesEditorPanel";
 import ReferralsPanel from "./ReferralsPanel";
 import BotConfigPanel from "./BotConfigPanel";
 import SiteReviewsPanel from "./SiteReviewsPanel";
+import ForumModerationPanel from "./ForumModerationPanel";
+import type { ForumPost } from "@/lib/forum";
 import type { AppRow, Profile, ProRequest, UserDeletionRequest, BanAppeal, ReferralEvent } from "@/types/database";
 import type { SiteReviewRow } from "@/lib/siteReviews";
 
-type TabKey = "notifications" | "review" | "allApps" | "archive" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteReviews" | "bot" | "siteRules" | "settings";
+type TabKey = "notifications" | "review" | "allApps" | "archive" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteReviews" | "forum" | "bot" | "siteRules" | "settings";
 
 export default function AdminDashboardClient({
   apps,
@@ -38,7 +40,8 @@ export default function AdminDashboardClient({
   currentProfile,
   banAppeals,
   referralEvents,
-  siteReviews
+  siteReviews,
+  forumPosts
 }: {
   apps: AppRow[];
   allApps: AppRow[];
@@ -53,6 +56,7 @@ export default function AdminDashboardClient({
   banAppeals: BanAppeal[];
   referralEvents: ReferralEvent[];
   siteReviews: SiteReviewRow[];
+  forumPosts: ForumPost[];
 }) {
   const [tab, setTab] = useState<TabKey>("notifications");
 
@@ -91,6 +95,7 @@ export default function AdminDashboardClient({
     { key: "banAppeals", label: `ערעורי חסימה${pendingBanAppealsCount ? ` (${pendingBanAppealsCount})` : ""}`, icon: MessageSquareWarning },
     { key: "referrals", label: "הפניות", icon: Share2 },
     { key: "siteReviews", label: "ביקורות על האתר", icon: Star },
+    { key: "forum", label: "פורום", icon: Lightbulb },
     { key: "bot", label: "צ'אט-בוט", icon: Bot },
     { key: "siteRules", label: "חוקי האתר", icon: ScrollText },
     { key: "settings", label: "הגדרות", icon: Settings }
@@ -146,6 +151,7 @@ export default function AdminDashboardClient({
       {tab === "banAppeals" && <BanAppealsPanel appeals={banAppeals} />}
       {tab === "referrals" && <ReferralsPanel events={referralEvents} />}
       {tab === "siteReviews" && <SiteReviewsPanel reviews={siteReviews} />}
+      {tab === "forum" && <ForumModerationPanel posts={forumPosts} />}
       {tab === "bot" && <BotConfigPanel />}
       {tab === "siteRules" && <SiteRulesEditorPanel isAdmin={true} />}
       {tab === "settings" && <SiteSettingsPanel requireEmailVerification={requireEmailVerification} />}
