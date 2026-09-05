@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, MessageCircle, Siren, Package, Sparkles, Lightbulb, Users } from "lucide-react";
+import { Bell, MessageCircle, Siren, Package, Sparkles, Lightbulb, Users, ShieldAlert } from "lucide-react";
 
 type Conversation = { type: "ticket" | "council"; id: string; title: string; unreadCount: number };
 type FeedItem = { id: string; kind: string; title: string; body: string; url: string | null; seen_at: string | null; created_at: string };
@@ -121,6 +121,8 @@ export default function NotificationBell({ dashboardBase }: { dashboardBase: str
                     <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
                   ) : f.kind === "community_request" ? (
                     <Users className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                  ) : f.kind === "bot_abuse" ? (
+                    <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
                   ) : (
                     <Package className="mt-0.5 h-4 w-4 shrink-0 text-primary-light" />
                   )}

@@ -152,6 +152,18 @@ export async function notifyForForumReply(replyId: string): Promise<void> {
   });
 }
 
+// התראה בתוך האתר (feed + push) לכל המנהלים - למקרים שהמנהל חייב לדעת עליהם מיד.
+export async function notifyAdminsInApp(notif: {
+  kind: string;
+  title: string;
+  body: string;
+  url: string;
+}): Promise<void> {
+  const admin = createAdminSupabase();
+  const { data: admins } = await admin.from("profiles").select("id").eq("role", "admin");
+  await deliver((admins ?? []).map((a) => a.id), notif);
+}
+
 // נקרא כשמתפרסמת בקשת קהילה חדשה.
 export async function notifyForCommunityRequest(requestId: string, title: string, byUserId: string): Promise<void> {
   const admin = createAdminSupabase();

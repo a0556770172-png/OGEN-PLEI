@@ -88,10 +88,24 @@ export default function AppGrid({
   const appsCount = useMemo(() => items.filter(({ app }) => isApk(app)).length, [items]);
   const softwareCount = items.length - appsCount;
 
+  // אינדקס חיפוש: לא רק שם - גם התיאור הקצר וכל הטקסט בפוסט הפרסום (description_html מנוקה מתגיות).
+  const searchIndex = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const { app } of items) {
+      const plain = (app.description_html || "")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&[a-z]+;/gi, " ");
+      map.set(app.id, `${app.name} ${app.short_description || ""} ${plain}`.toLowerCase());
+    }
+    return map;
+  }, [items]);
+
   const filtered = useMemo(() => {
+    const q = query.toLowerCase().trim();
     const list = items.filter(({ app }) => {
       const matchesTab = mainTab === "apps" ? isApk(app) : !isApk(app);
-      const matchesQuery = app.name.toLowerCase().includes(query.toLowerCase());
+      const matchesQuery = !q || (searchIndex.get(app.id) ?? app.name.toLowerCase()).includes(q);
       const matchesCategory = category === "all" || app.category === category;
       return matchesTab && matchesQuery && matchesCategory;
     });
@@ -102,7 +116,7 @@ export default function AppGrid({
     else if (sort === "name") sorted.sort((a, b) => a.app.name.localeCompare(b.app.name, "he"));
     else if (sort === "size") sorted.sort((a, b) => (b.app.file_size_bytes ?? 0) - (a.app.file_size_bytes ?? 0));
     return sorted;
-  }, [items, query, category, mainTab, sort]);
+  }, [items, query, category, mainTab, sort, searchIndex]);
 
   const activeItem = activeId ? items.find(({ app }) => app.id === activeId) ?? null : null;
 

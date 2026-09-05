@@ -14,9 +14,37 @@ import {
 } from "@/lib/bot";
 import { buildBotUserContext } from "@/lib/botContext";
 import { personaSystemBlock } from "@/lib/botPersonas";
+import { detectBotManipulation, ABUSE_BLOCK_SENTINEL, BOT_BLOCK_MINUTES } from "@/lib/botGuard";
+import { notifyAdminsInApp } from "@/lib/notifications";
+import { logAudit } from "@/lib/audit";
 import type { ToolContext } from "@/lib/botTools";
 
 const HISTORY_TURNS = 16;
+
+// חוסם משתמש מהבוט לשעה, מתעד, ומתריע למנהל.
+async function blockUserFromBot(userId: string, username: string, reason: string, sample: string) {
+  const admin = createAdminSupabase();
+  const until = new Date(Date.now() + BOT_BLOCK_MINUTES * 60_000).toISOString();
+  try {
+    await admin.from("profiles").update({ bot_blocked_until: until }).eq("id", userId);
+  } catch {
+    // מיגרציה 0048 עוד לא רצה - החסימה לא תישמר, אבל ההתראה למנהל כן תישלח
+  }
+  logAudit({
+    actorId: userId,
+    action: "bot_block_user",
+    targetType: "user",
+    targetId: userId,
+    targetLabel: username,
+    meta: { reason, sample: sample.slice(0, 300), until }
+  }).catch(() => {});
+  notifyAdminsInApp({
+    kind: "bot_abuse",
+    title: `הבוט חסם משתמש: ${username}`,
+    body: `${reason}. הודעה: "${sample.slice(0, 120)}"`,
+    url: "/dashboard/admin?tab=users"
+  }).catch(() => {});
+}
 
 export async function POST(request: Request) {
   const result = await requireProfile();
@@ -26,6 +54,16 @@ export async function POST(request: Request) {
   const cfg = await getBotConfig();
   if (!botIsLive(cfg)) return NextResponse.json({ error: "הצ'אט-בוט אינו זמין כרגע." }, { status: 503 });
 
+  // חסימת בוט אוטומטית פעילה? (זוהה בעבר ניסיון להסיט את השיחה)
+  const blockedUntil = (profile as any).bot_blocked_until;
+  if (blockedUntil && new Date(blockedUntil).getTime() > Date.now()) {
+    const mins = Math.max(1, Math.ceil((new Date(blockedUntil).getTime() - Date.now()) / 60000));
+    return NextResponse.json(
+      { error: `הבוט נעול עבורך לעוד כ-${mins} דקות עקב ניסיון להסיט את השיחה. אפשר לנסות שוב מאוחר יותר.`, blocked: true },
+      { status: 403 }
+    );
+  }
+
   const { conversationId, message, personaId } = await request.json().catch(() => ({}));
   const text = typeof message === "string" ? message.trim() : "";
   if (!text) return NextResponse.json({ error: "יש לכתוב הודעה" }, { status: 400 });
@@ -33,6 +71,22 @@ export async function POST(request: Request) {
 
   const admin = createAdminSupabase();
   const staff = isStaff(profile);
+
+  // זיהוי מוקדם (heuristic) של ניסיון jailbreak / חילוץ פרומפט / הסטה מכוונת.
+  // צוות פטור (בדיקות). על flag: נעילת שעה + התראה למנהל, בלי לפנות ל-Gemini.
+  if (!staff) {
+    const manip = detectBotManipulation(text);
+    if (manip.flagged) {
+      await blockUserFromBot(user.id, profile.username, manip.reason, text);
+      return NextResponse.json(
+        {
+          error: "זוהה ניסיון להסיט את השיחה מהנושא של עוגן פליי. הבוט נעול עבורך לשעה, והצוות עודכן.",
+          blocked: true
+        },
+        { status: 403 }
+      );
+    }
+  }
 
   // --- מגבלת קצב ---
   if (!staff) {
@@ -115,6 +169,19 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "הבוט לא הצליח לענות כרגע.", detail: String(err?.message ?? err).slice(0, 250) },
       { status: 502 }
+    );
+  }
+
+  // המודל עצמו זיהה ניסיון מכוון להסיט אותו והחזיר את הסנטינל -> חסימת שעה + התראה.
+  if (!staff && agent.text.includes(ABUSE_BLOCK_SENTINEL)) {
+    if (createdNewConv) await admin.from("bot_conversations").delete().eq("id", convId);
+    await blockUserFromBot(user.id, profile.username, "המודל זיהה ניסיון מניפולציה מכוון", text);
+    return NextResponse.json(
+      {
+        error: "זוהה ניסיון להסיט את השיחה מהנושא של עוגן פליי. הבוט נעול עבורך לשעה, והצוות עודכן.",
+        blocked: true
+      },
+      { status: 403 }
     );
   }
 

@@ -25,7 +25,7 @@ export interface BotAppCard {
 }
 
 export interface ProposedAction {
-  kind: "support_ticket" | "app_suggestion";
+  kind: "support_ticket" | "app_suggestion" | "forum_post";
   payload: Record<string, any>;
   summary: string;
 }
@@ -51,7 +51,9 @@ const ALLOWED_NAV = [
   "/profile",
   "/profile/become-developer",
   "/dashboard/developer/upload",
-  "/users"
+  "/users",
+  "/forum",
+  "/notifications"
 ];
 
 export interface ToolContext {
@@ -219,6 +221,31 @@ export function toolDeclarations(ctx: ToolContext) {
       name: "get_site_reviews",
       description: "הדירוגים והביקורות שמשתמשים כתבו על עוגן פליי עצמו (לא על אפליקציות): הדירוג הממוצע, כמה דירגו, ומה הם כתבו - מי כתב, כמה כוכבים, וכמה לייקים קיבלה כל ביקורת.",
       parameters: { type: "object", properties: { limit: { type: "number" } } }
+    },
+    {
+      name: "get_forum_posts",
+      description:
+        "מה נכתב בפורום 'הצעות לשיפור ורעיונות' של עוגן פליי: פוסטים אחרונים / הכי אהובים - מי כתב, כותרת, תוכן, כמה לייקים וכמה תגובות. שימושי לשאלות 'מה אנשים מציעים לשפר', 'מה הרעיון הכי פופולרי', וכו'.",
+      parameters: {
+        type: "object",
+        properties: {
+          sort: { type: "string", enum: ["new", "top"], description: "new=חדשים, top=הכי אהובים" },
+          limit: { type: "number" }
+        }
+      }
+    },
+    {
+      name: "propose_forum_post",
+      description:
+        "מכין פוסט לפורום 'הצעות לשיפור ורעיונות' מתוך מה שהמשתמש אמר (הצעה לשיפור / מה שמפריע לו / רעיון לקידום האתר). לא מפרסם מיד - המשתמש מאשר בכרטיס, והפוסט נכתב בשמו. השתמש בזה כשמשתמש מביע דעה/הצעה על האתר ורוצה לשתף.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "כותרת קצרה לפוסט" },
+          body: { type: "string", description: "גוף הפוסט - מנוסח יפה בשם המשתמש, בגוף ראשון" }
+        },
+        required: ["body"]
+      }
     },
     {
       name: "offer_download",
@@ -743,6 +770,63 @@ export async function executeTool(name: string, rawArgs: any, ctx: ToolContext):
           }))
         },
         summary: `get_site_reviews → ${rows.length}`
+      };
+    }
+
+    case "get_forum_posts": {
+      const sort = args.sort === "top" ? "top" : "new";
+      const { data: rows } = await admin
+        .from("forum_posts")
+        .select("id, user_id, title, body, created_at, user:profiles!forum_posts_user_id_fkey(username)")
+        .is("parent_id", null)
+        .eq("hidden", false)
+        .limit(60);
+      const ids = (rows ?? []).map((r: any) => r.id);
+      const likeCount = new Map<string, number>();
+      const replyCount = new Map<string, number>();
+      if (ids.length) {
+        const [{ data: likes }, { data: replies }] = await Promise.all([
+          admin.from("forum_post_likes").select("post_id").in("post_id", ids),
+          admin.from("forum_posts").select("parent_id").in("parent_id", ids).eq("hidden", false)
+        ]);
+        for (const l of likes ?? []) likeCount.set((l as any).post_id, (likeCount.get((l as any).post_id) ?? 0) + 1);
+        for (const r of replies ?? []) {
+          const pid = (r as any).parent_id;
+          if (pid) replyCount.set(pid, (replyCount.get(pid) ?? 0) + 1);
+        }
+      }
+      let list = (rows ?? []).map((r: any) => ({
+        id: r.id,
+        by: r.user?.username ?? "משתמש",
+        title: r.title,
+        text: String(r.body || "").slice(0, 400),
+        likes: likeCount.get(r.id) ?? 0,
+        replies: replyCount.get(r.id) ?? 0,
+        at: r.created_at
+      }));
+      list =
+        sort === "top"
+          ? list.sort((a, b) => b.likes - a.likes)
+          : list.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+      list = list.slice(0, Math.min(20, Math.max(1, Number(args.limit) || 10)));
+      return { result: { sort, posts: list }, summary: `get_forum_posts → ${list.length}` };
+    }
+
+    case "propose_forum_post": {
+      if ((ctx.profile as any).forum_banned) {
+        return { result: { error: "המשתמש חסום מכתיבה בפורום" }, summary: "propose_forum_post → banned" };
+      }
+      const body = String(args.body || "").trim();
+      if (body.length < 5) return { result: { error: "תוכן קצר מדי" }, summary: "propose_forum_post → short" };
+      const title = String(args.title || "").trim().slice(0, 140) || null;
+      return {
+        result: { ok: true, note: "הפוסט יפורסם רק אחרי אישור המשתמש בכרטיס." },
+        proposedAction: {
+          kind: "forum_post",
+          payload: { title, body: body.slice(0, 5000) },
+          summary: `פרסום פוסט בפורום: "${title || body.slice(0, 40)}"`
+        },
+        summary: "propose_forum_post"
       };
     }
 

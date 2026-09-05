@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { notifyAdmins } from "@/lib/push";
+import { notifyForNewForumThread } from "@/lib/notifications";
 
 // ביצוע בפועל של "פעולה מוצעת" שהסוכן הכין והמשתמש אישר בכרטיס.
 // שני סוגים: פתיחת פנייה לצוות, והגשת בקשת קהילה (הצעת אפליקציה).
@@ -70,6 +71,40 @@ export async function POST(request: Request) {
     if (error || !data) return NextResponse.json({ error: `שגיאה בהגשת הבקשה: ${error?.message ?? ""}` }, { status: 500 });
 
     return NextResponse.json({ ok: true, done: `הבקשה "${title}" הוגשה ללוח בקשות הקהילה.`, link: "/community" });
+  }
+
+  if (action.kind === "forum_post") {
+    if ((result.profile as any).forum_banned) {
+      return NextResponse.json({ error: "אין לך כרגע אפשרות לכתוב בפורום." }, { status: 403 });
+    }
+    const title = String(action.payload?.title || "").trim().slice(0, 140) || null;
+    const body = String(action.payload?.body || "").trim().slice(0, 5000);
+    if (body.length < 5) return NextResponse.json({ error: "תוכן הפוסט קצר מדי" }, { status: 400 });
+
+    const { data: created, error } = await admin
+      .from("forum_posts")
+      .insert({ user_id: user.id, parent_id: null, title, body })
+      .select("id")
+      .single();
+    if (error || !created) return NextResponse.json({ error: "שגיאה בפרסום הפוסט" }, { status: 500 });
+
+    try {
+      await admin
+        .from("notification_subscriptions")
+        .upsert(
+          { user_id: user.id, type: "forum_thread", target_id: created.id },
+          { onConflict: "user_id,type,target_id" }
+        );
+      await notifyForNewForumThread(created.id);
+    } catch {
+      // best-effort
+    }
+
+    return NextResponse.json({
+      ok: true,
+      done: "הפוסט פורסם בפורום. תוכל לעקוב אחרי התגובות מדף הדיון.",
+      link: `/forum/${created.id}`
+    });
   }
 
   return NextResponse.json({ error: "סוג פעולה לא נתמך" }, { status: 400 });
