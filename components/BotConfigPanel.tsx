@@ -57,6 +57,7 @@ export default function BotConfigPanel() {
   const [convs, setConvs] = useState<ConvRow[]>([]);
   const [q, setQ] = useState("");
   const [convSort, setConvSort] = useState<"recent" | "interest">("interest");
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [scoring, setScoring] = useState(false);
   const [viewId, setViewIdRaw] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -521,7 +522,7 @@ export default function BotConfigPanel() {
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {(["interest", "recent"] as const).map((s) => (
             <button
               key={s}
@@ -533,6 +534,18 @@ export default function BotConfigPanel() {
               {s === "interest" ? "הכי מעניינות" : "האחרונות"}
             </button>
           ))}
+          <button
+            onClick={() => setUnreadOnly((v) => !v)}
+            className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold transition ${
+              unreadOnly ? "bg-primary text-[#fff]" : "bg-surface2 text-gray-400 hover:text-white"
+            }`}
+          >
+            <Circle className="h-3 w-3" /> לא נקראו
+            {(() => {
+              const n = convs.filter((c) => !c.staff_reviewed_at).length;
+              return n > 0 ? ` (${n})` : "";
+            })()}
+          </button>
         </div>
 
         <div className="relative">
@@ -578,10 +591,16 @@ export default function BotConfigPanel() {
         </div>
 
         <div className="flex flex-col divide-y divide-border/60 overflow-hidden rounded-xl border border-border">
-          {convs.length === 0 ? (
-            <p className="p-4 text-center text-sm text-gray-500">אין שיחות</p>
-          ) : (
-            convs.map((c) => {
+          {(() => {
+            const list = unreadOnly ? convs.filter((c) => !c.staff_reviewed_at) : convs;
+            if (list.length === 0) {
+              return (
+                <p className="p-4 text-center text-sm text-gray-500">
+                  {unreadOnly ? "כל השיחות נקראו 🎉" : "אין שיחות"}
+                </p>
+              );
+            }
+            return list.map((c) => {
               const read = !!c.staff_reviewed_at;
               const sel = selected.has(c.id);
               return (
@@ -637,8 +656,8 @@ export default function BotConfigPanel() {
                   </div>
                 </div>
               );
-            })
-          )}
+            });
+          })()}
         </div>
       </div>
     </div>
