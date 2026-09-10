@@ -45,12 +45,37 @@ function renderInline(text: string, keyPrefix: string): React.ReactNode[] {
 }
 
 function renderBold(text: string, keyPrefix: string): React.ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, idx) => {
+  const out: React.ReactNode[] = [];
+  text.split(/(\*\*[^*]+\*\*)/g).forEach((part, idx) => {
     if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
-      return <strong key={`${keyPrefix}-b${idx}`}>{part.slice(2, -2)}</strong>;
+      out.push(<strong key={`${keyPrefix}-b${idx}`}>{part.slice(2, -2)}</strong>);
+      return;
     }
-    return <React.Fragment key={`${keyPrefix}-p${idx}`}>{part}</React.Fragment>;
+    // הפיכת כתובות URL "חשופות" (לא בתוך מרקדאון) לקישורים לחיצים - למשל קישור הפניה.
+    const urlRe = /(https?:\/\/[^\s<>()]+)/g;
+    let last = 0;
+    let m: RegExpExecArray | null;
+    let j = 0;
+    while ((m = urlRe.exec(part)) !== null) {
+      if (m.index > last) out.push(<React.Fragment key={`${keyPrefix}-p${idx}-${j}a`}>{part.slice(last, m.index)}</React.Fragment>);
+      const clean = m[1].replace(/[.,;:!?]+$/, "");
+      out.push(
+        <a
+          key={`${keyPrefix}-u${idx}-${j}`}
+          href={clean}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          className="break-all font-bold text-primary-light hover:underline"
+        >
+          {clean}
+        </a>
+      );
+      last = m.index + clean.length;
+      j++;
+    }
+    if (last < part.length) out.push(<React.Fragment key={`${keyPrefix}-p${idx}-${j}b`}>{part.slice(last)}</React.Fragment>);
   });
+  return out;
 }
 
 export default function BotMessageBody({ text }: { text: string }) {

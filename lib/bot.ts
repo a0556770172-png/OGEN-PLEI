@@ -3,6 +3,7 @@ import { getCategoriesServer } from "./categories";
 import { getSiteSettingsServer } from "./settings";
 import { DEFAULT_SITE_RULES_HTML } from "./siteRulesDefault";
 import { LIMITS, MAX_SUGGESTION_MB, REFERRAL } from "./constants";
+import { SITE_URL } from "./siteUrl";
 import { toolDeclarations, executeTool, type ToolContext, type BotAppCard, type ProposedAction, type ClientAction } from "./botTools";
 import { getKeyCandidates, countUsableKeys, markKeyQuota, markKeyBroken, markKeyOk, type KeyCandidate } from "./botKeys";
 
@@ -144,7 +145,7 @@ export async function buildBotGrounding(): Promise<string> {
     `הצעת אפליקציה ציבורית: עד ${MAX_SUGGESTION_MB}MB לקובץ, לא נספרת במכסת המפתח.`,
     `מקורות מוניטין: +5 על אפליקציה פרטית שאושרה, +5 על הצעה ציבורית שאושרה, +2 על כל הורדה של אפליקציה שהעלית (עד 10 ליום), +${REFERRAL.referrerPoints} על הפניה מוצלחת, +20 על מילוי בקשת קהילה (העלאה שממלאת בקשה מלוח /community).`,
     `שדרוג ל-PRO אוטומטי בהגעה ל-300 מוניטין (או בקשה ידנית מהצוות, או תרומה של 3$+).`,
-    `מערכת הפניות: קישור אישי בפרופיל (/?ref=שם-המשתמש). המפנה מקבל ${REFERRAL.referrerPoints} מוניטין + קרדיט העלאה של ${REFERRAL.sizeOverrideMb}MB, והמצטרף ${REFERRAL.joinerPoints} מוניטין. עד ${REFERRAL.dailyRewardCap} הפניות מתוגמלות ביום.`,
+    `מערכת הפניות: לכל משתמש קישור אישי מלא (${SITE_URL}/?ref=שם-המשתמש). כשנותנים קישור למשתמש - תמיד את הכתובת המלאה מהכלי get_referral_link / draft_referral_message, לא נתיב יחסי. המפנה מקבל ${REFERRAL.referrerPoints} מוניטין + קרדיט העלאה של ${REFERRAL.sizeOverrideMb}MB, והמצטרף ${REFERRAL.joinerPoints} מוניטין. עד ${REFERRAL.dailyRewardCap} הפניות מתוגמלות ביום.`,
     `כתיבת תגובות נפתחת אחרי 5 אפליקציות שאושרו; לייקים אחרי 15; צ'אט בין משתמשים אחרי 10. PRO וצוות - פתוח תמיד.`,
     `שני מסלולי העלאה: "פרטי" (מפתחים, תוכן עצמי, ניתן לעריכה, /profile) מול "הוספה למאגר / הצעה ציבורית" (כל משתמש, אפליקציה מוכרת קיימת, /suggest-app).`,
     `דפים: חנות /, בקשות קהילה /community, הסברים /about, חוקי האתר /site-rules, תמיכה /support, פרופיל /profile, הרשמה כמפתח /profile/become-developer.`,

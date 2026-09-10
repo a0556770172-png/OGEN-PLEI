@@ -5,6 +5,7 @@ import { getUserAppUpdates } from "./updates";
 import { getSiteSettingsServer } from "./settings";
 import { DEFAULT_SITE_RULES_HTML } from "./siteRulesDefault";
 import { LIMITS, MAX_SUGGESTION_MB, REFERRAL } from "./constants";
+import { absoluteUrl } from "./siteUrl";
 import type { Profile } from "@/types/database";
 
 // ============================================================
@@ -617,7 +618,7 @@ export async function executeTool(name: string, rawArgs: any, ctx: ToolContext):
       const todayRewarded = rewarded.filter((e: any) => new Date(e.created_at).getTime() > since).length;
       return {
         result: {
-          link: `/?ref=${encodeURIComponent(ctx.profile.username)}`,
+          link: absoluteUrl(`/?ref=${encodeURIComponent(ctx.profile.username)}`),
           username: ctx.profile.username,
           friends_joined: rewarded.length,
           points_earned: rewarded.reduce((s: number, e: any) => s + (e.referrer_points_awarded || 0), 0),
@@ -631,12 +632,13 @@ export async function executeTool(name: string, rawArgs: any, ctx: ToolContext):
     }
 
     case "draft_referral_message": {
-      const link = `/?ref=${encodeURIComponent(ctx.profile.username)}`;
+      const link = absoluteUrl(`/?ref=${encodeURIComponent(ctx.profile.username)}`);
       const msg = `היי! מצאתי אתר מעולה לאפליקציות ותוכנות מסוננות ומאושרות - "עוגן פליי". כל אפליקציה עוברת בדיקה ידנית לפני פרסום. הרשמה דרך הקישור שלי: ${link}`;
       return {
         result: {
           message: msg,
-          note: "הצג את ההודעה למשתמש. בעמוד הפרופיל יש כפתור שיתוף וואטסאפ מוכן עם הקישור המלא."
+          link,
+          note: "הצג את ההודעה למשתמש בדיוק כפי שהיא, כולל הקישור המלא. בעמוד הפרופיל יש גם כפתור שיתוף וואטסאפ מוכן."
         },
         clientAction: { kind: "navigate", url: "/profile", label: "לכרטיס ההפניה (העתקה ושיתוף)", auto: false },
         summary: "draft_referral_message"
