@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Send, Loader2, Bot, User as UserIcon, AlertCircle, ThumbsUp, ThumbsDown, Mic, Check, X, Sparkles, Download, ArrowLeft, ChevronDown } from "lucide-react";
+import { Send, Loader2, Bot, User as UserIcon, AlertCircle, ThumbsUp, ThumbsDown, Mic, Check, X, Sparkles, Download, ArrowLeft, ChevronDown, Settings2 } from "lucide-react";
 import BotMessageBody from "./BotMessageBody";
 import BotAppCard, { type BotAppCardData } from "./BotAppCard";
 import BotPersonaPicker from "./BotPersonaPicker";
@@ -10,6 +10,15 @@ import { getPersona, DEFAULT_PERSONA_ID } from "@/lib/botPersonas";
 import { shouldShowAd } from "@/lib/adThrottle";
 
 const PERSONA_KEY = "ogen-bot-persona";
+const OPENER_OFF_KEY = "ogen-bot-opener-off";
+
+export function isBotOpenerOff(): boolean {
+  try {
+    return localStorage.getItem(OPENER_OFF_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 interface ProposedAction {
   kind: "support_ticket" | "app_suggestion";
@@ -70,6 +79,7 @@ export default function BotChat({
   const [persona, setPersona] = useState<string>(DEFAULT_PERSONA_ID);
   const [personaChosen, setPersonaChosen] = useState(true); // עד שנקרא מ-localStorage - לא מציגים בורר
   const [showPicker, setShowPicker] = useState(false);
+  const [openerOff, setOpenerOff] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const recRef = useRef<any>(null);
 
@@ -86,6 +96,7 @@ export default function BotChat({
     } catch {
       setPersonaChosen(true);
     }
+    setOpenerOff(isBotOpenerOff());
   }, []);
 
   function choosePersona(id: string) {
@@ -99,9 +110,21 @@ export default function BotChat({
     }
   }
 
-  // הודעת פתיחה יזומה - רק בשיחה חדשה, לא ב-readOnly.
+  function toggleOpener() {
+    const next = !openerOff;
+    setOpenerOff(next);
+    try {
+      if (next) localStorage.setItem(OPENER_OFF_KEY, "1");
+      else localStorage.removeItem(OPENER_OFF_KEY);
+    } catch {
+      // ignore
+    }
+    if (next) setOpener(null);
+  }
+
+  // הודעת פתיחה יזומה - רק בשיחה חדשה, לא ב-readOnly, ולא אם המשתמש כיבה אותה.
   useEffect(() => {
-    if (readOnly || conversationId || messages.length > 0) return;
+    if (readOnly || conversationId || messages.length > 0 || isBotOpenerOff()) return;
     let active = true;
     fetch("/api/bot/opener")
       .then((r) => r.json())
@@ -298,23 +321,44 @@ export default function BotChat({
       {!readOnly && personaChosen && !showPicker && (
         <button
           onClick={() => setShowPicker(true)}
-          title="שינוי סגנון העוזר"
+          title="הגדרות העוזר"
           className="mb-1.5 inline-flex w-fit items-center gap-1.5 self-start rounded-full border border-border bg-surface2 px-2.5 py-1 text-[11px] font-semibold text-gray-400 transition hover:border-primary/40 hover:text-white"
         >
+          <Settings2 className="h-3 w-3" />
           <span className="text-sm leading-none">{currentPersona.emoji}</span> {currentPersona.name}
           <ChevronDown className="h-3 w-3" />
         </button>
       )}
 
       {showPicker && (
-        <div className="absolute inset-0 z-20 flex flex-col overflow-y-auto rounded-xl border border-border bg-bg/98 p-3 backdrop-blur-sm">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-sm font-black text-white">סגנון העוזר</span>
+        <div className="absolute inset-0 z-20 flex flex-col gap-3 overflow-y-auto rounded-xl border border-border bg-bg/98 p-3 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-black text-white">הגדרות העוזר</span>
             <button onClick={() => setShowPicker(false)} className="rounded-md p-1 text-gray-500 transition hover:text-white">
               <X className="h-4 w-4" />
             </button>
           </div>
-          <BotPersonaPicker value={persona} onPick={choosePersona} compact />
+
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface2 p-3">
+            <div>
+              <p className="text-sm font-bold text-white">הודעת פתיחה בכניסה לאתר</p>
+              <p className="text-[11px] text-gray-500">הבועה הקטנה שקופצת מעצמה מהעוזר</p>
+            </div>
+            <button
+              onClick={toggleOpener}
+              className={`relative h-6 w-11 shrink-0 rounded-full transition ${openerOff ? "bg-surface" : "bg-primary"}`}
+              aria-pressed={!openerOff}
+            >
+              <span
+                className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition ${openerOff ? "right-6" : "right-1"}`}
+              />
+            </button>
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-sm font-black text-white">סגנון העוזר</p>
+            <BotPersonaPicker value={persona} onPick={choosePersona} compact />
+          </div>
         </div>
       )}
 

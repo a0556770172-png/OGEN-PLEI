@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bot, X, Plus, MessageCircle, ArrowLeft, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import BotChat from "./BotChat";
+import BotChat, { isBotOpenerOff } from "./BotChat";
 
 // כפתור צף יחיד (פינה שמאלית-תחתונה) שמאחד את העוזר (AI) ואת ההודעות בין משתמשים.
 // לחיצה פותחת חלונית: העוזר בפנים, וכפתור מעבר להודעות הרגילות + מעבר לעמוד המלא.
@@ -38,7 +38,7 @@ export default function BotWidget() {
         .then((j) => {
           if (!active || !j.live) return;
           setLive(true);
-          // הודעת פתיחה יזומה - קופצת כ-peek פעם ביום.
+          // הודעת פתיחה יזומה - קופצת כ-peek פעם ביום (אלא אם המשתמש כיבה בהגדרות העוזר).
           const today = new Date().toISOString().slice(0, 10);
           let shownToday = false;
           try {
@@ -46,7 +46,7 @@ export default function BotWidget() {
           } catch {
             // ignore
           }
-          if (!shownToday) {
+          if (!shownToday && !isBotOpenerOff()) {
             fetch("/api/bot/opener")
               .then((r) => r.json())
               .then((op) => {
