@@ -29,6 +29,14 @@ export async function POST(request: Request, { params }: { params: { id: string 
   });
   if (error) return NextResponse.json({ error: "שגיאה בשליחת ההודעה" }, { status: 500 });
 
+  // מי שהגיב קרא את כל מה שנכתב עד עכשיו - מעדכנים "נקרא עד" כדי שלא ימשיך להופיע לו כלא-נקרא.
+  await admin
+    .from("council_thread_reads")
+    .upsert(
+      { user_id: user.id, thread_id: params.id, last_read_at: new Date().toISOString() },
+      { onConflict: "user_id,thread_id" }
+    );
+
   await admin.from("council_threads").update({ updated_at: new Date().toISOString() }).eq("id", params.id);
 
   return NextResponse.json({ ok: true });

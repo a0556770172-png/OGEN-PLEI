@@ -51,6 +51,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ error: `שגיאה בשליחת ההודעה: ${error.message}` }, { status: 500 });
   }
 
+  // מי שמגיב - קרא בהכרח את כל מה שנכתב עד עכשיו. מעדכנים לו את "נקרא עד" כדי שהשיחה
+  // הזו לא תמשיך להופיע לו כ"לא נקראה" בפעמון ההתראות אחרי שכבר ענה.
+  await admin
+    .from("ticket_reads")
+    .upsert(
+      { user_id: user.id, ticket_id: ticket.id, last_read_at: new Date().toISOString() },
+      { onConflict: "user_id,ticket_id" }
+    );
+
   // תגובת משתמש פותחת מחדש פנייה סגורה. תגובת צוות לא סוגרת אוטומטית - יש כפתור נפרד לסגירה.
   // תגובת צוות ראשונה "משייכת" את השיחה אליו - מאותו רגע חברי צוות אחרים (חוץ מהמנהל) לא רואים אותה.
   await admin

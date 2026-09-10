@@ -48,5 +48,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const { error } = await admin.from("dm_messages").insert({ thread_id: params.id, sender_id: user.id, body: trimmed });
   if (error) return NextResponse.json({ error: "שגיאה בשליחת ההודעה" }, { status: 500 });
 
+  // מי שהגיב קרא את השיחה - מעדכנים "נקרא עד" כדי שלא תופיע לו כלא-נקראה אחרי שכבר ענה.
+  await admin
+    .from("dm_thread_reads")
+    .upsert({ user_id: user.id, thread_id: params.id, last_read_at: new Date().toISOString() }, { onConflict: "user_id,thread_id" });
+
   return NextResponse.json({ ok: true });
 }
