@@ -18,6 +18,8 @@ interface Config {
 }
 
 interface Insights {
+  conversationsTotal: number;
+  questionsTotal: number;
   toolCallsTotal: number;
   topTools: { tool: string; total: number; failed: number }[];
   thumbsUp: number;
@@ -30,6 +32,8 @@ interface ConvRow {
   title: string;
   updated_at: string;
   flagged_at?: string | null;
+  interest_score?: number | null;
+  interest_note?: string | null;
   user?: { username: string };
 }
 
@@ -51,6 +55,8 @@ export default function BotConfigPanel() {
 
   const [convs, setConvs] = useState<ConvRow[]>([]);
   const [q, setQ] = useState("");
+  const [convSort, setConvSort] = useState<"recent" | "interest">("interest");
+  const [scoring, setScoring] = useState(false);
   const [viewId, setViewId] = useState<string | null>(null);
 
   const [detections, setDetections] = useState<Detection[]>([]);
@@ -112,19 +118,46 @@ export default function BotConfigPanel() {
   }, []);
 
   function loadConvs() {
-    fetch(`/api/admin/bot-conversations${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`)
+    const params = new URLSearchParams();
+    if (q.trim()) params.set("q", q.trim());
+    if (convSort === "interest") params.set("sort", "interest");
+    fetch(`/api/admin/bot-conversations${params.toString() ? `?${params}` : ""}`)
       .then((r) => r.json())
       .then((j) => setConvs(j.conversations ?? []))
       .catch(() => {});
   }
+  async function scoreConvs(manual = false) {
+    setScoring(true);
+    try {
+      const res = await fetch("/api/admin/bot-score-conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: manual ? 20 : 10 })
+      });
+      const j = await res.json().catch(() => ({}));
+      if (res.ok && (j.scored ?? 0) > 0) loadConvs();
+      if (manual) setMsg(res.ok ? `דורגו ${j.scored ?? 0} שיחות` : j.error || "שגיאה בדירוג");
+    } finally {
+      setScoring(false);
+      if (manual) setTimeout(() => setMsg(""), 2500);
+    }
+  }
+
   useEffect(() => {
     loadConvs();
     fetch("/api/admin/bot-flagged")
       .then((r) => r.json())
       .then((j) => setDetections(j.detections ?? []))
       .catch(() => {});
+    // דירוג רקע קטן של שיחות שלא דורגו - כדי שהרשימה "לפי עניין" תתמלא עם הזמן
+    scoreConvs(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    loadConvs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convSort]);
 
   async function save(partial: Partial<Config> & { clearFallback?: boolean }) {
     if (!cfg) return;
@@ -324,12 +357,20 @@ export default function BotConfigPanel() {
       {insights && (
         <div className="card flex flex-col gap-4 p-6">
           <div className="flex items-center gap-2 text-lg font-bold text-white">
-            <Wrench className="h-5 w-5 text-primary-light" /> תובנות (30 יום)
+            <Wrench className="h-5 w-5 text-primary-light" /> תובנות
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-center">
+              <span className="block text-xl font-black text-white">{(insights.conversationsTotal ?? 0).toLocaleString("he-IL")}</span>
+              <span className="text-[11px] text-gray-400">שיחות שבוצעו עם הבוט</span>
+            </div>
+            <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-center">
+              <span className="block text-xl font-black text-white">{(insights.questionsTotal ?? 0).toLocaleString("he-IL")}</span>
+              <span className="text-[11px] text-gray-400">שאלות ששאלו את הבוט</span>
+            </div>
             <div className="rounded-xl border border-border bg-surface2/60 p-3 text-center">
-              <span className="block text-xl font-black text-white">{insights.toolCallsTotal}</span>
-              <span className="text-[11px] text-gray-500">קריאות כלים</span>
+              <span className="block text-xl font-black text-white">{insights.toolCallsTotal.toLocaleString("he-IL")}</span>
+              <span className="text-[11px] text-gray-500">קריאות כלים (30 יום)</span>
             </div>
             <div className="rounded-xl border border-border bg-surface2/60 p-3 text-center">
               <span className="flex items-center justify-center gap-1 text-xl font-black text-accent"><ThumbsUp className="h-4 w-4" /> {insights.thumbsUp}</span>
@@ -433,9 +474,34 @@ export default function BotConfigPanel() {
       </div>
 
       <div className="card flex flex-col gap-3 p-6">
-        <div className="flex items-center gap-2 text-lg font-bold text-white">
-          <MessageSquare className="h-5 w-5 text-primary-light" /> שיחות של משתמשים עם הבוט
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-lg font-bold text-white">
+            <MessageSquare className="h-5 w-5 text-primary-light" /> שיחות של משתמשים עם הבוט
+          </div>
+          <button
+            onClick={() => scoreConvs(true)}
+            disabled={scoring}
+            className="btn-ghost text-xs"
+            title="ה-AI יעבור על שיחות שלא דורגו ויתן להן ציון עניין 1-10"
+          >
+            {scoring ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wrench className="h-3.5 w-3.5" />} דרג שיחות
+          </button>
         </div>
+
+        <div className="flex items-center gap-2">
+          {(["interest", "recent"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setConvSort(s)}
+              className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+                convSort === s ? "bg-primary text-[#fff]" : "bg-surface2 text-gray-400 hover:text-white"
+              }`}
+            >
+              {s === "interest" ? "הכי מעניינות" : "האחרונות"}
+            </button>
+          ))}
+        </div>
+
         <div className="relative">
           <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           <input
@@ -455,14 +521,30 @@ export default function BotConfigPanel() {
               <button
                 key={c.id}
                 onClick={() => setViewId(c.id)}
-                className="flex items-center justify-between gap-2 bg-surface2/40 px-3 py-2.5 text-right text-sm transition hover:bg-surface2"
+                className="flex flex-col gap-1 bg-surface2/40 px-3 py-2.5 text-right text-sm transition hover:bg-surface2"
               >
-                <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-gray-200">
-                  {c.flagged_at && <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-red-400" />}
-                  {c.title}
-                </span>
-                <span className="shrink-0 text-xs text-gray-500">{c.user?.username ?? "—"}</span>
-                <span className="shrink-0 text-xs text-gray-600">{new Date(c.updated_at).toLocaleDateString("he-IL")}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-gray-200">
+                    {c.flagged_at && <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-red-400" />}
+                    {typeof c.interest_score === "number" && (
+                      <span
+                        className={`shrink-0 rounded px-1.5 text-[10px] font-black ${
+                          c.interest_score >= 8
+                            ? "bg-gold/20 text-gold"
+                            : c.interest_score >= 4
+                            ? "bg-primary/15 text-primary-light"
+                            : "bg-surface2 text-gray-500"
+                        }`}
+                      >
+                        {c.interest_score}
+                      </span>
+                    )}
+                    {c.title}
+                  </span>
+                  <span className="shrink-0 text-xs text-gray-500">{c.user?.username ?? "—"}</span>
+                  <span className="shrink-0 text-xs text-gray-600">{new Date(c.updated_at).toLocaleDateString("he-IL")}</span>
+                </div>
+                {c.interest_note && <span className="text-[11px] text-gray-500">{c.interest_note}</span>}
               </button>
             ))
           )}

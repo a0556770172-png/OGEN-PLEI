@@ -11,7 +11,13 @@ export async function GET() {
   const admin = createAdminSupabase();
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [{ data: toolRows }, { data: fbRows }, { data: negRows }] = await Promise.all([
+  const [
+    { data: toolRows },
+    { data: fbRows },
+    { data: negRows },
+    { count: conversationsTotal },
+    { count: questionsTotal }
+  ] = await Promise.all([
     admin.from("bot_tool_calls").select("tool, ok").gte("created_at", since).limit(3000),
     admin.from("bot_message_feedback").select("rating").limit(5000),
     admin
@@ -19,7 +25,9 @@ export async function GET() {
       .select("rating, note, created_at, bot_messages(content, conversation_id)")
       .eq("rating", -1)
       .order("created_at", { ascending: false })
-      .limit(20)
+      .limit(20),
+    admin.from("bot_conversations").select("id", { count: "exact", head: true }),
+    admin.from("bot_messages").select("id", { count: "exact", head: true }).eq("role", "user")
   ]);
 
   const toolCounts: Record<string, { total: number; failed: number }> = {};
@@ -43,6 +51,8 @@ export async function GET() {
   }));
 
   return NextResponse.json({
+    conversationsTotal: conversationsTotal ?? 0,
+    questionsTotal: questionsTotal ?? 0,
     toolCallsTotal: (toolRows ?? []).length,
     topTools,
     thumbsUp: up,
