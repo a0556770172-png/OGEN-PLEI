@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell, Loader2, Package, Sparkles, Lightbulb, Users, ShieldAlert } from "lucide-react";
+import { Bell, Loader2, Package, Sparkles, Lightbulb, Users, ShieldAlert, KeyRound } from "lucide-react";
 
 type FeedItem = {
   id: string;
@@ -19,6 +19,7 @@ function iconFor(kind: string) {
     return <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-gold" />;
   if (kind === "community_request") return <Users className="mt-0.5 h-4 w-4 shrink-0 text-accent" />;
   if (kind === "bot_abuse") return <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />;
+  if (kind === "password_reset") return <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-gold" />;
   return <Package className="mt-0.5 h-4 w-4 shrink-0 text-primary-light" />;
 }
 

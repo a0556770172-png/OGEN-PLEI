@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Ban, ShieldCheck, Crown, Loader2, ShieldOff, UserCog, Trash2, Paperclip, Pencil, ThumbsUp, MessageSquare, Star, Clock, Search } from "lucide-react";
+import { Ban, ShieldCheck, Crown, Loader2, ShieldOff, UserCog, Trash2, Paperclip, Pencil, ThumbsUp, MessageSquare, Star, Clock, Search, KeyRound } from "lucide-react";
 import type { Profile } from "@/types/database";
 
 const ROLE_LABEL: Record<string, string> = { user: "משתמש", developer: "מפתח", admin: "מנהל", moderator: "פיקוח" };
@@ -60,6 +60,30 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
   // חסימת משתמש - מבקשים סיבה (מוצגת למשתמש עצמו בעמוד /banned) ומשך זמן בשעות (ריק =
   // חסימה לצמיתות). זה נשלח כ-banReason/banHours ל-API, שכבר תומך בהם (ראו
   // app/api/admin/users/[id]/route.ts) - עד עכשיו הטופס כאן פשוט לא איפשר להזין אותם.
+  async function resetUserPassword(id: string, username: string) {
+    const mode = window.confirm(
+      `איפוס סיסמה ל-"${username}":\n\nאישור = שליחת קישור איפוס למייל הרשום.\nביטול = קביעת סיסמה זמנית (למסירה ידנית).`
+    )
+      ? "link"
+      : "temp";
+    setBusyId(id);
+    try {
+      const res = await fetch("/api/admin/user-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: id, mode })
+      });
+      const j = await res.json().catch(() => ({}));
+      if (res.ok && j.tempPassword) {
+        window.prompt("סיסמה זמנית (העתק ומסור למשתמש, בקש שיחליף מיד):", j.tempPassword);
+      } else {
+        alert(res.ok ? j.message : j.error || "שגיאה");
+      }
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function banUser(id: string, username: string) {
     const reason = window.prompt(`סיבת החסימה של "${username}" (תוצג למשתמש עצמו):`);
     if (reason === null) return;
@@ -216,6 +240,9 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
                     <>
                       {isAdmin && (
                         <button title="עריכת שם משתמש" onClick={() => editUsername(p.id, p.username)} className="rounded-lg p-1.5 text-gray-400 hover:bg-surface2 hover:text-white"><Pencil className="h-4 w-4" /></button>
+                      )}
+                      {isAdmin && p.role !== "admin" && (
+                        <button title="איפוס סיסמה למשתמש" onClick={() => resetUserPassword(p.id, p.username)} className="rounded-lg p-1.5 text-gray-400 hover:bg-surface2 hover:text-primary-light"><KeyRound className="h-4 w-4" /></button>
                       )}
                       {/* חשבון מנהל בפועל מוגן מחסימה לגמרי (גם בשרת וגם כאן) - אין טעם להציג
                           כפתור שתמיד ייכשל, וזה בדיוק סוג הבאג שכבר תוקן פעם אחת. */}

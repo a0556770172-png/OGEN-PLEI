@@ -69,7 +69,11 @@ export default function SiteRulesGate() {
   // להציג לו שער נוסף לפני שהוא בכלל מטופל. מציגים שוב גם למי שכבר אישר בעבר, אם הצוות
   // פרסם עדכון לחוקים מאז (site_rules_seen_version נמוך מהגרסה הנוכחית - ראו
   // components/SiteRulesEditorPanel.tsx).
-  const shouldShow = !!profile && !profile.banned && (profile.site_rules_seen_version ?? 0) < rulesVersion;
+  // לא מציגים את שער החוקים תוך כדי איפוס סיסמה - המשתמש שם עם סשן זמני בלבד וצריך
+  // לקבוע סיסמה חדשה בלי חסימה.
+  const onResetFlow = pathname === "/reset-password" || pathname === "/forgot-password";
+  const shouldShow =
+    !onResetFlow && !!profile && !profile.banned && (profile.site_rules_seen_version ?? 0) < rulesVersion;
   if (!shouldShow) return null;
 
   return (

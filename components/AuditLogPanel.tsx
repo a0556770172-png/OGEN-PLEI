@@ -40,7 +40,9 @@ const ACTION_LABELS: Record<string, string> = {
   unpin_forum_post: "ביטול נעיצת פוסט בפורום",
   forum_ban_user: "חסימת משתמש מהפורום",
   forum_unban_user: "ביטול חסימת משתמש מהפורום",
-  bot_block_user: "חסימת בוט אוטומטית (ניסיון מניפולציה)"
+  bot_block_user: "חסימת בוט אוטומטית (ניסיון מניפולציה)",
+  send_password_reset: "שליחת קישור איפוס סיסמה",
+  set_temp_password: "קביעת סיסמה זמנית למשתמש"
 };
 
 interface AuditItem {

@@ -24,6 +24,7 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const confirmed = params.get("confirmed");
+  const resetOk = params.get("reset");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -106,6 +107,11 @@ function LoginForm() {
             <CheckCircle2 className="h-4 w-4 shrink-0" /> המייל אומת בהצלחה! כעת ניתן להתחבר.
           </div>
         )}
+        {resetOk && (
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent">
+            <CheckCircle2 className="h-4 w-4 shrink-0" /> הסיסמה עודכנה! התחבר עם הסיסמה החדשה.
+          </div>
+        )}
         {error && (
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
             <AlertCircle className="h-4 w-4 shrink-0" /> {error}
@@ -132,7 +138,13 @@ function LoginForm() {
           </button>
         </form>
 
-        <div className="mt-6 flex flex-col items-center gap-2 text-sm text-gray-400">
+        <div className="mt-4 text-center">
+          <Link href="/forgot-password" className="text-sm font-semibold text-primary-light hover:underline">
+            שכחתי סיסמה
+          </Link>
+        </div>
+
+        <div className="mt-4 flex flex-col items-center gap-2 border-t border-border/60 pt-4 text-sm text-gray-400">
           <span>אין לך חשבון עדיין?</span>
           <div className="flex gap-4">
             <Link href="/signup/user" className="font-semibold text-primary-light hover:underline">הרשמה כמשתמש</Link>

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2, Archive, Bot, Star, Lightbulb } from "lucide-react";
+import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2, Archive, Bot, Star, Lightbulb, KeyRound } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import UserManagementTable from "./UserManagementTable";
 import ProRequestsQueue from "./ProRequestsQueue";
@@ -21,11 +21,12 @@ import ReferralsPanel from "./ReferralsPanel";
 import BotConfigPanel from "./BotConfigPanel";
 import SiteReviewsPanel from "./SiteReviewsPanel";
 import ForumModerationPanel from "./ForumModerationPanel";
+import PasswordResetsPanel from "./PasswordResetsPanel";
 import type { ForumPost } from "@/lib/forum";
 import type { AppRow, Profile, ProRequest, UserDeletionRequest, BanAppeal, ReferralEvent } from "@/types/database";
 import type { SiteReviewRow } from "@/lib/siteReviews";
 
-type TabKey = "notifications" | "review" | "allApps" | "archive" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteReviews" | "forum" | "bot" | "siteRules" | "settings";
+type TabKey = "notifications" | "review" | "allApps" | "archive" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteReviews" | "forum" | "passwordResets" | "bot" | "siteRules" | "settings";
 
 export default function AdminDashboardClient({
   apps,
@@ -88,6 +89,7 @@ export default function AdminDashboardClient({
     { key: "categories", label: "קטגוריות", icon: Tag },
     { key: "users", label: "ניהול משתמשים", icon: Users },
     { key: "deletionRequests", label: `בקשות מחיקת משתמשים (${deletionRequests.length})`, icon: ShieldAlert },
+    { key: "passwordResets", label: "איפוסי סיסמה", icon: KeyRound },
     { key: "council", label: "ועדה", icon: Siren },
     { key: "auditLog", label: "מעקב פיקוח", icon: History },
     { key: "reports", label: "דיווחים על אפליקציות", icon: Flag },
@@ -144,6 +146,7 @@ export default function AdminDashboardClient({
       {tab === "categories" && <CategoriesManager />}
       {tab === "users" && <UserManagementTable profiles={profiles} isAdmin={true} />}
       {tab === "deletionRequests" && <DeletionRequestsPanel requests={deletionRequests} />}
+      {tab === "passwordResets" && <PasswordResetsPanel />}
       {tab === "council" && <CouncilPanel currentProfile={currentProfile} />}
       {tab === "auditLog" && <AuditLogPanel />}
       {tab === "reports" && <AppReportsQueue />}
