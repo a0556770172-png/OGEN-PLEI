@@ -219,6 +219,12 @@ export function toolDeclarations(ctx: ToolContext) {
       parameters: { type: "object", properties: {} }
     },
     {
+      name: "get_todays_downloads",
+      description:
+        "מה הורד היום (מתחילת היום לפי שעון ישראל): סך כל ההורדות היום באתר, ורשימה מפורטת של אילו אפליקציות/תוכנות הורדו היום וכמה פעמים כל אחת. השתמש בזה לשאלות כמו 'כמה הורדות היו היום', 'מה הכי הורידו היום', 'מה הורדו היום'.",
+      parameters: { type: "object", properties: {} }
+    },
+    {
       name: "get_site_reviews",
       description: "הדירוגים והביקורות שמשתמשים כתבו על עוגן פליי עצמו (לא על אפליקציות): הדירוג הממוצע, כמה דירגו, ומה הם כתבו - מי כתב, כמה כוכבים, וכמה לייקים קיבלה כל ביקורת.",
       parameters: { type: "object", properties: { limit: { type: "number" } } }
@@ -840,6 +846,33 @@ export async function executeTool(name: string, rawArgs: any, ctx: ToolContext):
       const { data: dl } = await admin.from("apps").select("downloads_count").eq("status", "approved");
       const downloads = (dl ?? []).reduce((s: number, a: any) => s + (a.downloads_count ?? 0), 0);
       return { result: { approved_apps: apps ?? 0, users: users ?? 0, total_downloads: downloads }, summary: "get_site_stats" };
+    }
+
+    case "get_todays_downloads": {
+      // תחילת היום לפי שעון ישראל (השרת רץ ב-UTC).
+      const now = new Date();
+      const ilLocal = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Jerusalem" }));
+      const offsetMs = now.getTime() - ilLocal.getTime();
+      ilLocal.setHours(0, 0, 0, 0);
+      const since = new Date(ilLocal.getTime() + offsetMs).toISOString();
+
+      const { data: events } = await admin.from("download_events").select("app_id").gte("created_at", since);
+      const rows = events ?? [];
+      const byApp = new Map<string, number>();
+      for (const r of rows) byApp.set((r as any).app_id, (byApp.get((r as any).app_id) ?? 0) + 1);
+      const appIds = [...byApp.keys()];
+      const { data: appsData } = appIds.length
+        ? await admin.from("apps").select("id, name").in("id", appIds)
+        : { data: [] as any[] };
+      const nameById = new Map((appsData ?? []).map((a: any) => [a.id, a.name]));
+      const list = appIds
+        .map((id) => ({ id, name: nameById.get(id) ?? "אפליקציה", downloads: byApp.get(id) ?? 0 }))
+        .sort((a, b) => b.downloads - a.downloads)
+        .slice(0, 25);
+      return {
+        result: { total_today: rows.length, unique_apps: appIds.length, apps: list },
+        summary: `get_todays_downloads → ${rows.length}`
+      };
     }
 
     case "get_my_apps_status": {
