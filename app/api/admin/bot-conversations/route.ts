@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
   // עמודות flagged_at / interest_* עשויות לא להתקיים אם המיגרציות עוד לא רצו - ננסה עם, וניפול בלי.
   const fullCols =
-    "id, title, created_at, updated_at, flagged_at, interest_score, interest_note, user:profiles!bot_conversations_user_id_fkey(username)";
+    "id, title, created_at, updated_at, flagged_at, interest_score, interest_note, staff_reviewed_at, user:profiles!bot_conversations_user_id_fkey(username)";
   const plainCols = "id, title, created_at, updated_at, user:profiles!bot_conversations_user_id_fkey(username)";
 
   let data: any[] = [];

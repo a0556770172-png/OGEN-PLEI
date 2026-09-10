@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Bot, Loader2, Save, Search, MessageSquare, ArrowRight, Plug, CheckCircle2, AlertCircle, Wrench, ThumbsUp, ThumbsDown, ShieldAlert, ChevronDown } from "lucide-react";
+import { Bot, Loader2, Save, Search, MessageSquare, ArrowRight, Plug, CheckCircle2, AlertCircle, Wrench, ThumbsUp, ThumbsDown, ShieldAlert, ChevronDown, Circle, CheckCheck, Square, CheckSquare } from "lucide-react";
 import BotChat from "./BotChat";
 import BotKeysManager from "./BotKeysManager";
 
@@ -34,6 +34,7 @@ interface ConvRow {
   flagged_at?: string | null;
   interest_score?: number | null;
   interest_note?: string | null;
+  staff_reviewed_at?: string | null;
   user?: { username: string };
 }
 
@@ -57,7 +58,8 @@ export default function BotConfigPanel() {
   const [q, setQ] = useState("");
   const [convSort, setConvSort] = useState<"recent" | "interest">("interest");
   const [scoring, setScoring] = useState(false);
-  const [viewId, setViewId] = useState<string | null>(null);
+  const [viewId, setViewIdRaw] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const [detections, setDetections] = useState<Detection[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -125,6 +127,37 @@ export default function BotConfigPanel() {
       .then((r) => r.json())
       .then((j) => setConvs(j.conversations ?? []))
       .catch(() => {});
+  }
+
+  async function markReviewed(body: { ids?: string[]; all?: boolean; reviewed?: boolean }) {
+    const now = new Date().toISOString();
+    const val = body.reviewed === false ? null : now;
+    setConvs((cs) =>
+      cs.map((c) =>
+        body.all || (body.ids ?? []).includes(c.id) ? { ...c, staff_reviewed_at: val } : c
+      )
+    );
+    await fetch("/api/admin/bot-conversations/review", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }).catch(() => {});
+  }
+
+  function setViewId(id: string | null) {
+    setViewIdRaw(id);
+    if (id) {
+      const c = convs.find((x) => x.id === id);
+      if (c && !c.staff_reviewed_at) markReviewed({ ids: [id] });
+    }
+  }
+
+  function toggleSelect(id: string) {
+    setSelected((s) => {
+      const n = new Set(s);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
   }
   async function scoreConvs(manual = false) {
     setScoring(true);
@@ -513,40 +546,98 @@ export default function BotConfigPanel() {
             className="input-field w-full pe-10"
           />
         </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {selected.size > 0 ? (
+            <>
+              <span className="text-xs font-bold text-primary-light">{selected.size} נבחרו</span>
+              <button
+                onClick={() => { markReviewed({ ids: [...selected], reviewed: true }); setSelected(new Set()); }}
+                className="rounded-full bg-surface2 px-2.5 py-1 text-xs font-bold text-gray-300 hover:text-white"
+              >
+                <CheckCircle2 className="me-1 inline h-3.5 w-3.5" /> סמן כנקרא
+              </button>
+              <button
+                onClick={() => { markReviewed({ ids: [...selected], reviewed: false }); setSelected(new Set()); }}
+                className="rounded-full bg-surface2 px-2.5 py-1 text-xs font-bold text-gray-300 hover:text-white"
+              >
+                <Circle className="me-1 inline h-3.5 w-3.5" /> סמן כלא נקרא
+              </button>
+              <button onClick={() => setSelected(new Set())} className="text-xs text-gray-500 hover:text-white">
+                נקה בחירה
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => confirm("לסמן את כל השיחות שלא נקראו כנקראו?") && markReviewed({ all: true, reviewed: true })}
+              className="rounded-full bg-surface2 px-2.5 py-1 text-xs font-bold text-gray-300 hover:text-white"
+            >
+              <CheckCheck className="me-1 inline h-3.5 w-3.5" /> סמן הכל שקראתי
+            </button>
+          )}
+        </div>
+
         <div className="flex flex-col divide-y divide-border/60 overflow-hidden rounded-xl border border-border">
           {convs.length === 0 ? (
             <p className="p-4 text-center text-sm text-gray-500">אין שיחות</p>
           ) : (
-            convs.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setViewId(c.id)}
-                className="flex flex-col gap-1 bg-surface2/40 px-3 py-2.5 text-right text-sm transition hover:bg-surface2"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-gray-200">
-                    {c.flagged_at && <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-red-400" />}
-                    {typeof c.interest_score === "number" && (
-                      <span
-                        className={`shrink-0 rounded px-1.5 text-[10px] font-black ${
-                          c.interest_score >= 8
-                            ? "bg-gold/20 text-gold"
-                            : c.interest_score >= 4
-                            ? "bg-primary/15 text-primary-light"
-                            : "bg-surface2 text-gray-500"
-                        }`}
-                      >
-                        {c.interest_score}
-                      </span>
+            convs.map((c) => {
+              const read = !!c.staff_reviewed_at;
+              const sel = selected.has(c.id);
+              return (
+                <div
+                  key={c.id}
+                  onClick={() => setViewId(c.id)}
+                  className={`flex cursor-pointer items-start gap-2 px-3 py-2.5 text-right text-sm transition hover:bg-surface2 ${
+                    read ? "bg-surface2/20" : "bg-surface2/60"
+                  }`}
+                >
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleSelect(c.id); }}
+                    className="mt-0.5 shrink-0 text-gray-500 hover:text-white"
+                    title="בחירה"
+                  >
+                    {sel ? <CheckSquare className="h-4 w-4 text-primary-light" /> : <Square className="h-4 w-4" />}
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); markReviewed({ ids: [c.id], reviewed: !read }); }}
+                    className="mt-0.5 shrink-0"
+                    title={read ? "קראתי - לחץ לסימון כלא נקרא" : "לא נקרא - לחץ לסימון כנקרא"}
+                  >
+                    {read ? (
+                      <CheckCircle2 className="h-4 w-4 text-gray-600" />
+                    ) : (
+                      <span className="block h-2.5 w-2.5 rounded-full bg-primary" />
                     )}
-                    {c.title}
-                  </span>
-                  <span className="shrink-0 text-xs text-gray-500">{c.user?.username ?? "—"}</span>
-                  <span className="shrink-0 text-xs text-gray-600">{new Date(c.updated_at).toLocaleDateString("he-IL")}</span>
+                  </button>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`flex min-w-0 flex-1 items-center gap-1.5 truncate ${read ? "text-gray-400" : "font-bold text-gray-100"}`}>
+                        {c.flagged_at && <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-red-400" />}
+                        {typeof c.interest_score === "number" && (
+                          <span
+                            className={`shrink-0 rounded px-1.5 text-[10px] font-black ${
+                              c.interest_score >= 8
+                                ? "bg-gold/20 text-gold"
+                                : c.interest_score >= 4
+                                ? "bg-primary/15 text-primary-light"
+                                : "bg-surface2 text-gray-500"
+                            }`}
+                          >
+                            {c.interest_score}
+                          </span>
+                        )}
+                        {c.title}
+                      </span>
+                      <span className="shrink-0 text-xs text-gray-500">{c.user?.username ?? "—"}</span>
+                      <span className="shrink-0 text-xs text-gray-600">{new Date(c.updated_at).toLocaleDateString("he-IL")}</span>
+                    </div>
+                    {c.interest_note && <span className="text-[11px] text-gray-500">{c.interest_note}</span>}
+                  </div>
                 </div>
-                {c.interest_note && <span className="text-[11px] text-gray-500">{c.interest_note}</span>}
-              </button>
-            ))
+              );
+            })
           )}
         </div>
       </div>
