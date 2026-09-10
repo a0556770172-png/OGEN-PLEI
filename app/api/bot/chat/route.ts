@@ -21,8 +21,54 @@ import type { ToolContext } from "@/lib/botTools";
 
 const HISTORY_TURNS = 16;
 
-// חוסם משתמש מהבוט לשעה, מתעד, ומתריע למנהל.
-async function blockUserFromBot(userId: string, username: string, reason: string, sample: string) {
+// שומר את הניסיון החשוד כשיחת בוט מסומנת (לא נמחקת) - כדי שהמנהל יוכל לגשת אליה מפאנל הבוט.
+async function persistFlaggedConversation(
+  userId: string,
+  existingConvId: string | null,
+  text: string,
+  reason: string
+): Promise<string | null> {
+  const admin = createAdminSupabase();
+  let convId = existingConvId;
+  if (!convId) {
+    const { data } = await admin
+      .from("bot_conversations")
+      .insert({ user_id: userId, title: "⛔ ניסיון חשוד" })
+      .select("id")
+      .single();
+    convId = data?.id ?? null;
+  }
+  if (!convId) return null;
+
+  const notice = "⛔ זוהה ניסיון להסיט את השיחה מהנושא של עוגן פליי. הבוט נעול עבורך לשעה, והצוות עודכן.";
+  await admin.from("bot_messages").insert([
+    { conversation_id: convId, role: "user", content: text.slice(0, 4000) },
+    { conversation_id: convId, role: "assistant", content: notice }
+  ]);
+  try {
+    await admin
+      .from("bot_conversations")
+      .update({
+        flagged_at: new Date().toISOString(),
+        flagged_reason: reason.slice(0, 300),
+        title: "⛔ ניסיון חשוד",
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", convId);
+  } catch {
+    // מיגרציה 0049 עוד לא רצה - עדיין נשמרות ההודעות והחסימה
+  }
+  return convId;
+}
+
+// חוסם משתמש מהבוט לשעה, מתעד (audit_log), ומתריע למנהל.
+async function blockUserFromBot(
+  userId: string,
+  username: string,
+  reason: string,
+  sample: string,
+  conversationId: string | null
+) {
   const admin = createAdminSupabase();
   const until = new Date(Date.now() + BOT_BLOCK_MINUTES * 60_000).toISOString();
   try {
@@ -36,13 +82,13 @@ async function blockUserFromBot(userId: string, username: string, reason: string
     targetType: "user",
     targetId: userId,
     targetLabel: username,
-    meta: { reason, sample: sample.slice(0, 300), until }
+    meta: { reason, sample: sample.slice(0, 500), until, conversationId }
   }).catch(() => {});
   notifyAdminsInApp({
     kind: "bot_abuse",
     title: `הבוט חסם משתמש: ${username}`,
     body: `${reason}. הודעה: "${sample.slice(0, 120)}"`,
-    url: "/dashboard/admin?tab=users"
+    url: "/dashboard/admin?tab=bot"
   }).catch(() => {});
 }
 
@@ -77,7 +123,8 @@ export async function POST(request: Request) {
   if (!staff) {
     const manip = detectBotManipulation(text);
     if (manip.flagged) {
-      await blockUserFromBot(user.id, profile.username, manip.reason, text);
+      const flaggedConvId = await persistFlaggedConversation(user.id, null, text, manip.reason);
+      await blockUserFromBot(user.id, profile.username, manip.reason, text, flaggedConvId);
       return NextResponse.json(
         {
           error: "זוהה ניסיון להסיט את השיחה מהנושא של עוגן פליי. הבוט נעול עבורך לשעה, והצוות עודכן.",
@@ -173,9 +220,11 @@ export async function POST(request: Request) {
   }
 
   // המודל עצמו זיהה ניסיון מכוון להסיט אותו והחזיר את הסנטינל -> חסימת שעה + התראה.
+  // השיחה נשמרת ומסומנת (לא נמחקת) כדי שהמנהל יוכל לעיין בה.
   if (!staff && agent.text.includes(ABUSE_BLOCK_SENTINEL)) {
-    if (createdNewConv) await admin.from("bot_conversations").delete().eq("id", convId);
-    await blockUserFromBot(user.id, profile.username, "המודל זיהה ניסיון מניפולציה מכוון", text);
+    const reason = "המודל זיהה ניסיון מניפולציה מכוון";
+    const flaggedConvId = await persistFlaggedConversation(user.id, convId, text, reason);
+    await blockUserFromBot(user.id, profile.username, reason, text, flaggedConvId);
     return NextResponse.json(
       {
         error: "זוהה ניסיון להסיט את השיחה מהנושא של עוגן פליי. הבוט נעול עבורך לשעה, והצוות עודכן.",

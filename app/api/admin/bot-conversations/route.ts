@@ -11,11 +11,25 @@ export async function GET(request: Request) {
   const q = (new URL(request.url).searchParams.get("q") ?? "").trim().toLowerCase();
 
   const admin = createAdminSupabase();
-  const { data } = await admin
-    .from("bot_conversations")
-    .select("id, title, created_at, updated_at, user:profiles!bot_conversations_user_id_fkey(username)")
-    .order("updated_at", { ascending: false })
-    .limit(300);
+  // select("*") לא - אבל flagged_at עשוי לא להתקיים אם מיגרציה 0049 עוד לא רצה. ננסה עם, וניפול בלי.
+  let data: any[] | null = null;
+  {
+    const withFlag = await admin
+      .from("bot_conversations")
+      .select("id, title, created_at, updated_at, flagged_at, user:profiles!bot_conversations_user_id_fkey(username)")
+      .order("updated_at", { ascending: false })
+      .limit(300);
+    if (withFlag.error) {
+      const plain = await admin
+        .from("bot_conversations")
+        .select("id, title, created_at, updated_at, user:profiles!bot_conversations_user_id_fkey(username)")
+        .order("updated_at", { ascending: false })
+        .limit(300);
+      data = plain.data ?? [];
+    } else {
+      data = withFlag.data ?? [];
+    }
+  }
 
   let rows = (data ?? []) as any[];
   if (q) {

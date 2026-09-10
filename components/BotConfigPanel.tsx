@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Bot, Loader2, Save, Search, MessageSquare, ArrowRight, Plug, CheckCircle2, AlertCircle, Wrench, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Bot, Loader2, Save, Search, MessageSquare, ArrowRight, Plug, CheckCircle2, AlertCircle, Wrench, ThumbsUp, ThumbsDown, ShieldAlert, ChevronDown } from "lucide-react";
 import BotChat from "./BotChat";
 import BotKeysManager from "./BotKeysManager";
 
@@ -29,7 +29,19 @@ interface ConvRow {
   id: string;
   title: string;
   updated_at: string;
+  flagged_at?: string | null;
   user?: { username: string };
+}
+
+interface Detection {
+  id: string;
+  at: string;
+  username: string;
+  userId: string | null;
+  reason: string;
+  sample: string | null;
+  conversationId: string | null;
+  conversationExists: boolean;
 }
 
 export default function BotConfigPanel() {
@@ -40,6 +52,9 @@ export default function BotConfigPanel() {
   const [convs, setConvs] = useState<ConvRow[]>([]);
   const [q, setQ] = useState("");
   const [viewId, setViewId] = useState<string | null>(null);
+
+  const [detections, setDetections] = useState<Detection[]>([]);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string; models: string[] } | null>(null);
@@ -104,6 +119,10 @@ export default function BotConfigPanel() {
   }
   useEffect(() => {
     loadConvs();
+    fetch("/api/admin/bot-flagged")
+      .then((r) => r.json())
+      .then((j) => setDetections(j.detections ?? []))
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -357,6 +376,64 @@ export default function BotConfigPanel() {
 
       <div className="card flex flex-col gap-3 p-6">
         <div className="flex items-center gap-2 text-lg font-bold text-white">
+          <ShieldAlert className="h-5 w-5 text-red-400" /> שיחות חשודות שהבוט זיהה
+          {detections.length > 0 && (
+            <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-bold text-red-400">
+              {detections.length}
+            </span>
+          )}
+        </div>
+        <p className="-mt-1 text-xs text-gray-500">
+          ניסיונות להוליך את הבוט לשיחה לא לגיטימית (jailbreak / חילוץ הוראות / הסטה מכוונת). כל זיהוי חוסם את
+          המשתמש מהבוט לשעה ומתעד כאן - כולל כל מה שזוהה בעבר.
+        </p>
+        <div className="flex flex-col divide-y divide-border/60 overflow-hidden rounded-xl border border-border">
+          {detections.length === 0 ? (
+            <p className="p-4 text-center text-sm text-gray-500">לא זוהו ניסיונות חשודים.</p>
+          ) : (
+            detections.map((d) => (
+              <div key={d.id} className="bg-surface2/40 px-3 py-2.5 text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  {d.userId ? (
+                    <a href={`/users/${d.userId}`} target="_blank" rel="noreferrer" className="font-bold text-white hover:underline">
+                      {d.username}
+                    </a>
+                  ) : (
+                    <span className="font-bold text-white">{d.username}</span>
+                  )}
+                  <span className="text-xs text-gray-600">
+                    {new Date(d.at).toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  <span className="text-xs text-red-400">{d.reason}</span>
+                </div>
+                {d.sample && (
+                  <button
+                    onClick={() => setExpanded(expanded === d.id ? null : d.id)}
+                    className="mt-1 flex w-full items-start gap-1 text-right text-xs text-gray-400 hover:text-gray-200"
+                  >
+                    <ChevronDown className={`mt-0.5 h-3.5 w-3.5 shrink-0 transition ${expanded === d.id ? "rotate-180" : ""}`} />
+                    <span className={expanded === d.id ? "whitespace-pre-wrap" : "line-clamp-1"}>{d.sample}</span>
+                  </button>
+                )}
+                {d.conversationId && d.conversationExists && (
+                  <button
+                    onClick={() => setViewId(d.conversationId)}
+                    className="mt-1.5 inline-flex items-center gap-1 rounded-lg bg-surface2 px-2.5 py-1 text-xs font-bold text-primary-light transition hover:bg-primary/15"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" /> פתיחת השיחה המלאה
+                  </button>
+                )}
+                {d.conversationId && !d.conversationExists && (
+                  <span className="mt-1 block text-[11px] text-gray-600">השיחה נמחקה - נשמר רק הטקסט שלמעלה.</span>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="card flex flex-col gap-3 p-6">
+        <div className="flex items-center gap-2 text-lg font-bold text-white">
           <MessageSquare className="h-5 w-5 text-primary-light" /> שיחות של משתמשים עם הבוט
         </div>
         <div className="relative">
@@ -380,7 +457,10 @@ export default function BotConfigPanel() {
                 onClick={() => setViewId(c.id)}
                 className="flex items-center justify-between gap-2 bg-surface2/40 px-3 py-2.5 text-right text-sm transition hover:bg-surface2"
               >
-                <span className="min-w-0 flex-1 truncate text-gray-200">{c.title}</span>
+                <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-gray-200">
+                  {c.flagged_at && <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-red-400" />}
+                  {c.title}
+                </span>
                 <span className="shrink-0 text-xs text-gray-500">{c.user?.username ?? "—"}</span>
                 <span className="shrink-0 text-xs text-gray-600">{new Date(c.updated_at).toLocaleDateString("he-IL")}</span>
               </button>
