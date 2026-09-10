@@ -35,6 +35,9 @@ export interface Profile {
   forum_banned: boolean;
   forum_ban_reason: string | null;
   bot_blocked_until: string | null;
+  // שאלת אבטחה לאיפוס סיסמה (התשובה נשמרת מוצפנת ב-security_answer_hash).
+  security_question: string | null;
+  security_answer_hash: string | null;
   // מתי המשתמש קרא ואישר את "חוקי האתר" (שער חובה חד-פעמי לכל חשבון - ראו
   // components/SiteRulesGate.tsx). null = עדיין לא אישר, ייחסם עד שיאשר.
   site_rules_accepted_at: string | null;

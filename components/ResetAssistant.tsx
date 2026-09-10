@@ -1,12 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Send, Loader2, Bot, User as UserIcon, Mail, CheckCircle2, LifeBuoy, X } from "lucide-react";
+import { Send, Loader2, Bot, User as UserIcon, ShieldQuestion, CheckCircle2, LifeBuoy, X, Lock } from "lucide-react";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
 const GREETING =
-  "היי, אני עוזר איפוס הסיסמה. אני יכול לעזור רק בדבר אחד - להחזיר לך גישה לחשבון. מה כתובת המייל שאיתה נרשמת?";
+  "היי, אני עוזר איפוס הסיסמה. אני יכול לעזור רק בדבר אחד - להחזיר לך גישה לחשבון דרך שאלת האבטחה שהגדרת. מה כתובת המייל שאיתה נרשמת?";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -14,15 +14,55 @@ export default function ResetAssistant() {
   const [messages, setMessages] = useState<Msg[]>([{ role: "assistant", content: GREETING }]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [emailToSend, setEmailToSend] = useState<string | null>(null);
-  const [linkSent, setLinkSent] = useState(false);
-  const [sendingLink, setSendingLink] = useState(false);
+
+  const [email, setEmail] = useState<string | null>(null);
+  const [question, setQuestion] = useState<string | null>(null);
+  const [answer, setAnswer] = useState("");
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verifyErr, setVerifyErr] = useState("");
+  const [done, setDone] = useState(false);
+  const [checkingQ, setCheckingQ] = useState(false);
+
   const [showEscalate, setShowEscalate] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, sending, emailToSend, linkSent]);
+  }, [messages, sending, question, done]);
+
+  async function checkQuestion(mail: string) {
+    setCheckingQ(true);
+    try {
+      const res = await fetch("/api/auth/reset-question", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: mail })
+      });
+      const j = await res.json().catch(() => ({}));
+      if (j.hasQuestion && j.question) {
+        setEmail(mail);
+        setQuestion(j.question);
+        setVerifyErr("");
+      } else if (j.locked) {
+        setMessages((m) => [...m, { role: "assistant", content: j.error || "החשבון נעול זמנית עקב ניסיונות שגויים. נסה שוב בעוד שעה או פנה לצוות." }]);
+      } else {
+        setMessages((m) => [
+          ...m,
+          {
+            role: "assistant",
+            content:
+              "לא מצאתי שאלת אבטחה לחשבון הזה (ייתכן שהמייל שגוי, או שלא הגדרת שאלת אבטחה). אם יש לך גישה לחשבון ממכשיר אחר - הגדר שם שאלת אבטחה בעמוד הפרופיל. אחרת, פנה לצוות."
+          }
+        ]);
+      }
+    } catch {
+      setMessages((m) => [...m, { role: "assistant", content: "שגיאת רשת, נסה שוב." }]);
+    } finally {
+      setCheckingQ(false);
+    }
+  }
 
   async function send(text: string) {
     const msg = text.trim();
@@ -30,6 +70,14 @@ export default function ResetAssistant() {
     setInput("");
     const next: Msg[] = [...messages, { role: "user", content: msg }];
     setMessages(next);
+
+    // אם המשתמש שלח כתובת מייל - נבדוק ישירות אם יש לו שאלת אבטחה (בלי לבזבז קריאת AI)
+    const mail = msg.match(EMAIL_RE)?.[0]?.toLowerCase();
+    if (mail && !question) {
+      await checkQuestion(mail);
+      return;
+    }
+
     setSending(true);
     try {
       const res = await fetch("/api/auth/reset-assistant", {
@@ -39,10 +87,7 @@ export default function ResetAssistant() {
       });
       const j = await res.json().catch(() => ({}));
       setMessages((m) => [...m, { role: "assistant", content: j.reply || "נסה שוב בבקשה." }]);
-      if (j.detectedEmail && EMAIL_RE.test(j.detectedEmail)) {
-        setEmailToSend(j.detectedEmail);
-        setLinkSent(false);
-      }
+      if (j.detectedEmail && EMAIL_RE.test(j.detectedEmail) && !question) await checkQuestion(j.detectedEmail);
     } catch {
       setMessages((m) => [...m, { role: "assistant", content: "שגיאת רשת, נסה שוב." }]);
     } finally {
@@ -50,35 +95,35 @@ export default function ResetAssistant() {
     }
   }
 
-  async function sendLink() {
-    if (!emailToSend || sendingLink) return;
-    setSendingLink(true);
+  async function verify() {
+    setVerifyErr("");
+    if (answer.trim().length < 1) return setVerifyErr("הזן תשובה");
+    if (pw.length < 6) return setVerifyErr("הסיסמה החדשה - לפחות 6 תווים");
+    if (pw !== pw2) return setVerifyErr("הסיסמאות אינן תואמות");
+    setVerifying(true);
     try {
-      const res = await fetch("/api/auth/reset-request", {
+      const res = await fetch("/api/auth/reset-verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailToSend })
+        body: JSON.stringify({ email, answer, password: pw })
       });
       const j = await res.json().catch(() => ({}));
-      setMessages((m) => [
-        ...m,
-        {
-          role: "assistant",
-          content: res.ok
-            ? `${j.message}\n\nפתח את המייל, לחץ על הקישור, וקבע סיסמה חדשה. הקישור בתוקף לזמן מוגבל.`
-            : j.error || "לא הצלחנו לשלוח כרגע."
-        }
-      ]);
-      if (res.ok) setLinkSent(true);
+      if (res.ok) {
+        setDone(true);
+        setMessages((m) => [...m, { role: "assistant", content: j.message || "הסיסמה עודכנה!" }]);
+      } else {
+        setVerifyErr(j.error || "לא הצלחנו לאמת");
+        if (j.locked) setQuestion(null);
+      }
     } catch {
-      setMessages((m) => [...m, { role: "assistant", content: "שגיאת רשת בשליחה." }]);
+      setVerifyErr("שגיאת רשת");
     } finally {
-      setSendingLink(false);
+      setVerifying(false);
     }
   }
 
   return (
-    <div className="flex h-[60vh] min-h-[440px] flex-col">
+    <div className="flex h-[62vh] min-h-[460px] flex-col">
       <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-1 pe-2">
         {messages.map((m, i) => (
           <div key={i} className={`flex gap-2.5 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
@@ -99,7 +144,7 @@ export default function ResetAssistant() {
           </div>
         ))}
 
-        {sending && (
+        {(sending || checkingQ) && (
           <div className="flex gap-2.5">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-[#fff]">
               <Bot className="h-4 w-4" />
@@ -110,30 +155,47 @@ export default function ResetAssistant() {
           </div>
         )}
 
-        {emailToSend && !linkSent && (
-          <div className="mx-auto w-full rounded-xl border border-primary/40 bg-primary/10 p-3">
-            <p className="text-xs font-bold text-primary-light">
-              <Mail className="me-1 inline h-3.5 w-3.5" /> לשלוח קישור איפוס אל <b dir="ltr">{emailToSend}</b>?
+        {question && !done && (
+          <div className="w-full rounded-xl border border-primary/40 bg-primary/10 p-3">
+            <p className="flex items-center gap-1.5 text-xs font-bold text-primary-light">
+              <ShieldQuestion className="h-4 w-4" /> שאלת האבטחה שלך
             </p>
-            <div className="mt-2 flex gap-2">
-              <button onClick={sendLink} disabled={sendingLink} className="btn-primary text-xs">
-                {sendingLink ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} שליחת קישור
-              </button>
-              <button onClick={() => setEmailToSend(null)} className="btn-ghost text-xs text-gray-400">
-                כתובת אחרת
-              </button>
+            <p className="mt-1 text-sm font-bold text-white">{question}</p>
+            <input
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              placeholder="התשובה (רישיות ורווחים לא משנים)"
+              className="input-field mt-2 text-sm"
+            />
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <input
+                type="password"
+                value={pw}
+                onChange={(e) => setPw(e.target.value)}
+                placeholder="סיסמה חדשה"
+                className="input-field text-sm"
+              />
+              <input
+                type="password"
+                value={pw2}
+                onChange={(e) => setPw2(e.target.value)}
+                placeholder="אימות סיסמה"
+                className="input-field text-sm"
+              />
             </div>
+            {verifyErr && <p className="mt-1.5 text-xs text-red-400">{verifyErr}</p>}
+            <button onClick={verify} disabled={verifying} className="btn-primary mt-2 w-full justify-center text-sm">
+              {verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />} אימות ואיפוס סיסמה
+            </button>
           </div>
         )}
 
-        {linkSent && (
-          <div className="mx-auto w-full rounded-xl border border-accent/40 bg-accent/10 p-3 text-xs text-accent">
-            <CheckCircle2 className="me-1 inline h-3.5 w-3.5" /> הקישור נשלח אל {emailToSend}. לא הגיע? בדוק ספאם, חכה דקה ונסה שוב,
-            או{" "}
-            <button onClick={() => setShowEscalate(true)} className="font-bold underline">
-              פנה לצוות
-            </button>
-            .
+        {done && (
+          <div className="w-full rounded-xl border border-accent/40 bg-accent/10 p-3 text-sm text-accent">
+            <CheckCircle2 className="me-1 inline h-4 w-4" /> הסיסמה עודכנה!{" "}
+            <Link href="/login" className="font-bold underline">
+              לכניסה
+            </Link>
           </div>
         )}
       </div>
@@ -143,37 +205,39 @@ export default function ResetAssistant() {
           onClick={() => setShowEscalate(true)}
           className="inline-flex items-center gap-1 text-xs text-gray-500 transition hover:text-white"
         >
-          <LifeBuoy className="h-3.5 w-3.5" /> לא מצליח? פנייה לצוות
+          <LifeBuoy className="h-3.5 w-3.5" /> אין לי שאלת אבטחה / לא זוכר - פנייה לצוות
         </button>
         <Link href="/login" className="text-xs text-gray-500 hover:text-white">
           חזרה לכניסה
         </Link>
       </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          send(input);
-        }}
-        className="mt-2 flex items-end gap-2"
-      >
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              send(input);
-            }
+      {!done && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            send(input);
           }}
-          rows={1}
-          placeholder="כתוב כאן…"
-          className="input-field max-h-32 flex-1 resize-none"
-        />
-        <button type="submit" disabled={sending || !input.trim()} className="btn-primary shrink-0 !px-3.5">
-          <Send className="h-4 w-4" />
-        </button>
-      </form>
+          className="mt-2 flex items-end gap-2"
+        >
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send(input);
+              }
+            }}
+            rows={1}
+            placeholder="כתוב כאן…"
+            className="input-field max-h-32 flex-1 resize-none"
+          />
+          <button type="submit" disabled={sending || !input.trim()} className="btn-primary shrink-0 !px-3.5">
+            <Send className="h-4 w-4" />
+          </button>
+        </form>
+      )}
 
       {showEscalate && <EscalateModal onClose={() => setShowEscalate(false)} />}
     </div>

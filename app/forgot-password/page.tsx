@@ -12,7 +12,9 @@ export default function ForgotPasswordPage() {
           <KeyRound className="h-6 w-6" />
         </div>
         <h1 className="text-2xl font-black">שכחתי סיסמה</h1>
-        <p className="text-sm text-gray-400">העוזר יעזור לך להחזיר גישה לחשבון דרך קישור איפוס במייל.</p>
+        <p className="text-sm text-gray-400">
+          העוזר יעזור לך להחזיר גישה לחשבון דרך שאלת האבטחה שהגדרת. לא הגדרת שאלת אבטחה? יש אפשרות לפנות לצוות.
+        </p>
       </div>
       <div className="card p-4">
         <ResetAssistant />

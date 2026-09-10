@@ -10,6 +10,7 @@ import DeveloperAppsPanel from "@/components/DeveloperAppsPanel";
 import ProfileTagsEditor from "@/components/ProfileTagsEditor";
 import MitmachimConnect from "@/components/MitmachimConnect";
 import NotificationsManager from "@/components/NotificationsManager";
+import SecurityQuestion from "@/components/SecurityQuestion";
 import ReferralCard from "@/components/ReferralCard";
 import { getReferralStats } from "@/lib/referral";
 import { getFollowCounts } from "@/lib/follows";
@@ -161,6 +162,12 @@ export default async function ProfilePage() {
           initialShowEmailTag={profile.show_email_tag}
         />
         <MitmachimConnect initialUrl={profile.mitmachim_url ?? null} />
+      </section>
+
+      {/* ---- אבטחה ---- */}
+      <section className="flex flex-col gap-3">
+        <SectionHeader title="אבטחה" hint="שאלת אבטחה לאיפוס סיסמה עצמאי אם תשכחו" />
+        <SecurityQuestion />
       </section>
 
       {/* ---- הזמנת חברים ---- */}
