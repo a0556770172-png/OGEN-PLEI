@@ -7,6 +7,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import MessageReactionsBar from "./MessageReactions";
 import { FormattedMessageBody, buildQuoteText, copyMessageWithLink, toggleBoldAtSelection } from "@/lib/chatFormat";
+import { formatMessageTime, fullMessageTime } from "@/lib/formatTime";
 import type { CouncilThread, CouncilMessage, Profile } from "@/types/database";
 
 // "ועדה" - ערוץ חירום/עדכונים משותף לכל צוות הפיקוח (לא פרטי כמו "הודעות" הרגילות).
@@ -317,7 +318,12 @@ export default function CouncilPanel({ currentProfile }: { currentProfile: Profi
                         isMine ? "self-end bg-primary/20 text-white" : "self-start bg-surface2 text-gray-200"
                       }`}
                     >
-                      <p className="mb-1 text-xs font-bold text-gray-400">{m.sender?.username ?? "צוות"}</p>
+                      <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-gray-400">
+                        {m.sender?.username ?? "צוות"}
+                        <span className="font-normal text-gray-500" title={fullMessageTime(m.created_at)}>
+                          · {formatMessageTime(m.created_at)}
+                        </span>
+                      </p>
 
                       {m.deleted_at ? (
                         <p className="italic text-gray-500">ההודעה נמחקה</p>

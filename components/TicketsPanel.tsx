@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import TicketAttachment from "./TicketAttachment";
 import MessageReactionsBar from "./MessageReactions";
 import { FormattedMessageBody, buildQuoteText, copyMessageWithLink, toggleBoldAtSelection } from "@/lib/chatFormat";
+import { formatMessageTime, fullMessageTime } from "@/lib/formatTime";
 import type { Ticket, TicketMessage, Profile } from "@/types/database";
 
 // פאנל "הודעות" של הצוות (מנהל/פיקוח) - כאן מאוחדות פניות התמיכה עם אפשרות לצוות
@@ -368,7 +369,12 @@ export default function TicketsPanel({ currentProfile, profiles = [] }: { curren
                         m.sender_role === "staff" ? "self-start bg-primary/20 text-white" : "self-end bg-surface2 text-gray-200"
                       }`}
                     >
-                      <p className="mb-1 text-xs font-bold text-gray-400">{m.sender_role === "staff" ? "צוות" : selected.user?.username ?? "משתמש"}</p>
+                      <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-gray-400">
+                        {m.sender_role === "staff" ? "צוות" : selected.user?.username ?? "משתמש"}
+                        <span className="font-normal text-gray-500" title={fullMessageTime(m.created_at)}>
+                          · {formatMessageTime(m.created_at)}
+                        </span>
+                      </p>
 
                       {m.deleted_at ? (
                         <p className="italic text-gray-500">ההודעה נמחקה</p>

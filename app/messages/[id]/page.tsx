@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Send, Loader2 } from "lucide-react";
+import { formatMessageTime, fullMessageTime } from "@/lib/formatTime";
 
 interface DmMessage {
   id: string;
@@ -79,11 +80,18 @@ export default function DmThreadPage() {
         {messages.map((m) => (
           <div
             key={m.id}
-            className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
-              m.sender_id === userId ? "self-end bg-primary/20 text-white" : "self-start bg-surface2 text-gray-200"
-            }`}
+            className={`flex max-w-[80%] flex-col gap-0.5 ${m.sender_id === userId ? "self-end items-end" : "self-start items-start"}`}
           >
-            {m.body}
+            <div
+              className={`whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm ${
+                m.sender_id === userId ? "bg-primary/20 text-white" : "bg-surface2 text-gray-200"
+              }`}
+            >
+              {m.body}
+            </div>
+            <span className="px-1 text-[11px] text-gray-500" title={fullMessageTime(m.created_at)}>
+              {formatMessageTime(m.created_at)}
+            </span>
           </div>
         ))}
         <div ref={bottomRef} />

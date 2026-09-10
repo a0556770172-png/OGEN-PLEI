@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import TicketAttachment from "@/components/TicketAttachment";
 import MessageReactionsBar from "@/components/MessageReactions";
 import { FormattedMessageBody, buildQuoteText, copyMessageWithLink, toggleBoldAtSelection } from "@/lib/chatFormat";
+import { formatMessageTime, fullMessageTime } from "@/lib/formatTime";
 import type { Ticket, TicketMessage } from "@/types/database";
 
 // עוטפים ב-Suspense כי useSearchParams (בשביל ?ticket=<id> - ראו components/NotificationBell.tsx)
@@ -305,7 +306,12 @@ function SupportPageInner() {
                         m.sender_role === "staff" ? "self-start bg-surface2 text-gray-200" : "self-end bg-primary/20 text-white"
                       }`}
                     >
-                      <p className="mb-1 text-xs font-bold text-gray-400">{m.sender_role === "staff" ? "צוות עוגן פליי" : "אני"}</p>
+                      <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-gray-400">
+                        {m.sender_role === "staff" ? "צוות עוגן פליי" : "אני"}
+                        <span className="font-normal text-gray-500" title={fullMessageTime(m.created_at)}>
+                          · {formatMessageTime(m.created_at)}
+                        </span>
+                      </p>
 
                       {m.deleted_at ? (
                         <p className="italic text-gray-500">ההודעה נמחקה</p>
