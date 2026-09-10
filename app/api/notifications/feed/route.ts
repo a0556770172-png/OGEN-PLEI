@@ -32,3 +32,14 @@ export async function POST() {
   await admin.from("user_notifications").update({ seen_at: new Date().toISOString() }).eq("user_id", user.id).is("seen_at", null);
   return NextResponse.json({ ok: true });
 }
+
+// "סמן הכל כנפתר" - מוחק את כל ההתראות שלי מהפיד. מנהל בפועל בלבד.
+export async function DELETE() {
+  const result = await requireProfile();
+  if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+  if (result.profile.role !== "admin") return NextResponse.json({ error: "רק מנהל בפועל" }, { status: 403 });
+
+  const admin = createAdminSupabase();
+  await admin.from("user_notifications").delete().eq("user_id", result.user.id);
+  return NextResponse.json({ ok: true });
+}

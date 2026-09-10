@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, MessageCircle, Siren, Package, Sparkles, Lightbulb, Users, ShieldAlert, KeyRound } from "lucide-react";
+import { Bell, MessageCircle, Siren, Package, Sparkles, Lightbulb, Users, ShieldAlert, KeyRound, CheckCheck } from "lucide-react";
 
 type Conversation = { type: "ticket" | "council"; id: string; title: string; unreadCount: number };
 type FeedItem = { id: string; kind: string; title: string; body: string; url: string | null; seen_at: string | null; created_at: string };
@@ -9,7 +9,13 @@ type FeedItem = { id: string; kind: string; title: string; body: string; url: st
 // פעמון התראות בניווט לכל משתמש מחובר. שני מקורות:
 //  1. מרכז ההתראות (feed) - מנויים: מפתח פרסם/עדכן, אפליקציה ציבורית חדשה, קטגוריה (ראו lib/notifications.ts)
 //  2. הודעות שלא נקראו בשיחות (tickets / council) - כמו קודם
-export default function NotificationBell({ dashboardBase }: { dashboardBase: string | null }) {
+export default function NotificationBell({
+  dashboardBase,
+  isAdmin = false
+}: {
+  dashboardBase: string | null;
+  isAdmin?: boolean;
+}) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [feedUnread, setFeedUnread] = useState(0);
@@ -68,6 +74,13 @@ export default function NotificationBell({ dashboardBase }: { dashboardBase: str
     }
   }
 
+  async function clearAll() {
+    if (!confirm("לסמן את כל ההתראות כנפתרו ולנקות אותן?")) return;
+    setFeed([]);
+    setFeedUnread(0);
+    await fetch("/api/notifications/feed", { method: "DELETE" }).catch(() => {});
+  }
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -85,6 +98,14 @@ export default function NotificationBell({ dashboardBase }: { dashboardBase: str
 
       {open && (
         <div className="absolute end-0 top-full z-50 mt-2 max-h-[70vh] w-80 overflow-y-auto rounded-xl border border-border bg-surface p-2 shadow-2xl">
+          {isAdmin && feed.length > 0 && (
+            <button
+              onClick={clearAll}
+              className="mb-1 flex w-full items-center justify-center gap-1.5 rounded-lg bg-surface2/60 px-3 py-1.5 text-xs font-bold text-gray-400 transition hover:text-white"
+            >
+              <CheckCheck className="h-3.5 w-3.5" /> סמן הכל כנפתר
+            </button>
+          )}
           {feed.length === 0 && conversations.length === 0 ? (
             <p className="px-3 py-4 text-center text-sm text-gray-500">אין התראות חדשות</p>
           ) : (

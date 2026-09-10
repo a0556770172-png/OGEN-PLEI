@@ -101,7 +101,7 @@ export default function Navbar() {
           </Link>
           {!loading && profile && (
             <div className="flex items-center gap-3">
-              <NotificationBell dashboardBase={adminHref ?? moderatorHref ?? null} />
+              <NotificationBell dashboardBase={adminHref ?? moderatorHref ?? null} isAdmin={profile?.role === "admin"} />
               <Link href="/profile" className="flex items-center gap-2 text-sm text-gray-400 transition hover:text-white">
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface2 ring-1 ring-border">
                   {avatarUrl ? (
@@ -140,7 +140,7 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2 justify-self-end md:hidden">
-          {!loading && profile && <NotificationBell dashboardBase={adminHref ?? moderatorHref ?? null} />}
+          {!loading && profile && <NotificationBell dashboardBase={adminHref ?? moderatorHref ?? null} isAdmin={profile?.role === "admin"} />}
           <AppearanceMenu />
           <ThemeToggle />
           <button onClick={() => setOpen((o) => !o)}>
