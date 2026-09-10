@@ -76,9 +76,18 @@ export default function NotificationBell({
 
   async function clearAll() {
     if (!confirm("לסמן את כל ההתראות כנפתרו ולנקות אותן?")) return;
-    setFeed([]);
-    setFeedUnread(0);
-    await fetch("/api/notifications/feed", { method: "DELETE" }).catch(() => {});
+    try {
+      const res = await fetch("/api/notifications/feed", { method: "DELETE" });
+      if (res.ok) {
+        setFeed([]);
+        setFeedUnread(0);
+      } else {
+        const j = await res.json().catch(() => ({}));
+        alert(j.error || "לא הצלחנו לנקות את ההתראות. ודא שהעדכון פרוס והתחברת כמנהל בפועל.");
+      }
+    } catch {
+      alert("שגיאת רשת בניקוי ההתראות.");
+    }
   }
 
   return (
