@@ -49,9 +49,19 @@ export async function POST(request: Request) {
   }
 
   const supabase = createServerSupabase();
-  await supabase.auth.resetPasswordForEmail(clean, {
+  const { error: sendErr } = await supabase.auth.resetPasswordForEmail(clean, {
     redirectTo: `${SITE_URL}/auth/callback?flow=recovery`
   });
+
+  // Supabase לא מחזיר שגיאה על "מייל לא קיים" (הגנת אנטי-אנומרציה) - כך שאם יש שגיאה
+  // היא *תמיד* טכנית (SMTP לא מוגדר, מכסה, redirect URL לא ברשימה) ואפשר לחשוף אותה
+  // מבלי לדלוף אם המשתמש קיים.
+  if (sendErr) {
+    const msg = /rate|limit|429|too many/i.test(sendErr.message)
+      ? "יותר מדי בקשות כרגע. המתן כשעה ונסה שוב."
+      : `שליחת המייל נכשלה בצד השרת (${sendErr.message}). ככל הנראה שירות המייל של Supabase לא מוגדר - צריך להגדיר SMTP ולוודא שכתובת ה-redirect ברשימת ההרשאות.`;
+    return NextResponse.json({ error: msg, sendFailed: true }, { status: 502 });
+  }
 
   try {
     await admin.from("password_reset_requests").insert({ kind: "email_sent", email: clean, ip });
