@@ -33,17 +33,9 @@ export interface FollowUserRow {
   role: string;
 }
 
-// המשתמשים שהמשתמש הזה עוקב אחריהם (לרשימה קצרה בפרופיל).
-export async function getFollowing(userId: string, limit = 30): Promise<FollowUserRow[]> {
-  const admin = createAdminSupabase();
-  const { data: rows } = await admin
-    .from("user_follows")
-    .select("following_id, created_at")
-    .eq("follower_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  const ids = (rows ?? []).map((r) => r.following_id);
+async function profilesToRows(ids: string[]): Promise<FollowUserRow[]> {
   if (ids.length === 0) return [];
+  const admin = createAdminSupabase();
   const { data: profiles } = await admin.from("profiles").select("id, username, avatar_key, role").in("id", ids);
   const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
   return Promise.all(
@@ -57,4 +49,28 @@ export async function getFollowing(userId: string, limit = 30): Promise<FollowUs
         role: p.role
       }))
   );
+}
+
+// המשתמשים שהמשתמש הזה עוקב אחריהם.
+export async function getFollowing(userId: string, limit = 60): Promise<FollowUserRow[]> {
+  const admin = createAdminSupabase();
+  const { data: rows } = await admin
+    .from("user_follows")
+    .select("following_id, created_at")
+    .eq("follower_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return profilesToRows((rows ?? []).map((r) => r.following_id));
+}
+
+// המשתמשים שעוקבים אחרי המשתמש הזה.
+export async function getFollowers(userId: string, limit = 60): Promise<FollowUserRow[]> {
+  const admin = createAdminSupabase();
+  const { data: rows } = await admin
+    .from("user_follows")
+    .select("follower_id, created_at")
+    .eq("following_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return profilesToRows((rows ?? []).map((r) => r.follower_id));
 }

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, ShieldCheck, Package, Crown, User as UserIcon, Wifi } from "lucide-react";
+import { Search, ShieldCheck, Package, Crown, User as UserIcon, Wifi, Coins } from "lucide-react";
 import type { PublicUserSummary } from "@/lib/users-data";
 
 const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
@@ -126,6 +126,7 @@ export default function UsersDirectoryList({ users }: { users: PublicUserSummary
                   {u.is_pro && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-bold text-gold"><Crown className="h-3 w-3" /> PRO</span>
                   )}
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-xs font-bold text-gold"><Coins className="h-3 w-3" /> {u.points.toLocaleString("he-IL")}</span>
                 </div>
                 <p className="mt-1 text-xs text-gray-500">
                   הצטרפ/ה ב-{new Date(u.createdAt).toLocaleDateString("he-IL")} · {timeAgoLabel(u.lastSeenAt)}

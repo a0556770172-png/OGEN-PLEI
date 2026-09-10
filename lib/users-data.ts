@@ -12,6 +12,7 @@ export interface PublicUserSummary {
   is_pro: boolean;
   avatarUrl: string | null;
   appsCount: number;
+  points: number;
   createdAt: string;
   lastSeenAt: string | null;
 }
@@ -21,6 +22,7 @@ export interface PublicUserDetail extends PublicUserSummary {
   notes: string | null;
   displayEmail: string | null;
   mitmachimUrl: string | null;
+  points: number;
 }
 
 export async function getUsersStats() {
@@ -36,7 +38,7 @@ export async function getPublicUsersList(): Promise<PublicUserSummary[]> {
   const admin = createAdminSupabase();
   const { data: profiles } = await admin
     .from("profiles")
-    .select("id, username, role, is_moderator, is_pro, avatar_key, created_at, last_seen_at")
+    .select("id, username, role, is_moderator, is_pro, avatar_key, points, created_at, last_seen_at")
     .order("created_at", { ascending: false });
 
   const rows = profiles ?? [];
@@ -55,6 +57,7 @@ export async function getPublicUsersList(): Promise<PublicUserSummary[]> {
       is_pro: p.is_pro,
       avatarUrl: await getAvatarUrl(p.avatar_key, p.role),
       appsCount: appsCountByDev.get(p.id) ?? 0,
+      points: p.points ?? 0,
       createdAt: p.created_at,
       lastSeenAt: p.last_seen_at
     }))
@@ -88,6 +91,7 @@ export async function getPublicUserDetail(id: string): Promise<PublicUserDetail 
     notes: p.notes ?? null,
     // תגית המייל מוצגת רק אם בעל החשבון בחר להציג אותה - שדה נפרד לגמרי מהמייל האמיתי שנרשם בו
     displayEmail: p.show_email_tag && p.display_email ? p.display_email : null,
-    mitmachimUrl: (p as any).mitmachim_url ?? null
+    mitmachimUrl: (p as any).mitmachim_url ?? null,
+    points: p.points ?? 0
   };
 }
