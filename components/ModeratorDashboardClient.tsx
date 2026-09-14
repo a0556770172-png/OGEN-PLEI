@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning, ScrollText, History, Star, Lightbulb } from "lucide-react";
+import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning, ScrollText, History, Star, Lightbulb, Archive } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import TicketsPanel from "./TicketsPanel";
 import SuggestionsQueue from "./SuggestionsQueue";
@@ -20,7 +20,7 @@ import type { SiteReviewRow } from "@/lib/siteReviews";
 import type { ForumPost } from "@/lib/forum";
 import type { AppRow, Profile, BanAppeal } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "tickets" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals" | "teamTracking" | "siteRules" | "siteReviews" | "forum";
+type TabKey = "notifications" | "review" | "allApps" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals" | "teamTracking" | "siteRules" | "siteReviews" | "forum";
 
 export default function ModeratorDashboardClient({
   apps,
@@ -61,6 +61,7 @@ export default function ModeratorDashboardClient({
     { key: "allApps", label: `כל האפליקציות (${allApps.length})`, icon: LayoutGrid },
     { key: "suggestions", label: "הצעות אפליקציות", icon: Gift },
     { key: "tickets", label: "הודעות", icon: MessageCircle },
+    { key: "ticketsArchive", label: "ארכיון שיחות", icon: Archive },
     { key: "categories", label: "קטגוריות", icon: Tag },
     { key: "users", label: "ניהול משתמשים", icon: Users },
     { key: "council", label: "ועדה", icon: Siren },
@@ -108,6 +109,7 @@ export default function ModeratorDashboardClient({
       )}
       {tab === "suggestions" && <SuggestionsQueue />}
       {tab === "tickets" && <TicketsPanel currentProfile={currentProfile} profiles={profiles} />}
+      {tab === "ticketsArchive" && <TicketsPanel currentProfile={currentProfile} profiles={profiles} archived />}
       {tab === "categories" && <CategoriesManager />}
       {tab === "users" && <UserManagementTable profiles={profiles} />}
       {tab === "council" && <CouncilPanel currentProfile={currentProfile} />}

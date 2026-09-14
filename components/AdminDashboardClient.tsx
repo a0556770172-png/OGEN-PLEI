@@ -26,7 +26,7 @@ import type { ForumPost } from "@/lib/forum";
 import type { AppRow, Profile, ProRequest, UserDeletionRequest, BanAppeal, ReferralEvent } from "@/types/database";
 import type { SiteReviewRow } from "@/lib/siteReviews";
 
-type TabKey = "notifications" | "review" | "allApps" | "archive" | "users" | "pro" | "tickets" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteReviews" | "forum" | "passwordResets" | "bot" | "siteRules" | "settings";
+type TabKey = "notifications" | "review" | "allApps" | "archive" | "users" | "pro" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteReviews" | "forum" | "passwordResets" | "bot" | "siteRules" | "settings";
 
 export default function AdminDashboardClient({
   apps,
@@ -86,6 +86,7 @@ export default function AdminDashboardClient({
     { key: "pro", label: `בקשות PRO (${proRequests.length})`, icon: Crown },
     { key: "suggestions", label: "הצעות אפליקציות", icon: Gift },
     { key: "tickets", label: "הודעות", icon: MessageCircle },
+    { key: "ticketsArchive", label: "ארכיון שיחות", icon: Archive },
     { key: "categories", label: "קטגוריות", icon: Tag },
     { key: "users", label: "ניהול משתמשים", icon: Users },
     { key: "deletionRequests", label: `בקשות מחיקת משתמשים (${deletionRequests.length})`, icon: ShieldAlert },
@@ -143,6 +144,7 @@ export default function AdminDashboardClient({
       {tab === "pro" && <ProRequestsQueue requests={proRequests} />}
       {tab === "suggestions" && <SuggestionsQueue />}
       {tab === "tickets" && <TicketsPanel currentProfile={currentProfile} profiles={profiles} />}
+      {tab === "ticketsArchive" && <TicketsPanel currentProfile={currentProfile} profiles={profiles} archived />}
       {tab === "categories" && <CategoriesManager />}
       {tab === "users" && <UserManagementTable profiles={profiles} isAdmin={true} />}
       {tab === "deletionRequests" && <DeletionRequestsPanel requests={deletionRequests} />}

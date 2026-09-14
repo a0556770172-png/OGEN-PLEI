@@ -14,7 +14,16 @@ import type { Ticket, TicketMessage, Profile } from "@/types/database";
 // פאנל "הודעות" של הצוות (מנהל/פיקוח) - כאן מאוחדות פניות התמיכה עם אפשרות לצוות
 // לפתוח שיחה יזומה למשתמש ספציפי, ולצרף קבצים (מוגבל למנהל או למי שקיבל הרשאה).
 // כולל: אימוג'י, ציטוט, הגבה להודעה ספציפית, העתקת קישור+טקסט, הדגשת כתב, עריכה ומחיקה.
-export default function TicketsPanel({ currentProfile, profiles = [] }: { currentProfile?: Profile; profiles?: Profile[] }) {
+export default function TicketsPanel({
+  currentProfile,
+  profiles = [],
+  archived = false
+}: {
+  currentProfile?: Profile;
+  profiles?: Profile[];
+  // true = טאב "ארכיון שיחות": מציג רק פניות סגורות, עם אפשרות להחזיר לפעילות.
+  archived?: boolean;
+}) {
   const supabase = createClient();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,6 +155,8 @@ export default function TicketsPanel({ currentProfile, profiles = [] }: { curren
   }
 
   const openCount = tickets.filter((t) => t.status === "open").length;
+  // "הודעות" מציג רק פניות פתוחות; "ארכיון שיחות" מציג רק סגורות - שם מחזירים לפעילות במקרה הצורך.
+  const visibleTickets = tickets.filter((t) => (archived ? t.status === "closed" : t.status === "open"));
 
   // סגירת כל הפניות הפתוחות בבת אחת - מנהל בפועל בלבד.
   async function closeAllOpen() {
@@ -280,18 +291,24 @@ export default function TicketsPanel({ currentProfile, profiles = [] }: { curren
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap justify-end gap-2">
-        {currentProfile?.role === "admin" && openCount > 0 && (
-          <button onClick={closeAllOpen} disabled={busy} className="btn-ghost text-sm text-gray-400 hover:text-white">
-            <CheckCheck className="h-4 w-4" /> סגור את כל הפניות הפתוחות ({openCount})
+      {archived ? (
+        <p className="text-sm text-gray-400">
+          פניות שנסגרו נמצאות כאן. פתחו כל אחת לצפייה, ואם צריך - "פתח מחדש" מחזיר אותה לרשימת ההודעות הפעילות.
+        </p>
+      ) : (
+        <div className="flex flex-wrap justify-end gap-2">
+          {currentProfile?.role === "admin" && openCount > 0 && (
+            <button onClick={closeAllOpen} disabled={busy} className="btn-ghost text-sm text-gray-400 hover:text-white">
+              <CheckCheck className="h-4 w-4" /> סגור את כל הפניות הפתוחות ({openCount})
+            </button>
+          )}
+          <button onClick={() => setShowNew((v) => !v)} className="btn-primary text-sm">
+            <Plus className="h-4 w-4" /> שיחה חדשה למשתמש
           </button>
-        )}
-        <button onClick={() => setShowNew((v) => !v)} className="btn-primary text-sm">
-          <Plus className="h-4 w-4" /> שיחה חדשה למשתמש
-        </button>
-      </div>
+        </div>
+      )}
 
-      {showNew && (
+      {!archived && showNew && (
         <form onSubmit={startNewConversation} className="card flex flex-col gap-3 p-5">
           <div>
             <label className="mb-1.5 block text-sm text-gray-400">בחר משתמש</label>
@@ -331,10 +348,12 @@ export default function TicketsPanel({ currentProfile, profiles = [] }: { curren
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <div className="flex flex-col gap-2 md:col-span-1">
-          {tickets.length === 0 ? (
-            <div className="card p-6 text-center text-sm text-gray-500">אין הודעות כרגע.</div>
+          {visibleTickets.length === 0 ? (
+            <div className="card p-6 text-center text-sm text-gray-500">
+              {archived ? "הארכיון ריק - אין פניות סגורות." : "אין הודעות כרגע."}
+            </div>
           ) : (
-            tickets.map((t) => (
+            visibleTickets.map((t) => (
               <button
                 key={t.id}
                 onClick={() => openTicket(t)}
