@@ -1,6 +1,6 @@
 import { createAdminSupabase } from "./supabase/admin";
 import { LIMITS, REFERRAL } from "./constants";
-import { LIKE_UNLOCK_THRESHOLD, COMMENT_UNLOCK_THRESHOLD } from "./engagement-eligibility";
+import { LIKE_UNLOCK_THRESHOLD, COMMENT_UNLOCK_THRESHOLD, COMMENT_UNLOCK_POINTS } from "./engagement-eligibility";
 import { DM_UNLOCK_THRESHOLD } from "./dm-eligibility";
 import type { Profile } from "@/types/database";
 
@@ -50,8 +50,10 @@ export async function buildBotUserContext(profile: Profile): Promise<BotUserCont
     if (gap > 0) missing.push(`חסרים ${gap} מוניטין לשדרוג אוטומטי ל-PRO (300). זה בערך ${Math.max(1, Math.ceil(gap / 5))} אפליקציות/הצעות שיאושרו, או ${Math.ceil(gap / REFERRAL.referrerPoints)} הפניות מוצלחות.`);
     else missing.push(`צבר ${points} מוניטין - כבר עבר את סף ה-PRO (300).`);
   }
-  if (!isStaff && !profile.is_pro && !profile.can_comment_override && uploaded < COMMENT_UNLOCK_THRESHOLD) {
-    missing.push(`עוד ${COMMENT_UNLOCK_THRESHOLD - uploaded} אפליקציות שיאושרו לפתיחת כתיבת תגובות.`);
+  if (!isStaff && !profile.is_pro && !profile.can_comment_override && uploaded < COMMENT_UNLOCK_THRESHOLD && points < COMMENT_UNLOCK_POINTS) {
+    missing.push(
+      `עוד ${COMMENT_UNLOCK_THRESHOLD - uploaded} אפליקציות שיאושרו (או עוד ${COMMENT_UNLOCK_POINTS - points} מוניטין) לפתיחת כתיבת תגובות.`
+    );
   }
   if (!isStaff && !profile.is_pro && !profile.can_like_override && uploaded < LIKE_UNLOCK_THRESHOLD) {
     missing.push(`עוד ${LIKE_UNLOCK_THRESHOLD - uploaded} אפליקציות שיאושרו לפתיחת לייקים.`);

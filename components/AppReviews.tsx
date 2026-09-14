@@ -140,7 +140,7 @@ export default function AppReviews({ appId, viewerIsStaff = false }: { appId: st
                 rows={2}
                 maxLength={400}
                 className="input-field mt-2"
-                placeholder="תגובה (אופציונלי - נפתח אחרי 5 אפליקציות/תוכנות שהעליתם)"
+                placeholder="תגובה (אופציונלי - נפתח אחרי 5 אפליקציות/תוכנות שהעליתם, או ב-25 מוניטין)"
               />
               {error && <p className="mt-1.5 text-xs text-red-400">{error}</p>}
               <div className="mt-2 flex gap-2">
