@@ -20,7 +20,9 @@ export type AuditAction =
   | "pin_forum_post" | "unpin_forum_post"
   | "forum_ban_user" | "forum_unban_user"
   | "bot_block_user"
-  | "send_password_reset" | "set_temp_password" | "reset_password_by_question";
+  | "send_password_reset" | "set_temp_password" | "reset_password_by_question"
+  | "close_all_tickets"
+  | "bot_ban_user" | "bot_unban_user";
 
 // רושם שורה בלוג הביקורת עבור כל פעולת ניהול/פיקוח משמעותית - כדי שהמנהל יוכל לראות בדיוק
 // מי עשה מה, מתי, ולמי, ובמידה וניתן - לבטל את הפעולה. undoable מסמן אם יש כפתור "בטל" זמין.

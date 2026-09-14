@@ -43,7 +43,10 @@ const ACTION_LABELS: Record<string, string> = {
   bot_block_user: "חסימת בוט אוטומטית (ניסיון מניפולציה)",
   send_password_reset: "שליחת קישור איפוס סיסמה",
   set_temp_password: "קביעת סיסמה זמנית למשתמש",
-  reset_password_by_question: "איפוס סיסמה בשאלת אבטחה"
+  reset_password_by_question: "איפוס סיסמה בשאלת אבטחה",
+  close_all_tickets: "סגירת כל הפניות הפתוחות",
+  bot_ban_user: "חסימת משתמש מהבוט",
+  bot_unban_user: "ביטול חסימת משתמש מהבוט"
 };
 
 interface AuditItem {

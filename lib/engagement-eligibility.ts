@@ -14,6 +14,8 @@ export async function getUploadedAppsCount(userId: string): Promise<number> {
 
 export const LIKE_UNLOCK_THRESHOLD = 15;
 export const COMMENT_UNLOCK_THRESHOLD = 5;
+// דרך נוספת (לא תחליף) לפתוח כתיבת תגובות: הגעה לסף מוניטין הזה, גם בלי אף העלאה.
+export const COMMENT_UNLOCK_POINTS = 25;
 
 // מנהל בפועל, צוות פיקוח, וחשבון PRO מקבלים לייק ותגובה פתוחים תמיד - בלי תלות בכמות
 // האפליקציות שהעלו (בדיוק כמו הצ'אט בין משתמשים). מנהל יכול גם להעניק את זה ידנית למשתמש
@@ -33,9 +35,10 @@ export async function canComment(userId: string): Promise<boolean> {
   const admin = createAdminSupabase();
   const { data: profile } = await admin
     .from("profiles")
-    .select("role, is_pro, is_moderator, can_comment_override")
+    .select("role, is_pro, is_moderator, can_comment_override, points")
     .eq("id", userId)
     .single();
   if (profile?.role === "admin" || profile?.is_moderator || profile?.is_pro || profile?.can_comment_override) return true;
+  if ((profile?.points ?? 0) >= COMMENT_UNLOCK_POINTS) return true;
   return (await getUploadedAppsCount(userId)) >= COMMENT_UNLOCK_THRESHOLD;
 }

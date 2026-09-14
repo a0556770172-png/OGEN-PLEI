@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
-import { canComment, COMMENT_UNLOCK_THRESHOLD } from "@/lib/engagement-eligibility";
+import { canComment, COMMENT_UNLOCK_THRESHOLD, COMMENT_UNLOCK_POINTS } from "@/lib/engagement-eligibility";
 import { logAudit } from "@/lib/audit";
+import { notifyForAppComment } from "@/lib/notifications";
 
 // GET: כל הביקורות (כוכבים + תגובה) על אפליקציה - ציבורי.
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
@@ -32,7 +33,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const result = await requireProfile();
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
-  const { user } = result;
+  const { user, profile } = result;
 
   const { rating, comment } = await request.json().catch(() => ({}));
   const ratingNum = Number(rating);
@@ -45,7 +46,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const allowed = await canComment(user.id);
     if (!allowed) {
       return NextResponse.json(
-        { error: `כתיבת תגובה נפתחת אוטומטית אחרי ${COMMENT_UNLOCK_THRESHOLD} אפליקציות/תוכנות שהעליתם. אפשר עדיין לדרג בכוכבים בלי תגובה.` },
+        {
+          error: `כתיבת תגובה נפתחת אוטומטית אחרי ${COMMENT_UNLOCK_THRESHOLD} אפליקציות/תוכנות שהעליתם, או בהגעה ל-${COMMENT_UNLOCK_POINTS} מוניטין. אפשר עדיין לדרג בכוכבים בלי תגובה.`
+        },
         { status: 403 }
       );
     }
@@ -55,11 +58,23 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const { data: app } = await admin.from("apps").select("id").eq("id", params.id).single();
   if (!app) return NextResponse.json({ error: "האפליקציה לא נמצאה" }, { status: 404 });
 
+  // בודקים אם כבר הייתה תגובת טקסט קודמת - כדי להתריע למפתח רק על תגובה חדשה, לא על כל עריכה.
+  const { data: existing } = await admin
+    .from("app_reviews")
+    .select("comment")
+    .eq("app_id", params.id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   const { error } = await admin.from("app_reviews").upsert(
     { app_id: params.id, user_id: user.id, rating: ratingNum, comment: trimmedComment || null, updated_at: new Date().toISOString() },
     { onConflict: "app_id,user_id" }
   );
   if (error) return NextResponse.json({ error: `שגיאה בשמירת הביקורת: ${error.message}` }, { status: 500 });
+
+  if (trimmedComment && !existing?.comment) {
+    notifyForAppComment(params.id, profile.username, trimmedComment).catch(() => {});
+  }
 
   revalidatePath(`/apps/${params.id}`);
   return NextResponse.json({ ok: true });

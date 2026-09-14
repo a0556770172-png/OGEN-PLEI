@@ -97,6 +97,20 @@ export async function notifyForApprovedApp(appId: string): Promise<void> {
   });
 }
 
+// נקרא כשמתפרסמת תגובת טקסט חדשה (לא רק דירוג בכוכבים) על אפליקציה - מתריע למפתח שהעלה אותה.
+export async function notifyForAppComment(appId: string, reviewerUsername: string, comment: string): Promise<void> {
+  const admin = createAdminSupabase();
+  const { data: app } = await admin.from("apps").select("id, name, developer_id").eq("id", appId).maybeSingle();
+  if (!app || !app.developer_id) return;
+
+  await deliver([app.developer_id], {
+    kind: "app_comment",
+    title: `${reviewerUsername} הגיב/ה על ${app.name}`,
+    body: comment.slice(0, 100),
+    url: `/apps/${app.id}`
+  });
+}
+
 // נקרא כשמשתמש מפרסם פוסט ראשי חדש בפורום - מתריע לעוקבים החברתיים שלו (user_follows).
 export async function notifyForNewForumThread(postId: string): Promise<void> {
   const admin = createAdminSupabase();
@@ -109,16 +123,19 @@ export async function notifyForNewForumThread(postId: string): Promise<void> {
 
   const { data: followers } = await admin.from("user_follows").select("follower_id").eq("following_id", post.user_id);
   const targets = [...new Set((followers ?? []).map((r) => r.follower_id))].filter((id) => id !== post.user_id);
-  if (targets.length === 0) return;
 
   const name = (post as any).author?.username ?? "משתמש";
   const snippet = (post.title || post.body).slice(0, 70);
-  await deliver(targets, {
+  const notif = {
     kind: "forum_post",
     title: `${name} כתב בפורום: ${snippet}`,
     body: "לחצו לצפייה ולתגובה",
     url: `/forum/${post.id}`
-  });
+  };
+  if (targets.length > 0) await deliver(targets, notif);
+
+  // הצוות (מנהל בפועל + פיקוח) רואה בפעמון ההתראות כל פוסט חדש בפורום, גם בלי לעקוב.
+  await notifyStaffInApp(notif, post.user_id);
 }
 
 // נקרא כשמתפרסמת תגובה חדשה בפורום - מתריע לעוקבי הדיון (type='forum_thread').
@@ -140,16 +157,19 @@ export async function notifyForForumReply(replyId: string): Promise<void> {
     .eq("type", "forum_thread")
     .eq("target_id", reply.parent_id);
   const targets = [...new Set((subs ?? []).map((r) => r.user_id))].filter((id) => id !== reply.user_id);
-  if (targets.length === 0) return;
 
   const name = (reply as any).author?.username ?? "משתמש";
   const threadTitle = (root.title || root.body).slice(0, 60);
-  await deliver(targets, {
+  const notif = {
     kind: "forum_reply",
     title: `${name} הגיב ל: ${threadTitle}`,
     body: reply.body.slice(0, 90),
     url: `/forum/${reply.parent_id}`
-  });
+  };
+  if (targets.length > 0) await deliver(targets, notif);
+
+  // הצוות רואה בפעמון ההתראות כל תגובה חדשה בפורום, גם אם לא עוקב אחרי הדיון.
+  await notifyStaffInApp(notif, reply.user_id);
 }
 
 // התראה בתוך האתר (feed + push) לכל המנהלים - למקרים שהמנהל חייב לדעת עליהם מיד.
@@ -162,6 +182,18 @@ export async function notifyAdminsInApp(notif: {
   const admin = createAdminSupabase();
   const { data: admins } = await admin.from("profiles").select("id").eq("role", "admin");
   await deliver((admins ?? []).map((a) => a.id), notif);
+}
+
+// התראה בתוך האתר (feed + push) לכל הצוות - מנהל בפועל וגם צוות פיקוח (is_moderator).
+// excludeUserId - לא לשלוח למי שביצע את הפעולה עצמה (למשל חבר צוות שכתב את הפוסט).
+export async function notifyStaffInApp(
+  notif: { kind: string; title: string; body: string; url: string },
+  excludeUserId?: string
+): Promise<void> {
+  const admin = createAdminSupabase();
+  const { data: staff } = await admin.from("profiles").select("id, role, is_moderator").or("role.eq.admin,is_moderator.eq.true");
+  const ids = (staff ?? []).map((s) => s.id).filter((id) => id !== excludeUserId);
+  await deliver(ids, notif);
 }
 
 // נקרא כשמתפרסמת בקשת קהילה חדשה.

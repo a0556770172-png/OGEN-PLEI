@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Bot, Loader2, Save, Search, MessageSquare, ArrowRight, Plug, CheckCircle2, AlertCircle, Wrench, ThumbsUp, ThumbsDown, ShieldAlert, ChevronDown, Circle, CheckCheck, Square, CheckSquare } from "lucide-react";
+import { Bot, Loader2, Save, Search, MessageSquare, ArrowRight, Plug, CheckCircle2, AlertCircle, Wrench, ThumbsUp, ThumbsDown, ShieldAlert, ChevronDown, Circle, CheckCheck, Square, CheckSquare, Ban } from "lucide-react";
 import BotChat from "./BotChat";
 import BotKeysManager from "./BotKeysManager";
 
@@ -60,6 +60,14 @@ export default function BotConfigPanel() {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [scoring, setScoring] = useState(false);
   const [viewId, setViewIdRaw] = useState<string | null>(null);
+  const [viewOwner, setViewOwner] = useState<{
+    userId: string;
+    username: string;
+    isAdmin: boolean;
+    botBanned: boolean;
+    botBanReason: string | null;
+  } | null>(null);
+  const [banBusy, setBanBusy] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const [detections, setDetections] = useState<Detection[]>([]);
@@ -147,9 +155,41 @@ export default function BotConfigPanel() {
 
   function setViewId(id: string | null) {
     setViewIdRaw(id);
+    setViewOwner(null);
     if (id) {
       const c = convs.find((x) => x.id === id);
       if (c && !c.staff_reviewed_at) markReviewed({ ids: [id] });
+      fetch(`/api/admin/bot-conversations/${id}/owner`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => j && setViewOwner(j))
+        .catch(() => {});
+    }
+  }
+
+  async function toggleBotBan() {
+    if (!viewOwner) return;
+    const nextBanned = !viewOwner.botBanned;
+    let reason = "";
+    if (nextBanned) {
+      reason = window.prompt(`סיבת החסימה של "${viewOwner.username}" מגישה לבוט (אופציונלי):`) ?? "";
+    } else if (!confirm(`לבטל את חסימת "${viewOwner.username}" מגישה לבוט?`)) {
+      return;
+    }
+    setBanBusy(true);
+    try {
+      const res = await fetch("/api/bot/ban", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: viewOwner.userId, banned: nextBanned, reason })
+      });
+      const j = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setViewOwner({ ...viewOwner, botBanned: nextBanned, botBanReason: nextBanned ? reason || null : null });
+      } else {
+        alert(j.error || "שגיאה");
+      }
+    } finally {
+      setBanBusy(false);
     }
   }
 
@@ -225,9 +265,37 @@ export default function BotConfigPanel() {
   if (viewId) {
     return (
       <div className="flex flex-col gap-3">
-        <button onClick={() => setViewId(null)} className="btn-ghost self-start text-sm">
-          <ArrowRight className="h-4 w-4" /> חזרה לרשימת השיחות
-        </button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <button onClick={() => setViewId(null)} className="btn-ghost self-start text-sm">
+            <ArrowRight className="h-4 w-4" /> חזרה לרשימת השיחות
+          </button>
+          {viewOwner && !viewOwner.isAdmin && (
+            <button
+              onClick={toggleBotBan}
+              disabled={banBusy}
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-bold transition ${
+                viewOwner.botBanned
+                  ? "bg-surface2 text-gray-300 hover:text-white"
+                  : "border border-red-500/40 text-red-400 hover:bg-red-500/10"
+              }`}
+            >
+              {banBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : viewOwner.botBanned ? (
+                <ShieldAlert className="h-4 w-4" />
+              ) : (
+                <Ban className="h-4 w-4" />
+              )}
+              {viewOwner.botBanned ? `חסום מהבוט - בטל חסימה (${viewOwner.username})` : `חסום את ${viewOwner.username} מגישה לבוט`}
+            </button>
+          )}
+        </div>
+        {viewOwner?.botBanned && (
+          <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+            המשתמש חסום מגישה לבוט{viewOwner.botBanReason ? ` - ${viewOwner.botBanReason}` : ""}. הוא עדיין יכול לפנות דרך עמוד
+            התמיכה כדי לערער.
+          </p>
+        )}
         <div className="card p-4">
           <BotChat variant="page" conversationId={viewId} readOnly />
         </div>

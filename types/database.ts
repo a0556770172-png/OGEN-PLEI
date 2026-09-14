@@ -35,6 +35,9 @@ export interface Profile {
   forum_banned: boolean;
   forum_ban_reason: string | null;
   bot_blocked_until: string | null;
+  // חסימה ידנית וקבועה מהבוט (בניגוד ל-bot_blocked_until שהיא זמנית ואוטומטית).
+  bot_banned: boolean;
+  bot_ban_reason: string | null;
   // שאלת אבטחה לאיפוס סיסמה (התשובה נשמרת מוצפנת ב-security_answer_hash).
   security_question: string | null;
   security_answer_hash: string | null;

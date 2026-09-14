@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Send, Loader2, CheckCircle2, RotateCcw, MessageCircle, Paperclip, Plus, X,
-  Quote, Reply, Copy, Pencil, Trash2, Bold, Check
+  Quote, Reply, Copy, Pencil, Trash2, Bold, Check, CheckCheck
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import TicketAttachment from "./TicketAttachment";
@@ -66,9 +66,12 @@ export default function TicketsPanel({ currentProfile, profiles = [] }: { curren
     const { data } = await supabase
       .from("tickets")
       .select("*, user:profiles!tickets_user_id_fkey(username, email)")
-      .order("status", { ascending: true })
       .order("updated_at", { ascending: false });
-    setTickets((data as unknown as Ticket[]) ?? []);
+    const rows = (data as unknown as Ticket[]) ?? [];
+    // פתוחות קודם, סגורות אחר-כך - אבל בתוך כל קבוצה החדשות ביותר (updated_at) תמיד למעלה.
+    // מיון לפי updated_at כבר בוצע בשרת, ו-Array.sort יציב (ES2019+) שומר על הסדר הזה בתוך כל קבוצה.
+    rows.sort((a, b) => (a.status === b.status ? 0 : a.status === "open" ? -1 : 1));
+    setTickets(rows);
     setLoading(false);
   }
 
@@ -139,6 +142,24 @@ export default function TicketsPanel({ currentProfile, profiles = [] }: { curren
     setReplyingTo(null);
     setBusy(false);
     await refreshMessages();
+    await loadTickets();
+  }
+
+  const openCount = tickets.filter((t) => t.status === "open").length;
+
+  // סגירת כל הפניות הפתוחות בבת אחת - מנהל בפועל בלבד.
+  async function closeAllOpen() {
+    if (openCount === 0) return;
+    if (!confirm(`לסגור את כל ${openCount} הפניות הפתוחות?`)) return;
+    setBusy(true);
+    const res = await fetch("/api/tickets/close-all", { method: "POST" });
+    setBusy(false);
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      alert(j.error || "שגיאה בסגירת הפניות");
+      return;
+    }
+    if (selected?.status === "open") setSelected({ ...selected, status: "closed" });
     await loadTickets();
   }
 
@@ -259,7 +280,12 @@ export default function TicketsPanel({ currentProfile, profiles = [] }: { curren
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        {currentProfile?.role === "admin" && openCount > 0 && (
+          <button onClick={closeAllOpen} disabled={busy} className="btn-ghost text-sm text-gray-400 hover:text-white">
+            <CheckCheck className="h-4 w-4" /> סגור את כל הפניות הפתוחות ({openCount})
+          </button>
+        )}
         <button onClick={() => setShowNew((v) => !v)} className="btn-primary text-sm">
           <Plus className="h-4 w-4" /> שיחה חדשה למשתמש
         </button>

@@ -100,6 +100,17 @@ export async function POST(request: Request) {
   const cfg = await getBotConfig();
   if (!botIsLive(cfg)) return NextResponse.json({ error: "הצ'אט-בוט אינו זמין כרגע." }, { status: 503 });
 
+  // חסימה ידנית וקבועה מצוות (בניגוד לחסימה האוטומטית הזמנית) - אפשר עדיין לפנות דרך /support.
+  if ((profile as any).bot_banned) {
+    return NextResponse.json(
+      {
+        error: "הגישה שלך לעוזר החכם נחסמה ע\"י הצוות. אם לדעתך זו טעות, אפשר לערער דרך עמוד התמיכה (/support).",
+        blocked: true
+      },
+      { status: 403 }
+    );
+  }
+
   // חסימת בוט אוטומטית פעילה? (זוהה בעבר ניסיון להסיט את השיחה)
   const blockedUntil = (profile as any).bot_blocked_until;
   if (blockedUntil && new Date(blockedUntil).getTime() > Date.now()) {
