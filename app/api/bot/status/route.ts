@@ -7,8 +7,8 @@ import { getBotConfig, botIsLive } from "@/lib/bot";
 export async function GET() {
   const supabase = createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ live: false });
-
   const cfg = await getBotConfig();
-  return NextResponse.json({ live: botIsLive(cfg) });
+  if (!user) return NextResponse.json({ live: false, widgetVisible: cfg.widget_visible });
+
+  return NextResponse.json({ live: botIsLive(cfg), widgetVisible: cfg.widget_visible });
 }

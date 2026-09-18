@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Bot, Loader2, Save, Search, MessageSquare, ArrowRight, Plug, CheckCircle2, AlertCircle, Wrench, ThumbsUp, ThumbsDown, ShieldAlert, ChevronDown, Circle, CheckCheck, Square, CheckSquare, Ban } from "lucide-react";
+import { Bot, Loader2, Save, Search, MessageSquare, ArrowRight, Plug, CheckCircle2, AlertCircle, Wrench, ThumbsUp, ThumbsDown, ShieldAlert, ChevronDown, Circle, CheckCheck, Square, CheckSquare, Ban, Eye, EyeOff } from "lucide-react";
 import BotChat from "./BotChat";
 import BotKeysManager from "./BotKeysManager";
 
 interface Config {
   enabled: boolean;
+  widgetVisible: boolean;
   model: string;
   modelSmart: string;
   systemPrompt: string;
@@ -110,6 +111,7 @@ export default function BotConfigPanel() {
       .then((j) =>
         setCfg({
           enabled: j.enabled,
+          widgetVisible: j.widgetVisible ?? false,
           model: j.model,
           modelSmart: j.modelSmart ?? "",
           systemPrompt: j.systemPrompt,
@@ -322,6 +324,20 @@ export default function BotConfigPanel() {
             {cfg.enabled ? "הבוט פעיל" : "הבוט כבוי"}
           </span>
           {!cfg.hasKey && <span className="text-xs text-gold">(צריך גם מפתח API אחד לפחות)</span>}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => save({ widgetVisible: !cfg.widgetVisible })}
+            disabled={saving}
+            className={`relative h-8 w-14 shrink-0 rounded-full transition ${cfg.widgetVisible ? "bg-primary" : "bg-surface2"}`}
+          >
+            <span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${cfg.widgetVisible ? "right-1" : "right-7"}`} />
+          </button>
+          <span className={`flex items-center gap-1.5 text-sm font-bold ${cfg.widgetVisible ? "text-primary-light" : "text-gray-400"}`}>
+            {cfg.widgetVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            {cfg.widgetVisible ? "כפתור הצ'אט מוצג לכולם באתר" : "כפתור הצ'אט מוסתר לגמרי מכל המשתמשים"}
+          </span>
         </div>
 
         <div className="border-t border-border pt-4">

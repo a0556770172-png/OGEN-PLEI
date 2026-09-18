@@ -13,6 +13,7 @@ export default function BotWidget() {
   const supabase = createClient();
   const pathname = usePathname();
   const [loggedIn, setLoggedIn] = useState(false);
+  const [widgetVisible, setWidgetVisible] = useState(false);
   const [live, setLive] = useState(false);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
@@ -31,12 +32,18 @@ export default function BotWidget() {
       if (!user) {
         setLive(false);
         setUnread(0);
+        fetch("/api/bot/status")
+          .then((r) => r.json())
+          .then((j) => active && setWidgetVisible(!!j.widgetVisible))
+          .catch(() => {});
         return;
       }
       fetch("/api/bot/status")
         .then((r) => r.json())
         .then((j) => {
-          if (!active || !j.live) return;
+          if (!active) return;
+          setWidgetVisible(!!j.widgetVisible);
+          if (!j.live) return;
           setLive(true);
           // הודעת פתיחה יזומה - קופצת כ-peek פעם ביום (אלא אם המשתמש כיבה בהגדרות העוזר).
           const today = new Date().toISOString().slice(0, 10);
@@ -76,8 +83,8 @@ export default function BotWidget() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
-  // בעמוד העוזר המלא הכפתור מיותר.
-  if (!loggedIn || pathname.startsWith("/assistant")) return null;
+  // בעמוד העוזר המלא הכפתור מיותר. widgetVisible - מתג מנהל: כשכבוי, אף אחד לא רואה את הכפתור בכלל.
+  if (!widgetVisible || !loggedIn || pathname.startsWith("/assistant")) return null;
 
   function openFromPeek(msg?: string) {
     setPeek(null);

@@ -9,6 +9,7 @@ import { getKeyCandidates, countUsableKeys, markKeyQuota, markKeyBroken, markKey
 
 export interface BotConfig {
   enabled: boolean;
+  widget_visible: boolean;
   gemini_api_key: string | null;
   keyCount: number;
   model: string;
@@ -31,6 +32,7 @@ export async function getBotConfig(): Promise<BotConfig> {
   const keyCount = await countUsableKeys().catch(() => (data?.gemini_api_key ? 1 : 0));
   return {
     enabled: data?.enabled ?? false,
+    widget_visible: data?.widget_visible ?? false,
     gemini_api_key: data?.gemini_api_key ?? null,
     keyCount,
     model: data?.model || "gemini-2.5-flash",

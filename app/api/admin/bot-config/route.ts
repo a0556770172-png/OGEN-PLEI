@@ -20,6 +20,7 @@ export async function GET() {
 
   return NextResponse.json({
     enabled: data?.enabled ?? false,
+    widgetVisible: data?.widget_visible ?? false,
     model: data?.model ?? "gemini-2.5-flash",
     modelSmart: data?.model_smart ?? "",
     systemPrompt: data?.system_prompt ?? "",
@@ -42,6 +43,7 @@ export async function PATCH(request: Request) {
   const patch: Record<string, any> = { updated_at: new Date().toISOString() };
 
   if (typeof body.enabled === "boolean") patch.enabled = body.enabled;
+  if (typeof body.widgetVisible === "boolean") patch.widget_visible = body.widgetVisible;
   if (typeof body.model === "string" && body.model.trim()) {
     patch.model = body.model.trim();
     // בחירת מודל ידנית מבטלת כל עקיפה זמנית - הבחירה החדשה נכנסת לתוקף מיד.
@@ -78,8 +80,8 @@ export async function PATCH(request: Request) {
 
   // אם מיגרציה 0036 עוד לא רצה, עמודות חדשות עלולות להכשיל את השמירה - מנסים שוב בלעדיהן,
   // כדי שלפחות מפתח ה-API וההגדרות הבסיסיות ישמרו.
-  if (error && /column .* does not exist|model_smart|proactive_enabled|max_tool_rounds|model_fallback/i.test(error.message || "")) {
-    const { model_smart, proactive_enabled, max_tool_rounds, model_fallback, model_fallback_until, ...safe } = patch as any;
+  if (error && /column .* does not exist|model_smart|proactive_enabled|max_tool_rounds|model_fallback|widget_visible/i.test(error.message || "")) {
+    const { model_smart, proactive_enabled, max_tool_rounds, model_fallback, model_fallback_until, widget_visible, ...safe } = patch as any;
     const retry = await admin.from("bot_config").upsert({ id: true, ...safe });
     error = retry.error;
   }
