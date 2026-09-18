@@ -21,6 +21,17 @@ const nextConfig = {
   webpack: (config) => {
     config.ignoreWarnings = [...(config.ignoreWarnings || []), /Can't resolve 'memcpy'/];
     return config;
+  },
+  // מעבר דומיין רשמי ל-ogenplay.com: הפניית 301 מכל נתיב בדיפלוי הישן הזה (ogen-plei-qype.vercel.app)
+  // לאותו נתיב בדיוק בדומיין החדש. נדרש כדי ש-Google Search Console יאשר את "שינוי כתובת".
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        destination: "https://ogenplay.com/:path*",
+        permanent: true
+      }
+    ];
   }
 };
 export default nextConfig;
