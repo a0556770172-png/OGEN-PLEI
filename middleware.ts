@@ -3,11 +3,22 @@ import { createServerClient } from "@supabase/ssr";
 
 const PROTECTED_PREFIXES = ["/dashboard"];
 
+// כתובת ה-Vercel הישנה (מלפני המעבר לאורקל+דומיין עצמאי) - עדיין יש קישורי הורדה ישנים
+// ששותפו על ידי מפתחים ומצביעים לכאן. מפנים כל בקשה משם, בכל נתיב (כולל /apps/[id] לאפליקציה
+// ספציפית), לאותו נתיב בדיוק בדומיין החדש - כדי שקישורים ישנים ימשיכו לעבוד לצמיתות.
+const OLD_VERCEL_HOSTNAME = "ogen-plei-qype.vercel.app";
+const NEW_SITE_ORIGIN = "https://ogenplay.com";
+
 // עמודים שמשתמש חסום עדיין חייב להיות מסוגל להגיע אליהם - במיוחד /banned עצמו (אחרת הוא
 // לעולם לא יראה את הסיבה/משך החסימה או יוכל לכתוב ערעור), וגם /login כדי שיוכל להתחבר בכלל.
 const BANNED_ALLOWED_PREFIXES = ["/banned", "/login", "/signup", "/auth"];
 
 export async function middleware(request: NextRequest) {
+  if (request.nextUrl.hostname === OLD_VERCEL_HOSTNAME) {
+    const target = new URL(request.nextUrl.pathname + request.nextUrl.search, NEW_SITE_ORIGIN);
+    return NextResponse.redirect(target, 308);
+  }
+
   let response = NextResponse.next({ request: { headers: request.headers } });
 
   const supabase = createServerClient(
