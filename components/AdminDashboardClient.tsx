@@ -9,6 +9,7 @@ import SuggestionsQueue from "./SuggestionsQueue";
 import CategoriesManager from "./CategoriesManager";
 import NotificationsPanel from "./NotificationsPanel";
 import SiteSettingsPanel from "./SiteSettingsPanel";
+import MigrationEmailPanel from "./MigrationEmailPanel";
 import IconBackfillPanel from "./IconBackfillPanel";
 import DeletionRequestsPanel from "./DeletionRequestsPanel";
 import CouncilPanel from "./CouncilPanel";
@@ -161,7 +162,12 @@ export default function AdminDashboardClient({
       {tab === "forum" && <ForumModerationPanel posts={forumPosts} />}
       {tab === "bot" && <BotConfigPanel />}
       {tab === "siteRules" && <SiteRulesEditorPanel isAdmin={true} />}
-      {tab === "settings" && <SiteSettingsPanel requireEmailVerification={requireEmailVerification} forumButtonVisible={forumButtonVisible} />}
+      {tab === "settings" && (
+        <>
+          <SiteSettingsPanel requireEmailVerification={requireEmailVerification} forumButtonVisible={forumButtonVisible} />
+          <MigrationEmailPanel />
+        </>
+      )}
     </div>
   );
 }
