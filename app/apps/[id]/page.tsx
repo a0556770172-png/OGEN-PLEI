@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getAppById, getIconUrl } from "@/lib/apps-data";
 import { getCategoriesServer } from "@/lib/categories";
@@ -61,10 +62,9 @@ export default async function AppDetailPage({ params }: { params: { id: string }
     <div className="mx-auto max-w-4xl">
       <div className="card overflow-hidden p-6 sm:p-8">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-          <div className="mx-auto flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-surface2 ring-1 ring-border sm:mx-0">
+          <div className="relative mx-auto flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-surface2 ring-1 ring-border sm:mx-0">
             {iconUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={iconUrl} alt={app.name} className="h-full w-full object-cover" />
+              <Image src={iconUrl} alt={app.name} fill sizes="112px" priority className="object-cover" />
             ) : (
               <Package className="h-12 w-12 text-primary-light" />
             )}

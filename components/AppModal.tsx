@@ -1,6 +1,7 @@
 "use client";
 import { useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Package, User, Calendar, HardDrive, Smartphone, Wifi, WifiOff, HelpCircle, X, ExternalLink, Pin, Pencil } from "lucide-react";
 import type { AppRow, Category } from "@/types/database";
@@ -80,10 +81,9 @@ export default function AppModal({
         </button>
 
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-          <div className="mx-auto flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-surface2 ring-1 ring-border sm:mx-0">
+          <div className="relative mx-auto flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-surface2 ring-1 ring-border sm:mx-0">
             {iconUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={iconUrl} alt={app.name} className="h-full w-full object-cover" />
+              <Image src={iconUrl} alt={app.name} fill sizes="96px" className="object-cover" />
             ) : (
               <Package className="h-12 w-12 text-primary-light" />
             )}

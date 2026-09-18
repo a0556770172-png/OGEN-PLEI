@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { Package, Star, Download, Smartphone, Monitor } from "lucide-react";
 
 export interface BotAppCardData {
@@ -19,10 +20,9 @@ export default function BotAppCard({ app, onNavigate }: { app: BotAppCardData; o
       onClick={onNavigate}
       className="group flex items-center gap-3 rounded-xl border border-border bg-surface2/60 p-2.5 transition hover:border-primary/50 hover:bg-surface2"
     >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface ring-1 ring-border">
+      <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface ring-1 ring-border">
         {app.iconUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={app.iconUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+          <Image src={app.iconUrl} alt="" fill sizes="44px" loading="lazy" className="object-cover" />
         ) : (
           <Package className="h-5 w-5 text-primary-light" />
         )}

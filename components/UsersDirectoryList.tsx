@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Search, ShieldCheck, Package, Crown, User as UserIcon, Wifi, Coins } from "lucide-react";
 import type { PublicUserSummary } from "@/lib/users-data";
 
@@ -102,8 +103,7 @@ export default function UsersDirectoryList({ users }: { users: PublicUserSummary
             >
               <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface2 ring-1 ring-border">
                 {u.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={u.avatarUrl} alt={u.username} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                  <Image src={u.avatarUrl} alt={u.username} fill sizes="48px" loading="lazy" className="object-cover" />
                 ) : (
                   <UserIcon className="h-5 w-5 text-primary-light" />
                 )}

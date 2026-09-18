@@ -1,5 +1,5 @@
 import { createServerSupabase } from "./supabase/server";
-import { createDownloadUrl, BUCKETS } from "./r2";
+import { publicAssetUrl } from "./r2";
 import type { AppRow } from "@/types/database";
 
 export async function getApprovedApps(): Promise<AppRow[]> {
@@ -40,7 +40,7 @@ export async function getAppById(id: string): Promise<AppRow | null> {
 export async function getIconUrl(iconKey: string | null): Promise<string | null> {
   if (!iconKey) return null;
   try {
-    return await createDownloadUrl(BUCKETS.assets, iconKey);
+    return publicAssetUrl(iconKey);
   } catch {
     return null;
   }

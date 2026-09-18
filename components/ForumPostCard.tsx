@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   User as UserIcon,
@@ -123,11 +124,10 @@ export default function ForumPostCard({
         <Link
           href={`/users/${post.author.id}`}
           onClick={(e) => e.stopPropagation()}
-          className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface2 ring-1 ring-border"
+          className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface2 ring-1 ring-border"
         >
           {post.author.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={post.author.avatarUrl} alt={post.author.username} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+            <Image src={post.author.avatarUrl} alt={post.author.username} fill sizes="36px" loading="lazy" className="object-cover" />
           ) : (
             <UserIcon className="h-4 w-4 text-primary-light" />
           )}

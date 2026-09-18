@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
+import Image from "next/image";
 import { Star, BadgeCheck, Heart, ChevronLeft, ChevronRight, User as UserIcon, Crown, Package } from "lucide-react";
 import type { SiteReviewRow } from "@/lib/siteReviews";
 
@@ -49,10 +50,9 @@ function ReviewCard({
           </p>
           <p className="text-xs text-gray-500">{dateLabel(r.created_at)}</p>
         </div>
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface ring-1 ring-border">
+        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface ring-1 ring-border">
           {r.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={r.avatarUrl} alt={r.username} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+            <Image src={r.avatarUrl} alt={r.username} fill sizes="40px" loading="lazy" className="object-cover" />
           ) : (
             <UserIcon className="h-4 w-4 text-primary-light" />
           )}

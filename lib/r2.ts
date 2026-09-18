@@ -106,6 +106,17 @@ export async function createDownloadUrl(bucket: string, key: string, filename?: 
   return presignR2Url({ method: "GET", bucket, key, expiresIn, extraQuery });
 }
 
+// כתובת ציבורית קבועה (לא חתומה) לדלי ה-assets בלבד - מוגש דרך cdn.ogenplay.com
+// (דומיין מותאם אישית שמחובר ישירות ל-bucket ב-Cloudflare, ראו הגדרות ה-bucket ב-R2).
+// בטוח להשתמש בזה רק לתוכן שממילא מוצג לכולם בפומבי (אייקוני אפליקציות, תמונות פרופיל) -
+// לעולם לא לקבצי הורדה/העלאה בדלים apps/uploads שצריכים להישאר עם URL חתום.
+// היתרון: הדפדפן מקבל קישור קבוע (לא ייחודי לכל בקשה) שניתן ל-Cloudflare לשמור ב-cache
+// בקצה הרשת, במקום לפנות ישירות ל-R2 storage בכל טעינת עמוד.
+export function publicAssetUrl(key: string): string {
+  const base = (process.env.R2_ASSETS_PUBLIC_URL || "").replace(/\/$/, "");
+  return `${base}/${encodeS3Key(key)}`;
+}
+
 export async function deleteObject(bucket: string, key: string): Promise<void> {
   const url = presignR2Url({ method: "DELETE", bucket, key, expiresIn: 60 });
   const res = await fetch(url, { method: "DELETE" });

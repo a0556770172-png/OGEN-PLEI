@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Smartphone, Monitor, SlidersHorizontal, ArrowDownWideNarrow, ArrowDownAZ, HardDrive, Check, Bell, BellRing } from "lucide-react";
 import AppCard from "./AppCard";
@@ -32,6 +32,12 @@ const SORT_OPTIONS: { key: SortKey; label: string; icon: typeof ArrowDownAZ }[] 
   { key: "name", label: "שם (א-ת)", icon: ArrowDownAZ },
   { key: "size", label: "גודל (גדול לקטן)", icon: HardDrive }
 ];
+
+// כמה כרטיסים מציגים מההתחלה, ומוסיפים בכל פעם שמגיעים לסוף הרשימה בגלילה (פיצ'ר טעינה
+// הדרגתית) - כדי שלא ייטענו כל מאות האפליקציות (ותמונות האייקון שלהן) בבת אחת, בזמן שרק
+// שורה או שתיים מהן נראות בפועל על המסך. החיפוש/מיון/סינון ממשיכים לפעול על כל הרשימה
+// המלאה כרגיל (items) - רק הרינדור בפועל של הכרטיסים מוגבל ומתרחב בהדרגה.
+const PAGE_SIZE = 40;
 
 export default function AppGrid({
   items,
@@ -119,6 +125,35 @@ export default function AppGrid({
   }, [items, query, category, mainTab, sort, searchIndex]);
 
   const activeItem = activeId ? items.find(({ app }) => app.id === activeId) ?? null : null;
+
+  // טעינה הדרגתית: מתחילים תמיד מ-PAGE_SIZE הראשונים, ומתאפסים בכל שינוי חיפוש/סינון/מיון/טאב
+  // כדי שלא "ייתקע" מספר גבוה מתוצאה קודמת כשעוברים לתוצאה חדשה וקצרה יותר.
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [query, category, mainTab, sort]);
+
+  const visibleItems = filtered.slice(0, visibleCount);
+  const hasMore = visibleCount < filtered.length;
+
+  // גלילה לתחתית הרשימה -> טוענים עוד PAGE_SIZE כרטיסים. rootMargin נותן מרווח קטן כדי
+  // שהטעינה הבאה תתחיל רגע לפני שמגיעים ממש לסוף, ולא תיראה כקפיצה/השהיה למשתמש.
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!hasMore) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((c) => Math.min(c + PAGE_SIZE, filtered.length));
+        }
+      },
+      { rootMargin: "600px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, filtered.length]);
 
   return (
     <section id="apps" className="flex flex-col gap-6">
@@ -245,7 +280,7 @@ export default function AppGrid({
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <AnimatePresence>
-            {filtered.map(({ app, iconUrl }, i) => (
+            {visibleItems.map(({ app, iconUrl }, i) => (
               <motion.div
                 key={app.id}
                 initial={{ opacity: 0, y: 14 }}
@@ -264,6 +299,8 @@ export default function AppGrid({
           </AnimatePresence>
         </div>
       )}
+
+      {hasMore && <div ref={sentinelRef} aria-hidden className="h-1 w-full" />}
 
       <AnimatePresence>
         {activeItem && (

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { User as UserIcon, ChevronDown } from "lucide-react";
 import type { FollowUserRow } from "@/lib/follows";
 
@@ -57,10 +58,9 @@ export default function FollowLists({
               href={`/users/${u.id}`}
               className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition hover:bg-surface2"
             >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface2 ring-1 ring-border">
+              <span className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface2 ring-1 ring-border">
                 {u.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={u.avatarUrl} alt={u.username} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                  <Image src={u.avatarUrl} alt={u.username} fill sizes="28px" loading="lazy" className="object-cover" />
                 ) : (
                   <UserIcon className="h-3.5 w-3.5 text-primary-light" />
                 )}

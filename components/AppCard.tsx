@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Download, Package, User, Pin, ArrowUpCircle } from "lucide-react";
 import type { AppRow, Category } from "@/types/database";
@@ -59,10 +60,9 @@ export default function AppCard({
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-surface2 ring-1 ring-border">
+          <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-surface2 ring-1 ring-border">
             {iconUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={iconUrl} alt={app.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+              <Image src={iconUrl} alt={app.name} fill sizes="64px" loading="lazy" className="object-cover" />
             ) : (
               <Package className="h-8 w-8 text-primary-light" />
             )}

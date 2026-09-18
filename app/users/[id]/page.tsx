@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { User as UserIcon, ShieldCheck, Crown, Package, Calendar, Clock, StickyNote, Mail, MessagesSquare, Coins } from "lucide-react";
 import { getPublicUserDetail } from "@/lib/users-data";
@@ -64,10 +65,9 @@ export default async function PublicUserPage({ params }: { params: { id: string 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <div className="card p-8 text-center">
-        <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-surface2 ring-2 ring-border">
+        <div className="relative mx-auto mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-surface2 ring-2 ring-border">
           {user.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={user.avatarUrl} alt={user.username} className="h-full w-full object-cover" />
+            <Image src={user.avatarUrl} alt={user.username} fill sizes="96px" className="object-cover" />
           ) : (
             <UserIcon className="h-10 w-10 text-primary-light" />
           )}
@@ -146,10 +146,9 @@ export default async function PublicUserPage({ params }: { params: { id: string 
           ) : (
             appsWithIcons.map(({ app, iconUrl }) => (
               <Link key={app.id} href={`/apps/${app.id}`} className="card flex items-center gap-4 p-4 transition hover:ring-1 hover:ring-primary/40">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-surface2 ring-1 ring-border">
+                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-surface2 ring-1 ring-border">
                   {iconUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={iconUrl} alt={app.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                    <Image src={iconUrl} alt={app.name} fill sizes="48px" loading="lazy" className="object-cover" />
                   ) : (
                     <Package className="h-5 w-5 text-primary-light" />
                   )}

@@ -4,6 +4,7 @@ import { getAvatarUrl } from "@/lib/avatar";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { LIMITS } from "@/lib/constants";
 import Link from "next/link";
+import Image from "next/image";
 import { Rocket, MessageSquareText, History, Star, User as UserIcon, ExternalLink, Coins } from "lucide-react";
 import AvatarUploadForm from "@/components/AvatarUploadForm";
 import DeveloperAppsPanel from "@/components/DeveloperAppsPanel";
@@ -68,10 +69,9 @@ export default async function ProfilePage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-8">
       {/* ---- כותרת / זהות ---- */}
       <div className="card flex flex-col items-center gap-4 p-6 text-center sm:flex-row sm:items-center sm:text-right">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface2 ring-2 ring-border">
+        <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface2 ring-2 ring-border">
           {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarUrl} alt={profile.username} className="h-full w-full object-cover" />
+            <Image src={avatarUrl} alt={profile.username} fill sizes="80px" className="object-cover" />
           ) : (
             <UserIcon className="h-9 w-9 text-primary-light" />
           )}

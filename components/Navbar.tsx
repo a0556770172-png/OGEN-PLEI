@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -103,10 +104,9 @@ export default function Navbar() {
             <div className="flex items-center gap-3">
               <NotificationBell dashboardBase={adminHref ?? moderatorHref ?? null} isAdmin={profile?.role === "admin"} />
               <Link href="/profile" className="flex items-center gap-2 text-sm text-gray-400 transition hover:text-white">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface2 ring-1 ring-border">
+                <div className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface2 ring-1 ring-border">
                   {avatarUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={avatarUrl} alt={profile.username} className="h-full w-full object-cover" />
+                    <Image src={avatarUrl} alt={profile.username} fill sizes="28px" className="object-cover" />
                   ) : (
                     <User className="h-3.5 w-3.5 text-primary-light" />
                   )}
