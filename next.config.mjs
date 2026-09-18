@@ -24,10 +24,14 @@ const nextConfig = {
   },
   // מעבר דומיין רשמי ל-ogenplay.com: הפניית 301 מכל נתיב בדיפלוי הישן הזה (ogen-plei-qype.vercel.app)
   // לאותו נתיב בדיוק בדומיין החדש. נדרש כדי ש-Google Search Console יאשר את "שינוי כתובת".
+  // מוגבל בכוונה לפי כותרת ה-Host של הבקשה: זה אותו next.config.mjs שרץ גם על שרת הפרודקשן
+  // האמיתי (ogenplay.com) - בלי ההגבלה הזו, דיפלוי בטעות לשרת האמיתי היה גורם ללולאת הפניה
+  // אינסופית של האתר החי לעצמו.
   async redirects() {
     return [
       {
         source: "/:path*",
+        has: [{ type: "host", value: "ogen-plei-qype.vercel.app" }],
         destination: "https://ogenplay.com/:path*",
         permanent: true
       }
