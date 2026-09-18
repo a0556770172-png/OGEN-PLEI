@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 
+export const dynamic = "force-dynamic";
+
 // מחזיר את מזהי כל המשתמשים שנחשבים "מחוברים כרגע" (ביקור אחרון ב-5 הדקות האחרונות).
 // למה זה צריך endpoint נפרד: רשימת המשתמשים ב-/users נטענת פעם אחת בצד השרת (SSR) בזמן
 // הניווט לעמוד - וה"heartbeat" שמעדכן last_seen_at רץ בצד הלקוח *אחרי* שהעמוד כבר נשלף,

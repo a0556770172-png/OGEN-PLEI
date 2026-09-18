@@ -7,20 +7,21 @@ import { Star, X, ArrowLeft, PartyPopper, Bot, Gift, BellRing } from "lucide-rea
 // הודעה חד-פעמית על פיצ'רים חדשים. לשינוי (הודעה חדשה שתוצג שוב לכולם) - להעלות את המספר במפתח.
 const KEY = "ogen-announce-features-v2";
 
-const FEATURES = [
+const AGENT_FEATURE = {
+  href: "/assistant",
+  icon: Bot,
+  title: "סוכן AI חכם",
+  desc: "עוזר חכם שמכיר את כל האתר — שאלו אותו כל דבר, והוא גם ימצא לכם אפליקציות ויעזור להעלות.",
+  tint: "from-primary to-primary-light"
+};
+
+const BASE_FEATURES = [
   {
     href: "/site-reviews",
     icon: Star,
     title: "דירוג האתר וחוות דעת",
     desc: "דרגו את עוגן פליי בכוכבים וכתבו מה אתם חושבים — זה מתפרסם לכולם.",
     tint: "from-gold to-primary"
-  },
-  {
-    href: "/assistant",
-    icon: Bot,
-    title: "סוכן AI חכם",
-    desc: "עוזר חכם שמכיר את כל האתר — שאלו אותו כל דבר, והוא גם ימצא לכם אפליקציות ויעזור להעלות.",
-    tint: "from-primary to-primary-light"
   },
   {
     href: "/profile#referrals",
@@ -40,8 +41,16 @@ const FEATURES = [
 
 export default function FeatureAnnounce() {
   const [show, setShow] = useState(false);
+  const [agentVisible, setAgentVisible] = useState(false);
+  const features = agentVisible ? [BASE_FEATURES[0], AGENT_FEATURE, ...BASE_FEATURES.slice(1)] : BASE_FEATURES;
 
   useEffect(() => {
+    // כרטיס "סוכן AI" מוצג רק אם המנהל הפעיל את כפתור הבוט - כדי לא לחשוף את קיומו כברירת מחדל.
+    fetch("/api/bot/status")
+      .then((r) => r.json())
+      .then((j) => setAgentVisible(!!j.widgetVisible))
+      .catch(() => {});
+
     let seen = true;
     try {
       seen = localStorage.getItem(KEY) === "1";
@@ -103,7 +112,7 @@ export default function FeatureAnnounce() {
               </div>
 
               <div className="flex flex-col gap-2">
-                {FEATURES.map((f, i) => (
+                {features.map((f, i) => (
                   <motion.div
                     key={f.href}
                     initial={{ opacity: 0, x: 12 }}
