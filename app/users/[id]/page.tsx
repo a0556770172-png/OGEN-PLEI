@@ -149,7 +149,7 @@ export default async function PublicUserPage({ params }: { params: { id: string 
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-surface2 ring-1 ring-border">
                   {iconUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={iconUrl} alt={app.name} className="h-full w-full object-cover" />
+                    <img src={iconUrl} alt={app.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                   ) : (
                     <Package className="h-5 w-5 text-primary-light" />
                   )}

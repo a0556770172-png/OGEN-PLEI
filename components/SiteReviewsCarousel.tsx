@@ -52,7 +52,7 @@ function ReviewCard({
         <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface ring-1 ring-border">
           {r.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={r.avatarUrl} alt={r.username} className="h-full w-full object-cover" />
+            <img src={r.avatarUrl} alt={r.username} loading="lazy" decoding="async" className="h-full w-full object-cover" />
           ) : (
             <UserIcon className="h-4 w-4 text-primary-light" />
           )}

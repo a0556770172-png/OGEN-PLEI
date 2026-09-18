@@ -60,7 +60,7 @@ export default function FollowLists({
               <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface2 ring-1 ring-border">
                 {u.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={u.avatarUrl} alt={u.username} className="h-full w-full object-cover" />
+                  <img src={u.avatarUrl} alt={u.username} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                 ) : (
                   <UserIcon className="h-3.5 w-3.5 text-primary-light" />
                 )}

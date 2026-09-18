@@ -22,7 +22,7 @@ export default function BotAppCard({ app, onNavigate }: { app: BotAppCardData; o
       <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface ring-1 ring-border">
         {app.iconUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={app.iconUrl} alt="" className="h-full w-full object-cover" />
+          <img src={app.iconUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
         ) : (
           <Package className="h-5 w-5 text-primary-light" />
         )}

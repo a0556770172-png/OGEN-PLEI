@@ -127,7 +127,7 @@ export default function ForumPostCard({
         >
           {post.author.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={post.author.avatarUrl} alt={post.author.username} className="h-full w-full object-cover" />
+            <img src={post.author.avatarUrl} alt={post.author.username} loading="lazy" decoding="async" className="h-full w-full object-cover" />
           ) : (
             <UserIcon className="h-4 w-4 text-primary-light" />
           )}
