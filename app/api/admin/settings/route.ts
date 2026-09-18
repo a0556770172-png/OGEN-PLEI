@@ -12,15 +12,18 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "רק מנהל יכול לשנות הגדרות אתר" }, { status: 403 });
   }
 
-  const { requireEmailVerification } = await request.json().catch(() => ({}));
-  if (typeof requireEmailVerification !== "boolean") {
+  const { requireEmailVerification, forumButtonVisible } = await request.json().catch(() => ({}));
+  const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+  if (typeof requireEmailVerification === "boolean") patch.require_email_verification = requireEmailVerification;
+  if (typeof forumButtonVisible === "boolean") patch.forum_button_visible = forumButtonVisible;
+  if (!("require_email_verification" in patch) && !("forum_button_visible" in patch)) {
     return NextResponse.json({ error: "ערך לא תקין" }, { status: 400 });
   }
 
   const admin = createAdminSupabase();
   const { error } = await admin
     .from("site_settings")
-    .update({ require_email_verification: requireEmailVerification, updated_at: new Date().toISOString() })
+    .update(patch)
     .eq("id", true);
 
   if (error) return NextResponse.json({ error: "שגיאה בעדכון ההגדרות" }, { status: 500 });

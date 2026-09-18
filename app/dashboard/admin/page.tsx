@@ -58,6 +58,7 @@ export default async function AdminDashboard() {
         deletionRequests={deletionRequests}
         councilAutoApprovedCount={councilAutoApprovedCount}
         requireEmailVerification={siteSettings.require_email_verification}
+        forumButtonVisible={siteSettings.forum_button_visible}
         currentProfile={profile}
         banAppeals={banAppeals}
         referralEvents={referralEvents}

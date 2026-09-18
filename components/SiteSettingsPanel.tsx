@@ -1,12 +1,20 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MailWarning, Loader2 } from "lucide-react";
+import { MailWarning, Loader2, Eye, EyeOff, MessageSquare } from "lucide-react";
 
-export default function SiteSettingsPanel({ requireEmailVerification }: { requireEmailVerification: boolean }) {
+export default function SiteSettingsPanel({
+  requireEmailVerification,
+  forumButtonVisible
+}: {
+  requireEmailVerification: boolean;
+  forumButtonVisible: boolean;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [value, setValue] = useState(requireEmailVerification);
+  const [forumBusy, setForumBusy] = useState(false);
+  const [forumVisible, setForumVisible] = useState(forumButtonVisible);
 
   async function toggle() {
     const next = !value;
@@ -26,7 +34,26 @@ export default function SiteSettingsPanel({ requireEmailVerification }: { requir
     }
   }
 
+  async function toggleForum() {
+    const next = !forumVisible;
+    setForumBusy(true);
+    const res = await fetch("/api/admin/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ forumButtonVisible: next })
+    });
+    setForumBusy(false);
+    if (res.ok) {
+      setForumVisible(next);
+      router.refresh();
+    } else {
+      const j = await res.json().catch(() => ({}));
+      alert(j.error || "שגיאה בעדכון ההגדרה");
+    }
+  }
+
   return (
+    <>
     <div className="card flex flex-col gap-4 p-6">
       <div className="flex items-center gap-2 text-lg font-bold text-white">
         <MailWarning className="h-5 w-5 text-primary-light" /> אימות מייל בהתחברות
@@ -58,5 +85,34 @@ export default function SiteSettingsPanel({ requireEmailVerification }: { requir
         (Authentication → Providers → Email) כבויה. אחרת Supabase עצמו יחסום התחברות למשתמשים לא מאומתים, בלי קשר למתג הזה.
       </p>
     </div>
+
+    <div className="card flex flex-col gap-4 p-6">
+      <div className="flex items-center gap-2 text-lg font-bold text-white">
+        <MessageSquare className="h-5 w-5 text-primary-light" /> כפתור הפורום בעמוד הבית
+      </div>
+      <p className="text-sm text-gray-400">
+        שולט בהצגת הכפתור "הצעות לשיפור ורעיונות" (מוביל לפורום) בעמוד הבית. כשמכובה, אף אחד לא רואה את הכפתור בכלל.
+      </p>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={toggleForum}
+          disabled={forumBusy}
+          className={`relative h-8 w-14 shrink-0 rounded-full transition ${forumVisible ? "bg-primary" : "bg-surface2"}`}
+        >
+          <span
+            className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition ${forumVisible ? "right-1" : "right-7"}`}
+          />
+        </button>
+        {forumBusy ? (
+          <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+        ) : (
+          <span className={`flex items-center gap-1.5 text-sm font-bold ${forumVisible ? "text-primary-light" : "text-gray-400"}`}>
+            {forumVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            {forumVisible ? "כפתור הפורום מוצג בעמוד הבית" : "כפתור הפורום מוסתר לגמרי"}
+          </span>
+        )}
+      </div>
+    </div>
+    </>
   );
 }

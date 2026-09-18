@@ -38,6 +38,7 @@ export default function AdminDashboardClient({
   deletionRequests,
   councilAutoApprovedCount,
   requireEmailVerification,
+  forumButtonVisible,
   currentProfile,
   banAppeals,
   referralEvents,
@@ -53,6 +54,7 @@ export default function AdminDashboardClient({
   deletionRequests: UserDeletionRequest[];
   councilAutoApprovedCount: number;
   requireEmailVerification: boolean;
+  forumButtonVisible: boolean;
   currentProfile: Profile;
   banAppeals: BanAppeal[];
   referralEvents: ReferralEvent[];
@@ -159,7 +161,7 @@ export default function AdminDashboardClient({
       {tab === "forum" && <ForumModerationPanel posts={forumPosts} />}
       {tab === "bot" && <BotConfigPanel />}
       {tab === "siteRules" && <SiteRulesEditorPanel isAdmin={true} />}
-      {tab === "settings" && <SiteSettingsPanel requireEmailVerification={requireEmailVerification} />}
+      {tab === "settings" && <SiteSettingsPanel requireEmailVerification={requireEmailVerification} forumButtonVisible={forumButtonVisible} />}
     </div>
   );
 }

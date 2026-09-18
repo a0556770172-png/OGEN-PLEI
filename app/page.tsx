@@ -9,15 +9,17 @@ import { getTotalSiteVisits } from "@/lib/site-stats";
 import { getCurrentProfile } from "@/lib/profile";
 import { isStaff } from "@/lib/auth-helpers";
 import { getUserAppUpdates } from "@/lib/updates";
+import { getSiteSettingsServer } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [apps, categories, usersStats, totalVisits] = await Promise.all([
+  const [apps, categories, usersStats, totalVisits, siteSettings] = await Promise.all([
     getApprovedApps(),
     getCategoriesServer(),
     getUsersStats(),
-    getTotalSiteVisits()
+    getTotalSiteVisits(),
+    getSiteSettingsServer()
   ]);
   const withIcons = await Promise.all(
     apps.map(async (app) => ({ app, iconUrl: await getIconUrl(app.icon_key) }))
@@ -42,6 +44,7 @@ export default async function HomePage() {
         totalDownloads={totalDownloads}
         totalUsers={usersStats.totalUsers}
         totalVisits={totalVisits}
+        forumButtonVisible={siteSettings.forum_button_visible}
       />
       <AppGrid items={withIcons} categories={categories} updateAppIds={updateAppIds} viewerIsStaff={viewerIsStaff} loggedIn={!!user} />
     </div>

@@ -29,12 +29,14 @@ export default function HomeHero({
   total,
   totalDownloads,
   totalUsers,
-  totalVisits
+  totalVisits,
+  forumButtonVisible
 }: {
   total: number;
   totalDownloads: number;
   totalUsers: number;
   totalVisits: number;
+  forumButtonVisible: boolean;
 }) {
   const stats: StatItem[] = [
     { icon: Package, value: total, label: "אפליקציות ותוכנות", color: "bg-primary/15 text-primary-light" },
@@ -101,12 +103,14 @@ export default function HomeHero({
           >
             <Star className="h-4 w-4 transition-transform group-hover:scale-110" /> דרגו והשפיעו
           </Link>
-          <Link
-            href="/forum"
-            className="group inline-flex items-center gap-2 rounded-full border-2 border-gold/50 bg-gold/15 px-5 py-2 text-sm font-bold text-gold shadow-[0_0_20px_rgba(234,179,8,0.2)] transition-all duration-300 hover:border-gold/80 hover:bg-gold/25 hover:shadow-[0_0_30px_rgba(234,179,8,0.35)]"
-          >
-            <Lightbulb className="h-4 w-4 transition-transform group-hover:scale-110" /> הצעות לשיפור ורעיונות
-          </Link>
+          {forumButtonVisible && (
+            <Link
+              href="/forum"
+              className="group inline-flex items-center gap-2 rounded-full border-2 border-gold/50 bg-gold/15 px-5 py-2 text-sm font-bold text-gold shadow-[0_0_20px_rgba(234,179,8,0.2)] transition-all duration-300 hover:border-gold/80 hover:bg-gold/25 hover:shadow-[0_0_30px_rgba(234,179,8,0.35)]"
+            >
+              <Lightbulb className="h-4 w-4 transition-transform group-hover:scale-110" /> הצעות לשיפור ורעיונות
+            </Link>
+          )}
         </div>
       </motion.div>
     </section>
