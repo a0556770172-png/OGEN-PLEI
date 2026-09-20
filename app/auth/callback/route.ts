@@ -6,6 +6,7 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const isRecovery = searchParams.get("flow") === "recovery";
+  const isOAuth = searchParams.get("flow") === "oauth";
 
   if (code) {
     const supabase = createServerSupabase();
@@ -23,6 +24,31 @@ export async function GET(request: Request) {
       if (user) await grantReferralIfPending(user.id, extractClientIp(request.headers));
     } catch {
       // ignore
+    }
+
+    // התחברות/הרשמה עם Google (בניגוד לאימות מייל רגיל) - יש כבר סשן פעיל בדיוק עכשיו,
+    // אז מנווטים ישר פנימה לפי תפקיד במקום להראות שוב את מסך ההתחברות (אין למשתמש כזה
+    // סיסמה בכלל). אותו מיפוי כמו ב-app/login/page.tsx.
+    if (isOAuth) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role, is_moderator")
+            .eq("id", user.id)
+            .single();
+          const dest =
+            profile?.role === "admin" ? "/dashboard/admin"
+            : profile?.is_moderator ? "/dashboard/moderator"
+            : profile?.role === "developer" ? "/profile"
+            : "/";
+          return NextResponse.redirect(`${origin}${dest}`);
+        }
+      } catch {
+        // אם משהו נכשל, נופלים בבטחה לדף הבית למטה
+      }
+      return NextResponse.redirect(`${origin}/`);
     }
   }
 

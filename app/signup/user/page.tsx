@@ -18,6 +18,26 @@ export default function UserSignupPage() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [autoLoggingIn, setAutoLoggingIn] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  // אותה קריאה בדיוק כמו ב-app/login/page.tsx: אם החשבון עדיין לא קיים, Google יוצר
+  // אותו אוטומטית (תפקיד ברירת מחדל "user" נקבע ע"י ה-trigger בבסיס הנתונים). תגמול
+  // הפניה (אם יש עוגיית ogen_ref) מטופל ב-app/auth/callback/route.ts מהעוגייה ישירות -
+  // אי אפשר להעביר metadata מותאם אישית דרך זרימת ה-OAuth של Google כמו ב-signUp() הרגיל.
+  async function handleGoogleSignIn() {
+    setError("");
+    setGoogleLoading(true);
+    const callbackUrl = new URL(`${window.location.origin}/auth/callback`);
+    callbackUrl.searchParams.set("flow", "oauth");
+    const { error: err } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: callbackUrl.toString() }
+    });
+    if (err) {
+      setError("ההרשמה עם Google נכשלה. נסה שוב.");
+      setGoogleLoading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -142,6 +162,27 @@ export default function UserSignupPage() {
             {loading ? "נרשם..." : "הרשמה"}
           </button>
         </form>
+
+        <div className="my-4 flex items-center gap-3 text-xs text-gray-500">
+          <div className="h-px flex-1 bg-border/60" />
+          או
+          <div className="h-px flex-1 bg-border/60" />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleGoogleSignIn}
+          disabled={googleLoading}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-border/60 bg-surface2 px-4 py-2.5 text-sm font-semibold transition hover:bg-surface2/70 disabled:opacity-60"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.66-.22-2.45H12v4.64h6.47a5.53 5.53 0 0 1-2.4 3.63v3h3.88c2.27-2.09 3.57-5.17 3.57-8.82Z" />
+            <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.95-2.91l-3.88-3c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.27v3.1A12 12 0 0 0 12 24Z" />
+            <path fill="#FBBC05" d="M5.27 14.28A7.2 7.2 0 0 1 4.89 12c0-.79.14-1.56.38-2.28v-3.1H1.27A12 12 0 0 0 0 12c0 1.94.46 3.77 1.27 5.38l4-3.1Z" />
+            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.27 6.62l4 3.1C6.22 6.86 8.87 4.75 12 4.75Z" />
+          </svg>
+          {googleLoading ? "מעביר ל-Google..." : "הרשמה עם Google"}
+        </button>
 
         <div className="mt-6 text-center text-sm text-gray-400">
           יש לך כבר חשבון? <Link href="/login" className="font-semibold text-primary-light hover:underline">התחבר</Link>
