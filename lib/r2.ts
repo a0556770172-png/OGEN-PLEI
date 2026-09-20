@@ -106,15 +106,14 @@ export async function createDownloadUrl(bucket: string, key: string, filename?: 
   return presignR2Url({ method: "GET", bucket, key, expiresIn, extraQuery });
 }
 
-// כתובת ציבורית קבועה (לא חתומה) לדלי ה-assets בלבד - מוגש דרך cdn.ogenplay.com
-// (דומיין מותאם אישית שמחובר ישירות ל-bucket ב-Cloudflare, ראו הגדרות ה-bucket ב-R2).
+// כתובת ציבורית לדלי ה-assets בלבד - נתיב יחסי באותו origin (ogenplay.com), מוגש דרך
+// app/api/cdn/[...path]/route.ts. בכוונה *לא* cdn.ogenplay.com בתת-דומיין נפרד יותר -
+// מסנני תוכן (כמו NetFree) מאשרים/חוסמים per-hostname, כך שתת-דומיין יכול להישאר חסום
+// גם כשהדומיין הראשי כבר אושר. נתיב יחסי עובד תמיד כי הוא תמיד "אותו אתר" מבחינת המסנן.
 // בטוח להשתמש בזה רק לתוכן שממילא מוצג לכולם בפומבי (אייקוני אפליקציות, תמונות פרופיל) -
 // לעולם לא לקבצי הורדה/העלאה בדלים apps/uploads שצריכים להישאר עם URL חתום.
-// היתרון: הדפדפן מקבל קישור קבוע (לא ייחודי לכל בקשה) שניתן ל-Cloudflare לשמור ב-cache
-// בקצה הרשת, במקום לפנות ישירות ל-R2 storage בכל טעינת עמוד.
 export function publicAssetUrl(key: string): string {
-  const base = (process.env.R2_ASSETS_PUBLIC_URL || "").replace(/\/$/, "");
-  return `${base}/${encodeS3Key(key)}`;
+  return `/api/cdn/${encodeS3Key(key)}`;
 }
 
 export async function deleteObject(bucket: string, key: string): Promise<void> {
