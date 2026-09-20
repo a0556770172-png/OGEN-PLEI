@@ -35,7 +35,9 @@ export async function middleware(request: NextRequest) {
         remove(name: string, options: any) {
           response.cookies.set({ name, value: "", ...options });
         }
-      }
+      },
+      // חייב להיות זהה לשם הקבוע ב-lib/supabase/client.ts - ראו ההסבר שם.
+      cookieOptions: { name: "sb-ogenplay-auth-token" }
     }
   );
 

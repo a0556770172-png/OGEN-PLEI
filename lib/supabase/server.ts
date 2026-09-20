@@ -24,7 +24,9 @@ export function createServerSupabase() {
             cookieStore.set({ name, value: "", ...options });
           } catch {}
         }
-      }
+      },
+      // חייב להיות זהה לשם הקבוע ב-lib/supabase/client.ts - ראו ההסבר שם.
+      cookieOptions: { name: "sb-ogenplay-auth-token" }
     }
   );
 }
