@@ -23,6 +23,7 @@ export default function CouncilPanel({ currentProfile }: { currentProfile: Profi
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   const [replyingTo, setReplyingTo] = useState<CouncilMessage | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -68,6 +69,18 @@ export default function CouncilPanel({ currentProfile }: { currentProfile: Profi
   useEffect(() => {
     loadThreads();
   }, []);
+
+  // פולינג צמוד לדיון הפתוח כדי שהודעות חדשות מחברי צוות אחרים יופיעו כמעט מיידית.
+  useEffect(() => {
+    if (!selected) return;
+    const interval = setInterval(refreshMessages, 3000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length]);
 
   async function openThread(thread: CouncilThread) {
     setSelected(thread);
@@ -377,6 +390,7 @@ export default function CouncilPanel({ currentProfile }: { currentProfile: Profi
                     </div>
                   );
                 })}
+                <div ref={bottomRef} />
               </div>
 
               {replyingTo && (

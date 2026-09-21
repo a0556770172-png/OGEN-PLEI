@@ -38,6 +38,7 @@ function SupportPageInner() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   const [replyingTo, setReplyingTo] = useState<TicketMessage | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -65,6 +66,18 @@ function SupportPageInner() {
     loadTickets();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // פולינג צמוד לשיחה הפתוחה כדי שהודעות שמגיעות מהצוות יופיעו כמעט מיידית, בלי לרענן ידנית.
+  useEffect(() => {
+    if (!selected) return;
+    const interval = setInterval(refreshMessages, 3000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length]);
 
   async function openTicket(ticket: Ticket) {
     setSelected(ticket);
@@ -370,6 +383,7 @@ function SupportPageInner() {
                     </div>
                   );
                 })}
+                <div ref={bottomRef} />
               </div>
 
               {replyingTo && (

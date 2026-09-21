@@ -34,6 +34,7 @@ export default function TicketsPanel({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   const [replyingTo, setReplyingTo] = useState<TicketMessage | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -87,6 +88,18 @@ export default function TicketsPanel({
   useEffect(() => {
     loadTickets();
   }, []);
+
+  // פולינג צמוד לשיחה הפתוחה כדי שהודעות שמגיעות מהמשתמש יופיעו כמעט מיידית, בלי לרענן ידנית.
+  useEffect(() => {
+    if (!selected) return;
+    const interval = setInterval(refreshMessages, 3000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length]);
 
   async function openTicket(ticket: Ticket) {
     setSelected(ticket);
@@ -478,6 +491,7 @@ export default function TicketsPanel({
                     </div>
                   );
                 })}
+                <div ref={bottomRef} />
               </div>
 
               {replyingTo && (

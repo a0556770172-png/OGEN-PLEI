@@ -39,7 +39,7 @@ export default function DmThreadPage() {
   useEffect(() => {
     fetch("/api/profile/heartbeat", { method: "POST" }).catch(() => {});
     load();
-    const interval = setInterval(load, 10000);
+    const interval = setInterval(load, 3000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId]);
