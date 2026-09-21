@@ -3,7 +3,13 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { grantReferralIfPending, extractClientIp } from "@/lib/referral";
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
+  // חשוב: לא משתמשים ב-origin של new URL(request.url) - מאחורי nginx זה לפעמים
+  // מחזיר http://localhost:3000 (כתובת ה-Next.js הפנימית) במקום הדומיין האמיתי,
+  // גם כשה-Host header שנשלח מ-nginx תקין. בונים origin ידנית מה-headers במקום.
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const proto = request.headers.get("x-forwarded-proto") ?? "https";
+  const origin = `${proto}://${host}`;
   const code = searchParams.get("code");
   const isRecovery = searchParams.get("flow") === "recovery";
   const isOAuth = searchParams.get("flow") === "oauth";
