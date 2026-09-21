@@ -10,6 +10,7 @@ import CategoriesManager from "./CategoriesManager";
 import NotificationsPanel from "./NotificationsPanel";
 import SiteSettingsPanel from "./SiteSettingsPanel";
 import MigrationEmailPanel from "./MigrationEmailPanel";
+import EmailNotificationsPanel from "./EmailNotificationsPanel";
 import IconBackfillPanel from "./IconBackfillPanel";
 import DeletionRequestsPanel from "./DeletionRequestsPanel";
 import CouncilPanel from "./CouncilPanel";
@@ -165,6 +166,7 @@ export default function AdminDashboardClient({
       {tab === "settings" && (
         <>
           <SiteSettingsPanel requireEmailVerification={requireEmailVerification} forumButtonVisible={forumButtonVisible} />
+          <EmailNotificationsPanel />
           <MigrationEmailPanel />
         </>
       )}

@@ -2,7 +2,7 @@ import { createAdminSupabase } from "./supabase/admin";
 
 export type AuditAction =
   | "ban_user" | "unban_user"
-  | "approve_app" | "reject_app" | "delete_app" | "change_app_category"
+  | "approve_app" | "reject_app" | "delete_app" | "change_app_category" | "change_app_platform"
   | "pin_app" | "unpin_app"
   | "approve_suggestion" | "reject_suggestion"
   | "approve_pro" | "reject_pro"

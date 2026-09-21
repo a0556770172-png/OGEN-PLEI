@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Bell, Loader2, X, Package, Tag } from "lucide-react";
+import { Bell, Loader2, X, Package, Tag, Mail } from "lucide-react";
 import PushNotificationsSetup from "./PushNotificationsSetup";
 
 interface Sub {
@@ -13,6 +13,8 @@ export default function NotificationsManager() {
   const [subs, setSubs] = useState<Sub[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
+  const [emailOn, setEmailOn] = useState(false);
+  const [emailBusy, setEmailBusy] = useState(false);
 
   function load() {
     fetch("/api/notifications/subscriptions")
@@ -22,6 +24,25 @@ export default function NotificationsManager() {
       .finally(() => setLoading(false));
   }
   useEffect(load, []);
+  useEffect(() => {
+    fetch("/api/profile/email-notifications")
+      .then((r) => r.json())
+      .then((j) => setEmailOn(!!j.enabled))
+      .catch(() => {});
+  }, []);
+
+  async function toggleEmail() {
+    const next = !emailOn;
+    setEmailBusy(true);
+    setEmailOn(next);
+    const res = await fetch("/api/profile/email-notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: next })
+    }).catch(() => null);
+    setEmailBusy(false);
+    if (!res || !res.ok) setEmailOn(!next);
+  }
 
   const has = (type: string) => subs.some((s) => s.type === type);
 
@@ -60,6 +81,22 @@ export default function NotificationsManager() {
         ההתראות מופיעות תמיד בפעמון למעלה. כדי לקבל אותן גם כהתראת דפדפן (גם כשלא נמצאים באתר) — הפעילו כאן:
       </p>
       <PushNotificationsSetup variant="full" />
+
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-surface2/50 px-3 py-2.5">
+        <button
+          onClick={toggleEmail}
+          disabled={emailBusy}
+          className={`relative h-7 w-12 shrink-0 rounded-full transition ${emailOn ? "bg-primary" : "bg-surface2"}`}
+        >
+          <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${emailOn ? "right-1" : "right-6"}`} />
+        </button>
+        <div>
+          <p className={`inline-flex items-center gap-1.5 text-sm font-bold ${emailOn ? "text-primary-light" : "text-gray-300"}`}>
+            <Mail className="h-3.5 w-3.5" /> קבלת התראות גם במייל
+          </p>
+          <p className="text-xs text-gray-500">בנוסף להתראות כאן באתר, נשלח לכתובת המייל שלכם עדכון על התראות חדשות.</p>
+        </div>
+      </div>
 
       {loading ? (
         <div className="flex justify-center p-4">

@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Check, X, Archive, Trash2, Loader2, User, HardDrive, ShieldQuestion, CheckCircle2, XCircle, ImageOff, MessageSquarePlus, FolderInput, Search, Pin, PinOff } from "lucide-react";
+import { Download, Check, X, Archive, Trash2, Loader2, User, HardDrive, ShieldQuestion, CheckCircle2, XCircle, ImageOff, MessageSquarePlus, FolderInput, Search, Pin, PinOff, Smartphone, Monitor } from "lucide-react";
 import type { AppRow, Category } from "@/types/database";
 import StatusBadge from "./StatusBadge";
 import { formatFileSize } from "@/lib/format";
+import { isApk } from "./AppGrid";
 
 type VerifyResult = { status: string; visibleToPublic: boolean; updatedAt: string | null } | { error: string };
 
@@ -92,6 +93,33 @@ export default function ReviewQueue({
     setBusyId(null);
     if (res.ok) router.refresh();
     else alert("שגיאה במחיקה");
+  }
+
+  // מעבר ידני בין "אנדרואיד" ל"תוכנות" (סעיף הראשי בעמוד הבית, ראו components/AppGrid.tsx) -
+  // צוות פיקוח ומנהל, למקרים שהסיווג האוטומטי (לפי סיומת הקובץ) לא מתאים.
+  async function togglePlatform(app: AppRow) {
+    const nextOverride = isApk(app) ? "software" : "apk";
+    setBusyId(app.id);
+    const res = await fetch(`/api/apps/${app.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ platformOverride: nextOverride })
+    });
+    setBusyId(null);
+    if (res.ok) router.refresh();
+    else alert("שגיאה בשינוי השיוך");
+  }
+
+  async function resetPlatform(appId: string) {
+    setBusyId(appId);
+    const res = await fetch(`/api/apps/${appId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ platformOverride: null })
+    });
+    setBusyId(null);
+    if (res.ok) router.refresh();
+    else alert("שגיאה באיפוס השיוך");
   }
 
   // נעיצה/קידום (פיצ'ר 6) - מנהל בפועל בלבד. נעוצה מוצגת בראש העמוד הראשי.
@@ -197,6 +225,22 @@ export default function ReviewQueue({
                     ))}
                   </select>
                 </label>
+              )}
+              <button
+                onClick={() => togglePlatform(app)}
+                disabled={busyId === app.id}
+                title={app.platform_override ? "שיוך ידני - לחצו כדי להחליף" : "שיוך אוטומטי לפי סוג הקובץ - לחצו כדי לקבוע ידנית"}
+                className={`inline-flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-bold transition ${
+                  app.platform_override ? "bg-gold/15 text-gold hover:bg-gold/25" : "bg-surface2 text-gray-400 hover:text-white"
+                }`}
+              >
+                {isApk(app) ? <Smartphone className="h-3.5 w-3.5" /> : <Monitor className="h-3.5 w-3.5" />}
+                {isApk(app) ? "אנדרואיד" : "תוכנה"} - העברה ל{isApk(app) ? "תוכנות" : "אנדרואיד"}
+              </button>
+              {app.platform_override && (
+                <button onClick={() => resetPlatform(app.id)} disabled={busyId === app.id} className="text-xs text-gray-500 underline hover:text-gray-300">
+                  איפוס לאוטומטי
+                </button>
               )}
               {app.status !== "approved" && (
                 <button onClick={() => act(app.id, "approve")} disabled={busyId === app.id} className="inline-flex items-center gap-1 rounded-xl bg-accent/15 px-3 py-2 text-xs font-bold text-accent transition hover:bg-accent/25">

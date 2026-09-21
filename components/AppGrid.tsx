@@ -20,7 +20,10 @@ function endsWithAny(value: string | null | undefined, suffixes: string[]) {
   return suffixes.some((s) => v.endsWith(s));
 }
 
-function isApk(app: AppRow) {
+export function isApk(app: AppRow) {
+  // שיוך ידני (צוות פיקוח/מנהל, ראו ReviewQueue.tsx) גובר תמיד על הסיווג האוטומטי.
+  if (app.platform_override === "apk") return true;
+  if (app.platform_override === "software") return false;
   return endsWithAny(app.file_name, APK_EXTENSIONS) || endsWithAny(app.file_key, APK_EXTENSIONS);
 }
 

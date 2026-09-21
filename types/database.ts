@@ -44,6 +44,8 @@ export interface Profile {
   // מתי המשתמש קרא ואישר את "חוקי האתר" (שער חובה חד-פעמי לכל חשבון - ראו
   // components/SiteRulesGate.tsx). null = עדיין לא אישר, ייחסם עד שיאשר.
   site_rules_accepted_at: string | null;
+  // מתג אישי: קבלת התראות (עקיבה, תגובות, פורום וכו') גם במייל - ראו lib/emailNotifications.ts.
+  email_notifications_enabled: boolean;
   // מערכת הפניות (Referral) - ראו lib/referral.ts, supabase/migrations/0034_referrals.sql.
   // מי הזמין את המשתמש הזה (נקבע פעם אחת בהרשמה ע"י הטריגר handle_new_user, לפי ?ref=<username>).
   referred_by: string | null;
@@ -95,6 +97,8 @@ export interface AppRow {
   reviewed_by: string | null;
   reviewed_at: string | null;
   downloads_count: number;
+  // שיוך ידני לאנדרואיד/תוכנות (גובר על הסיווג האוטומטי לפי סיומת קובץ) - ראו components/AppGrid.tsx.
+  platform_override: "apk" | "software" | null;
   download_paused: boolean;
   download_paused_until: string | null;
   admin_note: string | null;

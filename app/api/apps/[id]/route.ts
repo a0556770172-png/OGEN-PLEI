@@ -57,6 +57,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     updates.pinned_at = body.pinned ? new Date().toISOString() : null;
   }
 
+  // שיוך ידני לאנדרואיד/תוכנות - צוות פיקוח ומנהל, למקרים שהסיווג האוטומטי (לפי סיומת
+  // הקובץ) לא מתאים. null מחזיר לסיווג האוטומטי.
+  if ("platformOverride" in body && isStaff(profile)) {
+    const v = body.platformOverride;
+    if (v === "apk" || v === "software" || v === null) updates.platform_override = v;
+  }
+
   let iconUploadUrl: string | undefined;
   let iconKey: string | undefined;
   if (iconFileName && iconContentType) {
@@ -92,6 +99,18 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       targetType: "app",
       targetId: app.id,
       targetLabel: app.name,
+      undoable: true
+    });
+  }
+
+  if ("platform_override" in updates) {
+    await logAudit({
+      actorId: user.id,
+      action: "change_app_platform",
+      targetType: "app",
+      targetId: app.id,
+      targetLabel: app.name,
+      meta: { from: app.platform_override, to: updates.platform_override },
       undoable: true
     });
   }
