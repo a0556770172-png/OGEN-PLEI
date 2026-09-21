@@ -33,26 +33,9 @@ export async function GET(request: Request) {
     }
 
     // התחברות/הרשמה עם Google (בניגוד לאימות מייל רגיל) - יש כבר סשן פעיל בדיוק עכשיו,
-    // אז מנווטים ישר פנימה לפי תפקיד במקום להראות שוב את מסך ההתחברות (אין למשתמש כזה
-    // סיסמה בכלל). אותו מיפוי כמו ב-app/login/page.tsx.
+    // אז מנווטים ישר פנימה במקום להראות שוב את מסך ההתחברות (אין למשתמש כזה סיסמה בכלל).
+    // תמיד לדף הבית, בדיוק כמו בהתחברות רגילה - ראו app/login/page.tsx.
     if (isOAuth) {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("role, is_moderator")
-            .eq("id", user.id)
-            .single();
-          const dest =
-            profile?.role === "admin" ? "/dashboard/admin"
-            : profile?.is_moderator ? "/dashboard/moderator"
-            : "/";
-          return NextResponse.redirect(`${origin}${dest}`);
-        }
-      } catch {
-        // אם משהו נכשל, נופלים בבטחה לדף הבית למטה
-      }
       return NextResponse.redirect(`${origin}/`);
     }
   }

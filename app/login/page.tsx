@@ -98,14 +98,10 @@ function LoginForm() {
       }
     }
 
+    // תמיד לדף הבית אחרי התחברות (גם מנהל/פיקוח/מפתח) - חוץ ממקרה שבו המשתמש הופנה
+    // לכאן מעמוד מוגן ספציפי (redirect בכתובת), אז חוזרים בדיוק לשם.
     const redirect = params.get("redirect");
-    // פיקוח (is_moderator) מתווסף על גבי התפקיד הבסיסי - מי שהוא גם מפתח וגם פיקוח
-    // מגיע כאן ראשית לפאנל הפיקוח, ויכול לעבור לאזור המפתח שלו דרך התפריט העליון.
-    const dest =
-      redirect ||
-      (profile?.role === "admin" ? "/dashboard/admin"
-      : profile?.is_moderator ? "/dashboard/moderator"
-      : "/");
+    const dest = redirect || "/";
 
     router.push(dest);
     router.refresh();
