@@ -393,6 +393,12 @@ export default function CouncilPanel({ currentProfile }: { currentProfile: Profi
                   ref={textareaRef}
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      e.currentTarget.form?.requestSubmit();
+                    }
+                  }}
                   rows={2}
                   className="input-field flex-1 resize-none"
                   placeholder="הקלידו הודעה לצוות..."
