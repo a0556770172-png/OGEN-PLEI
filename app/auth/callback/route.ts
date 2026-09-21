@@ -47,7 +47,6 @@ export async function GET(request: Request) {
           const dest =
             profile?.role === "admin" ? "/dashboard/admin"
             : profile?.is_moderator ? "/dashboard/moderator"
-            : profile?.role === "developer" ? "/profile"
             : "/";
           return NextResponse.redirect(`${origin}${dest}`);
         }

@@ -105,7 +105,6 @@ function LoginForm() {
       redirect ||
       (profile?.role === "admin" ? "/dashboard/admin"
       : profile?.is_moderator ? "/dashboard/moderator"
-      : profile?.role === "developer" ? "/profile"
       : "/");
 
     router.push(dest);
