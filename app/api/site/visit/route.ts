@@ -6,9 +6,12 @@ import { createAdminSupabase } from "@/lib/supabase/admin";
 export async function POST() {
   try {
     const admin = createAdminSupabase();
-    await admin.rpc("increment_site_visits");
-  } catch {
-    // כשל בספירה לא אמור להפריע לשום דבר אחר באתר
+    const { error } = await admin.rpc("increment_site_visits");
+    // כשל בספירה לא אמור להפריע לשום דבר אחר באתר - אבל כן רושמים אותו ביומן השרת
+    // (journalctl -u ogen-play), כדי שכשל שקט לא ייעלם בלי עקבות כמו שקרה בעבר.
+    if (error) console.error("increment_site_visits failed:", error.message);
+  } catch (err) {
+    console.error("increment_site_visits threw:", err);
   }
   return NextResponse.json({ ok: true });
 }

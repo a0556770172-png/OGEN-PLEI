@@ -42,7 +42,7 @@ export default function HomeHero({
     { icon: Package, value: total, label: "אפליקציות ותוכנות", color: "bg-primary/15 text-primary-light" },
     { icon: Download, value: totalDownloads, label: "הורדות", color: "bg-accent/15 text-accent" },
     { icon: Users, value: totalUsers, label: "משתמשים רשומים", color: "bg-gold/15 text-gold" },
-    { icon: Eye, value: totalVisits, label: "כניסות לאתר", color: "bg-primary/15 text-primary-light" }
+    { icon: Eye, value: totalVisits, label: "צפיות בעמודים", color: "bg-primary/15 text-primary-light" }
   ];
 
   return (
