@@ -19,12 +19,12 @@ function formatDate(iso: string) {
 function MiniBarChart({ daily, metric, color }: { daily: DailyPoint[]; metric: keyof DailyPoint; color: string }) {
   const max = Math.max(1, ...daily.map((d) => Number(d[metric])));
   return (
-    <div className="flex h-32 items-end gap-[3px] overflow-x-auto">
+    <div className="flex h-32 gap-[3px] overflow-x-auto">
       {daily.map((d) => {
         const value = Number(d[metric]);
         const heightPct = Math.max((value / max) * 100, value > 0 ? 4 : 0);
         return (
-          <div key={d.date} className="group relative flex min-w-[8px] flex-1 flex-col items-center justify-end">
+          <div key={d.date} className="group relative flex h-full min-w-[8px] flex-1 flex-col items-center justify-end">
             <div
               style={{ height: `${heightPct}%`, background: color }}
               className="w-full min-w-[6px] rounded-t transition-all"
