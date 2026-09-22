@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning, ScrollText, History, Star, Lightbulb, Archive } from "lucide-react";
+import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning, ScrollText, History, Star, Lightbulb, Archive, BarChart3 } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import TicketsPanel from "./TicketsPanel";
 import SuggestionsQueue from "./SuggestionsQueue";
@@ -16,11 +16,12 @@ import SiteRulesEditorPanel from "./SiteRulesEditorPanel";
 import AuditLogPanel from "./AuditLogPanel";
 import SiteReviewsPanel from "./SiteReviewsPanel";
 import ForumModerationPanel from "./ForumModerationPanel";
+import StatsPanel from "./StatsPanel";
 import type { SiteReviewRow } from "@/lib/siteReviews";
 import type { ForumPost } from "@/lib/forum";
 import type { AppRow, Profile, BanAppeal } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals" | "teamTracking" | "siteRules" | "siteReviews" | "forum";
+type TabKey = "notifications" | "review" | "allApps" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals" | "teamTracking" | "siteRules" | "siteReviews" | "forum" | "stats";
 
 export default function ModeratorDashboardClient({
   apps,
@@ -57,6 +58,7 @@ export default function ModeratorDashboardClient({
 
   const tabs = [
     { key: "notifications", label: `התראות${notificationCount ? ` (${notificationCount})` : ""}`, icon: BellRing },
+    { key: "stats", label: "סטטיסטיקה", icon: BarChart3 },
     { key: "review", label: `בדיקת פרסום (${apps.length})`, icon: ClipboardList },
     { key: "allApps", label: `כל האפליקציות (${allApps.length})`, icon: LayoutGrid },
     { key: "suggestions", label: "הצעות אפליקציות", icon: Gift },
@@ -98,6 +100,7 @@ export default function ModeratorDashboardClient({
       </div>
 
       {tab === "notifications" && <NotificationsPanel items={notificationItems} onNavigate={(key) => setTab(key as TabKey)} />}
+      {tab === "stats" && <StatsPanel />}
       {/* צוות פיקוח יכול גם למחוק אפליקציות, לא רק לאשר/לדחות */}
       {tab === "review" && <ReviewQueue apps={apps} canDelete={true} />}
       {tab === "allApps" && (

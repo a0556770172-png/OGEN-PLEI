@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2, Archive, Bot, Star, Lightbulb, KeyRound } from "lucide-react";
+import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2, Archive, Bot, Star, Lightbulb, KeyRound, BarChart3 } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import UserManagementTable from "./UserManagementTable";
 import ProRequestsQueue from "./ProRequestsQueue";
@@ -24,11 +24,12 @@ import BotConfigPanel from "./BotConfigPanel";
 import SiteReviewsPanel from "./SiteReviewsPanel";
 import ForumModerationPanel from "./ForumModerationPanel";
 import PasswordResetsPanel from "./PasswordResetsPanel";
+import StatsPanel from "./StatsPanel";
 import type { ForumPost } from "@/lib/forum";
 import type { AppRow, Profile, ProRequest, UserDeletionRequest, BanAppeal, ReferralEvent } from "@/types/database";
 import type { SiteReviewRow } from "@/lib/siteReviews";
 
-type TabKey = "notifications" | "review" | "allApps" | "archive" | "users" | "pro" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteReviews" | "forum" | "passwordResets" | "bot" | "siteRules" | "settings";
+type TabKey = "notifications" | "review" | "allApps" | "archive" | "users" | "pro" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteReviews" | "forum" | "passwordResets" | "bot" | "siteRules" | "settings" | "stats";
 
 export default function AdminDashboardClient({
   apps,
@@ -84,6 +85,7 @@ export default function AdminDashboardClient({
 
   const tabs = [
     { key: "notifications", label: `התראות${notificationCount ? ` (${notificationCount})` : ""}`, icon: BellRing },
+    { key: "stats", label: "סטטיסטיקה", icon: BarChart3 },
     { key: "review", label: `בדיקת פרסום (${apps.length})`, icon: ClipboardList },
     { key: "allApps", label: `כל האפליקציות (${activeApps.length})`, icon: LayoutGrid },
     { key: "archive", label: `ארכיון (${archivedApps.length})`, icon: Archive },
@@ -135,6 +137,7 @@ export default function AdminDashboardClient({
       </div>
 
       {tab === "notifications" && <NotificationsPanel items={notificationItems} onNavigate={(key) => setTab(key as TabKey)} />}
+      {tab === "stats" && <StatsPanel />}
       {tab === "review" && <ReviewQueue apps={apps} canDelete={true} />}
       {tab === "allApps" && (
         <div className="flex flex-col gap-4">
