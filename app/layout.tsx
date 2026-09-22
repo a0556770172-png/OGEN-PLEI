@@ -103,6 +103,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        {/* אימות בעלות/הפעלת Google AdSense - הסקריפט חייב להיות ב-head בעמוד השרת (SSR),
+            כדי שסורק גוגל יוכל לוודא בעלות על האתר. */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4033864146844193"
+          crossOrigin="anonymous"
+        />
       </head>
       <body className={`${heebo.variable} font-sans bg-bg text-gray-100 min-h-screen antialiased relative`}>
         <AnimatedBackground />

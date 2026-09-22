@@ -70,7 +70,7 @@ export default function StatsPanel() {
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="card flex flex-col gap-1.5 p-4">
-          <span className="inline-flex items-center gap-1.5 text-xs text-gray-500"><Eye className="h-3.5 w-3.5" /> סה&quot;כ צפיות בעמודים</span>
+          <span className="inline-flex items-center gap-1.5 text-xs text-gray-500"><Eye className="h-3.5 w-3.5" /> סה&quot;כ צפיות באתר</span>
           <span className="text-2xl font-black text-white">{stats.totals.visits.toLocaleString("he-IL")}</span>
         </div>
         <div className="card flex flex-col gap-1.5 p-4">
@@ -93,7 +93,7 @@ export default function StatsPanel() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <p className="text-xs text-gray-500">צפיות בעמודים ({period30Visits.toLocaleString("he-IL")} בתקופה)</p>
+          <p className="text-xs text-gray-500">צפיות באתר ({period30Visits.toLocaleString("he-IL")} בתקופה)</p>
           <MiniBarChart daily={stats.daily} metric="visits" color="rgb(var(--c-primary))" />
         </div>
 
