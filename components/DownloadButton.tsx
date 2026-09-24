@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Loader2, Lock, Share2, Check, AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import AdInterstitial from "./AdInterstitial";
-import { shouldShowAd } from "@/lib/adThrottle";
+import AdInterstitial, { type AdInterstitialConfig } from "./AdInterstitial";
+import { shouldShowStaffAd } from "@/lib/adThrottle";
 import type { AppStatus } from "@/types/database";
 
 function ShareButton({ appId }: { appId: string }) {
@@ -56,13 +56,38 @@ export default function DownloadButton({
   const [alreadyDownloaded, setAlreadyDownloaded] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [showAd, setShowAd] = useState(false);
+  const [isStaff, setIsStaff] = useState(false);
+  const [adConfig, setAdConfig] = useState<AdInterstitialConfig & { enabled: boolean; staffDailyLimit: number } | null>(null);
 
   useEffect(() => {
     fetch(`/api/apps/${appId}/download-status`)
       .then((r) => r.json())
-      .then((json) => setAlreadyDownloaded(!!json.alreadyDownloaded))
+      .then((json) => {
+        setAlreadyDownloaded(!!json.alreadyDownloaded);
+        setIsStaff(!!json.isStaff);
+      })
+      .catch(() => {});
+    fetch("/api/ads/config")
+      .then((r) => r.json())
+      .then((json) =>
+        setAdConfig({
+          enabled: !!json.interstitialEnabled,
+          imageUrl: json.imageUrl ?? null,
+          linkUrl: json.linkUrl,
+          skipAfterSeconds: json.skipAfterSeconds ?? 4,
+          staffDailyLimit: json.staffDailyLimit ?? 2
+        })
+      )
       .catch(() => {});
   }, [appId]);
+
+  // למשתמש רגיל: מוצגת תמיד (בלי הגבלה) כשהפרסומת מופעלת. לצוות/מנהל: מוגבל ליום, כדי
+  // לא להטריד מי שמוריד הרבה לצורך בדיקה/פיקוח.
+  function shouldShowInterstitial(): boolean {
+    if (!adConfig || !adConfig.enabled) return false;
+    if (isStaff) return shouldShowStaffAd(adConfig.staffDailyLimit);
+    return true;
+  }
 
   async function actuallyDownload() {
     setError("");
@@ -92,9 +117,8 @@ export default function DownloadButton({
       setConfirmOpen(true);
       return;
     }
-    // "פרסומת" קצרה לפני ההורדה בפועל - קידום אפשרות הפרסום באתר.
-    // עד 3 פעמים ביום לכל דפדפן, כדי לא להטריד יותר מדי משתמשים שמורידים הרבה.
-    if (shouldShowAd()) setShowAd(true);
+    // פרסומת ביניים לפני ההורדה בפועל (ראו shouldShowInterstitial לכללי ההצגה).
+    if (shouldShowInterstitial()) setShowAd(true);
     else await actuallyDownload();
   }
 
@@ -150,7 +174,7 @@ export default function DownloadButton({
               <button
                 onClick={() => {
                   setConfirmOpen(false);
-                  if (shouldShowAd()) setShowAd(true);
+                  if (shouldShowInterstitial()) setShowAd(true);
                   else actuallyDownload();
                 }}
                 className="btn-primary flex-1 justify-center"
@@ -162,7 +186,9 @@ export default function DownloadButton({
         </div>
       )}
 
-      {showAd && <AdInterstitial onDone={() => { setShowAd(false); actuallyDownload(); }} />}
+      {showAd && adConfig && (
+        <AdInterstitial config={adConfig} onDone={() => { setShowAd(false); actuallyDownload(); }} />
+      )}
     </div>
   );
 }

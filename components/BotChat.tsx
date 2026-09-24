@@ -5,9 +5,9 @@ import { Send, Loader2, Bot, User as UserIcon, AlertCircle, ThumbsUp, ThumbsDown
 import BotMessageBody from "./BotMessageBody";
 import BotAppCard, { type BotAppCardData } from "./BotAppCard";
 import BotPersonaPicker from "./BotPersonaPicker";
-import AdInterstitial from "./AdInterstitial";
+import AdInterstitial, { type AdInterstitialConfig } from "./AdInterstitial";
 import { getPersona, DEFAULT_PERSONA_ID } from "@/lib/botPersonas";
-import { shouldShowAd } from "@/lib/adThrottle";
+import { shouldShowStaffAd } from "@/lib/adThrottle";
 
 const PERSONA_KEY = "ogen-bot-persona";
 const OPENER_OFF_KEY = "ogen-bot-opener-off";
@@ -258,10 +258,28 @@ export default function BotChat({
     }
   }
 
-  // "פרסומת" קצרה לפני שהורדה שיזם הבוט מתחילה בפועל - עד 3 פעמים ביום.
+  // פרסומת ביניים קצרה לפני שהורדה שיזם הבוט מתחילה בפועל - אותם כללי הצגה כמו כפתור
+  // ההורדה הרגיל (DownloadButton): תמיד למשתמש רגיל, מוגבל ליום לצוות/מנהל.
   const [adTarget, setAdTarget] = useState<{ appId: string; msgId?: string } | null>(null);
+  const [adConfig, setAdConfig] = useState<(AdInterstitialConfig & { enabled: boolean; staffDailyLimit: number; isStaff: boolean }) | null>(null);
+  useEffect(() => {
+    fetch("/api/ads/config")
+      .then((r) => r.json())
+      .then((json) =>
+        setAdConfig({
+          enabled: !!json.interstitialEnabled,
+          imageUrl: json.imageUrl ?? null,
+          linkUrl: json.linkUrl,
+          skipAfterSeconds: json.skipAfterSeconds ?? 4,
+          staffDailyLimit: json.staffDailyLimit ?? 2,
+          isStaff: !!json.isStaff
+        })
+      )
+      .catch(() => {});
+  }, []);
   function doDownload(appId: string, msgId?: string) {
-    if (shouldShowAd()) setAdTarget({ appId, msgId });
+    const show = !!adConfig?.enabled && (adConfig.isStaff ? shouldShowStaffAd(adConfig.staffDailyLimit) : true);
+    if (show) setAdTarget({ appId, msgId });
     else runDownload(appId, msgId);
   }
 
@@ -362,8 +380,9 @@ export default function BotChat({
         </div>
       )}
 
-      {adTarget && (
+      {adTarget && adConfig && (
         <AdInterstitial
+          config={adConfig}
           onDone={() => {
             const t = adTarget;
             setAdTarget(null);

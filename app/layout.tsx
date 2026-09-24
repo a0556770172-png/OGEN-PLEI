@@ -11,6 +11,7 @@ import SiteVisitTracker from "@/components/SiteVisitTracker";
 import ReferralCapture from "@/components/ReferralCapture";
 import FeatureAnnounce from "@/components/FeatureAnnounce";
 import NewNotificationsPeek from "@/components/NewNotificationsPeek";
+import AdFloatingBadge from "@/components/AdFloatingBadge";
 
 const heebo = Heebo({ subsets: ["hebrew", "latin"], weight: ["300","400","500","700","900"], variable: "--font-heebo" });
 
@@ -122,6 +123,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ModeratorAgreementGate />
         <Navbar />
         <BotWidget />
+        <AdFloatingBadge />
         <main className="relative z-10 mx-auto max-w-7xl px-4 pb-24 pt-6 sm:px-6 lg:px-8">{children}</main>
         <footer className="relative z-10 border-t border-border/60 py-8 text-center text-sm text-gray-500">
           <nav className="mb-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
