@@ -4,6 +4,11 @@ import { createAdminSupabase } from "@/lib/supabase/admin";
 import { isStaff } from "@/lib/auth-helpers";
 import { getAdConfig } from "@/lib/adConfig";
 
+// בלי זה, Next.js עלול לשמור במטמון את קריאת ה-fetch הפנימית של getAdConfig (כי היא רצה
+// לפני כל שימוש ב-cookies שהיה "מכריח" מצב דינמי) - וכל שינוי עתידי בניהול (תמונה חדשה,
+// כיבוי/הפעלה) פשוט לא ישתקף למשתמשים עד ל-deploy הבא. בדיוק הבאג שקרה כאן בפועל.
+export const dynamic = "force-dynamic";
+
 // תצורת הפרסומת הציבורית - נקרא ע"י כל משתמש (מחובר או לא) כדי להציג את פרסומת ההורדה
 // והבאדג' הצף. מחזיר גם isStaff כדי שהלקוח ידע איזה חוק הגבלה (יומי לצוות / תמיד לרגילים) להפעיל.
 export async function GET() {

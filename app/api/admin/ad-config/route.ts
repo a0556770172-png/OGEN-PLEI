@@ -3,6 +3,9 @@ import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { getAdConfig } from "@/lib/adConfig";
 
+// ראו הסבר ב-app/api/ads/config/route.ts - בלי זה Next.js עלול לשמור תשובה ישנה במטמון.
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const result = await requireProfile();
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
