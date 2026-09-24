@@ -241,8 +241,20 @@ export async function POST(request: Request) {
     agent = await runBotAgent(effectiveCfg, systemInstruction, [...history, { role: "user", content: text }], ctx);
   } catch (err: any) {
     if (createdNewConv) await admin.from("bot_conversations").delete().eq("id", convId);
+    const detail = String(err?.message ?? err).slice(0, 250);
+    // התראה למנהל: כל המפתחות/המודלים נכשלו (למשל מכסת Gemini נגמרה) - זו תקלת שירות
+    // אמיתית שדורשת טיפול (מפתח חדש/המתנה למכסה), לא רק "עומס רגעי" - המנהל צריך לדעת מיד
+    // ולא לגלות דרך צילום מסך ממשתמש.
+    notifyAdminsInApp({
+      kind: "bot_down",
+      title: "הבוט לא הצליח לענות - כל המפתחות/המודלים נכשלו",
+      body: detail,
+      url: "/dashboard/admin?tab=bot"
+    }).catch(() => {});
+    // למשתמש רגיל: הודעה נקייה בעברית בלבד, בלי טקסט שגיאה טכני גולמי מגוגל. לצוות (לצורך
+    // דיבוג) עדיין מצרפים את הפירוט הטכני.
     return NextResponse.json(
-      { error: "הבוט לא הצליח לענות כרגע.", detail: String(err?.message ?? err).slice(0, 250) },
+      { error: "הבוט לא הצליח לענות כרגע. נסו שוב בעוד כמה דקות, או פנו לצוות דרך עמוד התמיכה.", detail: staff ? detail : undefined },
       { status: 502 }
     );
   }
