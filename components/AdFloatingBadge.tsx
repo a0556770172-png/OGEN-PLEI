@@ -1,17 +1,18 @@
 "use client";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Tag } from "lucide-react";
 
 // באדג' צף קבוע (פינה ימנית-תחתונה, מול העוזר/הודעות שיושבים משמאל) שמפרסם את הפרסומת
 // החיצונית לכולם, כל הזמן, בלי שום הגבלה - להבדיל מפרסומת הביניים בהורדה (ראו DownloadButton).
+// בלי תמונה: בעיגול הקטן של הבאדג' כל תמונה נחתכת (object-cover) ולא ניתנת לזיהוי,
+// אז במקום זה מוצג כאן טקסט קבוע "חדר בריחה".
 export default function AdFloatingBadge() {
-  const [cfg, setCfg] = useState<{ enabled: boolean; imageUrl: string | null; linkUrl: string } | null>(null);
+  const [cfg, setCfg] = useState<{ enabled: boolean; linkUrl: string } | null>(null);
 
   useEffect(() => {
     fetch("/api/ads/config")
       .then((r) => r.json())
-      .then((json) => setCfg({ enabled: !!json.floatingEnabled, imageUrl: json.imageUrl ?? null, linkUrl: json.linkUrl }))
+      .then((json) => setCfg({ enabled: !!json.floatingEnabled, linkUrl: json.linkUrl }))
       .catch(() => {});
   }, []);
 
@@ -35,13 +36,8 @@ export default function AdFloatingBadge() {
       dir="rtl"
     >
       <span className="absolute inset-0 -z-10 animate-ping rounded-full bg-gold/25" style={{ animationDuration: "3s" }} />
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-gold to-primary text-[#111]">
-        {cfg.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={cfg.imageUrl} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <Tag className="h-4 w-4" />
-        )}
+      <span className="flex h-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-gold to-primary px-3 text-xs font-extrabold text-[#111]">
+        חדר בריחה
       </span>
       <span className="text-xs font-bold text-white">5% הנחה - לחצו כאן</span>
     </motion.a>
