@@ -39,6 +39,7 @@ export default async function ProfilePage() {
 
   let apps: AppRow[] = [];
   let proAdminMessage: string | null = null;
+  let uniqueDownloadersByApp: Record<string, number> = {};
   if (isDeveloper) {
     const supabase = createServerSupabase();
     const { data } = await supabase
@@ -48,6 +49,22 @@ export default async function ProfilePage() {
       .neq("status", "archived")
       .order("created_at", { ascending: false });
     apps = (data as AppRow[]) ?? [];
+
+    // כמה משתמשים *ייחודיים* הורידו כל אפליקציה - להבדיל מ-downloads_count שסופר כל הורדה
+    // בנפרד (אותו משתמש שהוריד כמה פעמים, או גרסאות שונות, נספר כל פעם מחדש שם). נספר
+    // ב-JS ולא ב-SQL כי בהיקף האתר הזה זה זול, ולא דורש migration/RPC ייעודי רק בשביל זה.
+    if (apps.length > 0) {
+      const { data: events } = await supabase
+        .from("download_events")
+        .select("app_id, user_id")
+        .in("app_id", apps.map((a) => a.id));
+      const seen = new Map<string, Set<string>>();
+      for (const ev of events ?? []) {
+        if (!seen.has(ev.app_id)) seen.set(ev.app_id, new Set());
+        seen.get(ev.app_id)!.add(ev.user_id);
+      }
+      uniqueDownloadersByApp = Object.fromEntries([...seen.entries()].map(([appId, users]) => [appId, users.size]));
+    }
 
     const { data: lastProRequest } = await supabase
       .from("pro_requests")
@@ -125,6 +142,7 @@ export default async function ProfilePage() {
             proAdminMessage={proAdminMessage}
             maxApps={plan.maxApps}
             developerUsername={profile.username}
+            uniqueDownloadersByApp={uniqueDownloadersByApp}
           />
         </section>
       ) : (

@@ -57,9 +57,25 @@ export async function POST(request: Request, { params }: { params: { appId: stri
 
   const url = await createDownloadUrl(BUCKETS.apps, app.file_key, app.file_name);
 
-  await admin.from("apps").update({ downloads_count: app.downloads_count + 1 }).eq("id", app.id);
-  // שומרים גם את הגרסה שהורדה - לזיהוי עתידי של עדכון זמין (פיצ'ר 5, ראו lib/updates.ts).
-  await admin.from("download_events").insert({ user_id: user.id, app_id: app.id, downloaded_version: app.version });
+  // המפתח שמוריד את האפליקציה/תוכנה *שלו* יכול להוריד כמה פעמים שהוא רוצה (למשל לבדיקה) -
+  // אבל זה נרשם כ"הורדה" (גם במונה downloads_count וגם ב-download_events, שמשמש גם לספירת
+  // משתמשים ייחודיים) רק פעם אחת אי-פעם, כדי שהורדות בדיקה חוזרות של המפתח עצמו לא ינפחו
+  // את הנתונים. לא נוגע במשתמשים/צוות רגילים שמורידים - שם כל הורדה נרשמת כרגיל.
+  let shouldRecord = true;
+  if (isOwner) {
+    const { count: ownerPriorDownloads } = await admin
+      .from("download_events")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("app_id", app.id);
+    shouldRecord = (ownerPriorDownloads ?? 0) === 0;
+  }
+
+  if (shouldRecord) {
+    await admin.from("apps").update({ downloads_count: app.downloads_count + 1 }).eq("id", app.id);
+    // שומרים גם את הגרסה שהורדה - לזיהוי עתידי של עדכון זמין (פיצ'ר 5, ראו lib/updates.ts).
+    await admin.from("download_events").insert({ user_id: user.id, app_id: app.id, downloaded_version: app.version });
+  }
 
   if (app.status === "approved" && !isOwnerOrStaff && pointsEligible) {
     const POINTS_PER_DOWNLOAD = 2;

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Star, LayoutGrid, Crown, Pencil, PauseCircle, PlayCircle, Loader2, User } from "lucide-react";
+import { Plus, Star, LayoutGrid, Crown, Pencil, PauseCircle, PlayCircle, Loader2, User, Users } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import ProRequestButton from "@/components/ProRequestButton";
 import DeleteAppButton from "@/components/DeleteAppButton";
@@ -100,7 +100,8 @@ export default function DeveloperAppsPanel({
   proStatus,
   proAdminMessage,
   maxApps,
-  developerUsername
+  developerUsername,
+  uniqueDownloadersByApp
 }: {
   apps: AppRow[];
   points: number;
@@ -109,6 +110,9 @@ export default function DeveloperAppsPanel({
   proAdminMessage?: string | null;
   maxApps: number;
   developerUsername?: string | null;
+  // מספר משתמשים ייחודיים שהורידו כל אפליקציה (appId -> כמות) - נראה רק כאן, למפתח על
+  // האפליקציות שלו עצמו, ולא במקום ציבורי אחר.
+  uniqueDownloadersByApp?: Record<string, number>;
 }) {
   const router = useRouter();
 
@@ -191,6 +195,14 @@ export default function DeveloperAppsPanel({
                   )}
                   <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
                     <span>{app.downloads_count.toLocaleString("he-IL")} הורדות</span>
+                    {typeof uniqueDownloadersByApp?.[app.id] === "number" && (
+                      <span
+                        className="inline-flex items-center gap-1"
+                        title="כמה משתמשים שונים הורידו, לעומת סה״כ ההורדות שכולל גם הורדות חוזרות/גרסאות של אותו משתמש"
+                      >
+                        <Users className="h-3.5 w-3.5" /> {uniqueDownloadersByApp[app.id].toLocaleString("he-IL")} משתמשים ייחודיים
+                      </span>
+                    )}
                     {developerUsername && (
                       <span className="inline-flex items-center gap-1"><User className="h-3.5 w-3.5" /> {developerUsername}</span>
                     )}
