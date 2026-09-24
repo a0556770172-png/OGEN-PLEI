@@ -11,19 +11,50 @@ export async function getReviewQueueApps(): Promise<AppRow[]> {
   return (data as unknown as AppRow[]) ?? [];
 }
 
+// אותו טיפול בדיוק כמו ב-getAllProfiles (ראו ההסבר שם) - "כל האפליקציות" בניהול חייב
+// לדפדף בעצמו כדי לא להיחתך בתקרת השורות של PostgREST ברגע שיש מעל 1000 אפליקציות/תוכנות.
 export async function getAllAppsForAdmin(): Promise<AppRow[]> {
   const admin = createAdminSupabase();
-  const { data } = await admin
-    .from("apps")
-    .select("*, developer:profiles!apps_developer_id_fkey(username, email)")
-    .order("created_at", { ascending: false });
-  return (data as unknown as AppRow[]) ?? [];
+  const all: AppRow[] = [];
+  let from = 0;
+  for (;;) {
+    const { data } = await admin
+      .from("apps")
+      .select("*, developer:profiles!apps_developer_id_fkey(username, email)")
+      .order("created_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+    if (!data || data.length === 0) break;
+    all.push(...(data as unknown as AppRow[]));
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return all;
 }
+
+// חשוב: PostgREST (גם ב-Supabase עצמו, וגם בהתקנה עצמית כמו כאן) מגביל כברירת מחדל את
+// כמות השורות שמוחזרות בשאילתה בודדת (בד"כ 1000) - גם בלי .limit() מפורש בקוד. עם select("*")
+// רגיל וסדר לפי created_at יורד, זה אומר שברגע שיש יותר מהתקרה הזו משתמשים רשומים, כל
+// המשתמשים הישנים יותר פשוט נעלמים משם - כולל מחיפוש בניהול משתמשים (בדיוק הבאג שדווח).
+// הפתרון: לדפדף בעצמנו עם .range() עד שמתקבל עמוד לא מלא, כדי לקבל תמיד את כל השורות
+// בפועל, ללא תלות בתקרה שמוגדרת בצד השרת.
+const PAGE_SIZE = 1000;
 
 export async function getAllProfiles(): Promise<Profile[]> {
   const admin = createAdminSupabase();
-  const { data } = await admin.from("profiles").select("*").order("created_at", { ascending: false });
-  return (data as Profile[]) ?? [];
+  const all: Profile[] = [];
+  let from = 0;
+  for (;;) {
+    const { data } = await admin
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+    if (!data || data.length === 0) break;
+    all.push(...(data as Profile[]));
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return all;
 }
 
 export async function getPendingProRequests(): Promise<ProRequest[]> {
