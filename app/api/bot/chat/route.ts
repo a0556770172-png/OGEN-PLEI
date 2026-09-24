@@ -10,6 +10,9 @@ import {
   MODEL_FALLBACK_MINUTES,
   DEFAULT_BOT_SYSTEM_PROMPT,
   BOT_HARD_RULES,
+  NOTICE_FLAG_SENTINEL,
+  ADMIN_UNLOCK_CODE,
+  ADMIN_UNLOCK_SYSTEM_PROMPT,
   type GeminiTurn
 } from "@/lib/bot";
 import { buildBotUserContext } from "@/lib/botContext";
@@ -199,13 +202,27 @@ export async function POST(request: Request) {
   let usedSmartModel = false;
   try {
     const [grounding, userCtx] = await Promise.all([buildBotGrounding(), buildBotUserContext(profile)]);
-    const systemInstruction = [
-      cfg.system_prompt?.trim() || DEFAULT_BOT_SYSTEM_PROMPT,
-      "\n---\n## מידע רקע על האתר\n" + grounding,
-      "\n---\n## המשתמש הנוכחי\n" + userCtx.text,
-      personaSystemBlock(typeof personaId === "string" ? personaId : null),
-      BOT_HARD_RULES
-    ].join("\n");
+
+    // מצב "מנהל משוחרר": רק כאשר role==='admin' אמיתי (מהחשבון המחובר, לא ניתן לזייף מהצ'אט)
+    // וגם הוקלד קוד המנהל - בהודעה הנוכחית, או בכל שלב קודם באותה שיחה (כדי שברגע שהוקלד
+    // פעם אחת זה "נדבק" לשאר השיחה, בלי צורך להקליד שוב כל פעם).
+    const adminUnlocked =
+      profile.role === "admin" &&
+      (text.includes(ADMIN_UNLOCK_CODE) || history.some((h) => h.role === "user" && h.content.includes(ADMIN_UNLOCK_CODE)));
+
+    const systemInstruction = adminUnlocked
+      ? [
+          ADMIN_UNLOCK_SYSTEM_PROMPT,
+          "\n---\n## מידע רקע על האתר\n" + grounding,
+          "\n---\n## המשתמש הנוכחי\n" + userCtx.text
+        ].join("\n")
+      : [
+          cfg.system_prompt?.trim() || DEFAULT_BOT_SYSTEM_PROMPT,
+          "\n---\n## מידע רקע על האתר\n" + grounding,
+          "\n---\n## המשתמש הנוכחי\n" + userCtx.text,
+          personaSystemBlock(typeof personaId === "string" ? personaId : null),
+          BOT_HARD_RULES
+        ].join("\n");
 
     const ctx: ToolContext = {
       userId: user.id,
@@ -243,6 +260,19 @@ export async function POST(request: Request) {
       },
       { status: 403 }
     );
+  }
+
+  // דיווח שקט למנהל: המודל סירב עקב תוכן לא ראוי/מחוץ לנושא/הלכה (לא ניסיון מניפולציה -
+  // זה כבר טופל למעלה). לא חוסם את המשתמש בכלל - רק מתריע למנהל ברקע, ומסתיר את הטוקן
+  // מהתשובה שהמשתמש בפועל רואה.
+  if (!staff && agent.text.includes(NOTICE_FLAG_SENTINEL)) {
+    agent.text = agent.text.replace(NOTICE_FLAG_SENTINEL, "").trim();
+    notifyAdminsInApp({
+      kind: "bot_notice",
+      title: `הבוט סירב לבקשה חריגה מ${profile.username}`,
+      body: text.slice(0, 140),
+      url: "/dashboard/admin?tab=bot"
+    }).catch(() => {});
   }
 
   // --- ניהול העקיפה הזמנית של המודל (רק במסלול הרגיל) ---

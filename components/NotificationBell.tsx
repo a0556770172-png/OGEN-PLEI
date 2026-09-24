@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, MessageCircle, Siren, Package, Sparkles, Lightbulb, Users, ShieldAlert, KeyRound, CheckCheck } from "lucide-react";
+import { Bell, MessageCircle, Siren, Package, Sparkles, Lightbulb, Users, ShieldAlert, KeyRound, CheckCheck, AlertTriangle } from "lucide-react";
 
 type Conversation = { type: "ticket" | "council"; id: string; title: string; unreadCount: number };
 type FeedItem = { id: string; kind: string; title: string; body: string; url: string | null; seen_at: string | null; created_at: string };
@@ -153,6 +153,8 @@ export default function NotificationBell({
                     <Users className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
                   ) : f.kind === "bot_abuse" ? (
                     <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                  ) : f.kind === "bot_notice" ? (
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
                   ) : f.kind === "password_reset" ? (
                     <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
                   ) : (
