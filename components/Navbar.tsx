@@ -8,6 +8,7 @@ import { LayoutDashboard, LogOut, Menu, X, ShieldCheck, User } from "lucide-reac
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/database";
 import ThemeToggle from "@/components/ThemeToggle";
+import LanguageToggle from "@/components/LanguageToggle";
 import AppearanceMenu from "@/components/AppearanceMenu";
 import PushNotificationsSetup from "@/components/PushNotificationsSetup";
 import NotificationBell from "@/components/NotificationBell";
@@ -135,12 +136,14 @@ export default function Navbar() {
               </button>
             </div>
           )}
+          <LanguageToggle />
           <AppearanceMenu />
           <ThemeToggle />
         </nav>
 
         <div className="flex items-center gap-2 justify-self-end md:hidden">
           {!loading && profile && <NotificationBell dashboardBase={adminHref ?? moderatorHref ?? null} isAdmin={profile?.role === "admin"} />}
+          <LanguageToggle />
           <AppearanceMenu />
           <ThemeToggle />
           <button onClick={() => setOpen((o) => !o)}>

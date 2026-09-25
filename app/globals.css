@@ -108,3 +108,25 @@ input, textarea, select {
 .rich-content ol { list-style: decimal; padding-inline-start: 1.4em; }
 .rich-content a { color: rgb(var(--c-primary-light)); text-decoration: underline; }
 .rich-content b, .rich-content strong { font-weight: 700; }
+
+/* ---- מצב אנגלית (ראו lib/i18n/translator.ts) ---- */
+/* מסתיר את הדף לרגע עד שהתרגום מוחל, כדי שלא יהבהב טקסט עברי. הסקריפט ב-layout מסיר תמיד אחרי 3 שניות. */
+html.i18n-pending body {
+  visibility: hidden;
+}
+/* חיצים שמסמנים "קדימה/אחורה" מתהפכים כשכיוון הקריאה משמאל לימין */
+html[dir="ltr"] .lucide-arrow-left,
+html[dir="ltr"] .lucide-arrow-right,
+html[dir="ltr"] .lucide-chevron-left,
+html[dir="ltr"] .lucide-chevron-right {
+  scale: -1 1;
+}
+html[dir="ltr"] .text-right {
+  text-align: left;
+}
+html[dir="ltr"] input,
+html[dir="ltr"] textarea,
+html[dir="ltr"] select {
+  direction: ltr;
+  text-align: left;
+}

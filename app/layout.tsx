@@ -12,6 +12,7 @@ import ReferralCapture from "@/components/ReferralCapture";
 import FeatureAnnounce from "@/components/FeatureAnnounce";
 import NewNotificationsPeek from "@/components/NewNotificationsPeek";
 import AdFloatingBadge from "@/components/AdFloatingBadge";
+import SiteTranslator from "@/components/SiteTranslator";
 
 const heebo = Heebo({ subsets: ["hebrew", "latin"], weight: ["300","400","500","700","900"], variable: "--font-heebo" });
 
@@ -95,13 +96,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   };
 
   return (
-    <html lang="he" dir="rtl" className="dark">
+    <html lang="he" dir="rtl" className="dark" suppressHydrationWarning>
       <head>
         {/* סקריפט חוסם קטן: קורא את בחירת המצב הכהה/בהיר שנשמרה מביקור קודם ומחיל אותה
-            *לפני* הרינדור הראשון של הדף, כדי למנוע הבהוב של מצב שגוי (FOUC) ברגע הטעינה. */}
+            *לפני* הרינדור הראשון של הדף, כדי למנוע הבהוב של מצב שגוי (FOUC) ברגע הטעינה.
+            אותו דבר לשפה: במצב אנגלית קובע כיוון LTR ומסתיר את הדף עד שהתרגום מוחל (עם גיבוי של 3 שניות). */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{if(localStorage.getItem('ogen-theme')==='light'){document.documentElement.classList.add('light')}var a=localStorage.getItem('ogen-accent');if(a&&a!=='purple'){document.documentElement.setAttribute('data-accent',a)}}catch(e){}`
+            __html: `try{if(localStorage.getItem('ogen-theme')==='light'){document.documentElement.classList.add('light')}var a=localStorage.getItem('ogen-accent');if(a&&a!=='purple'){document.documentElement.setAttribute('data-accent',a)}}catch(e){}try{var l=null;try{l=localStorage.getItem('ogen-lang')}catch(e){}if(!l){var m=document.cookie.match(/(?:^|; )ogen-lang=([^;]*)/);l=m&&m[1]}if(l==='en'){var d=document.documentElement;d.lang='en';d.dir='ltr';d.classList.add('i18n-pending');if(document.cookie.indexOf('ogen-lang=en')<0){document.cookie='ogen-lang=en; path=/; max-age=31536000; samesite=lax'}setTimeout(function(){d.classList.remove('i18n-pending')},3000)}}catch(e){}`
           }}
         />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
@@ -114,6 +116,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className={`${heebo.variable} font-sans bg-bg text-gray-100 min-h-screen antialiased relative`}>
+        <SiteTranslator />
         <AnimatedBackground />
         <SiteVisitTracker />
         <ReferralCapture />

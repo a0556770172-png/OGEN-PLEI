@@ -21,6 +21,7 @@ import { detectBotManipulation, ABUSE_BLOCK_SENTINEL, BOT_BLOCK_MINUTES } from "
 import { notifyAdminsInApp } from "@/lib/notifications";
 import { logAudit } from "@/lib/audit";
 import type { ToolContext } from "@/lib/botTools";
+import { isEnglishRequest, ENGLISH_REPLY_RULE } from "@/lib/i18n/serverLang";
 
 const HISTORY_TURNS = 16;
 
@@ -221,7 +222,8 @@ export async function POST(request: Request) {
           "\n---\n## מידע רקע על האתר\n" + grounding,
           "\n---\n## המשתמש הנוכחי\n" + userCtx.text,
           personaSystemBlock(typeof personaId === "string" ? personaId : null),
-          BOT_HARD_RULES
+          BOT_HARD_RULES,
+          isEnglishRequest() ? ENGLISH_REPLY_RULE : ""
         ].join("\n");
 
     const ctx: ToolContext = {
