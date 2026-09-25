@@ -27,6 +27,7 @@ export async function GET() {
     interstitialEnabled: cfg.interstitialEnabled,
     floatingEnabled: cfg.floatingEnabled,
     imageUrl: cfg.imageUrl,
+    animation: cfg.animation,
     linkUrl: cfg.linkUrl,
     skipAfterSeconds: cfg.skipAfterSeconds,
     staffDailyLimit: cfg.staffDailyLimit,

@@ -1,10 +1,13 @@
 import { createAdminSupabase } from "./supabase/admin";
 import { publicAssetUrl } from "./r2";
+import { parseAnimKey, type AdAnimation } from "./adAnimation";
 
 export interface AdConfig {
   interstitialEnabled: boolean;
   floatingEnabled: boolean;
   imageUrl: string | null;
+  // קיים כשהתמונה היא sprite של גיף מונפש - ואז imageUrl מצביע על ה-sprite.
+  animation: AdAnimation | null;
   linkUrl: string;
   skipAfterSeconds: number;
   staffDailyLimit: number;
@@ -21,6 +24,7 @@ export async function getAdConfig(): Promise<AdConfig> {
     interstitialEnabled: data?.interstitial_enabled ?? true,
     floatingEnabled: data?.floating_enabled ?? true,
     imageUrl: data?.image_key ? publicAssetUrl(data.image_key) : null,
+    animation: parseAnimKey(data?.image_key),
     linkUrl: data?.link_url || DEFAULT_LINK,
     skipAfterSeconds: data?.skip_after_seconds ?? 4,
     staffDailyLimit: data?.staff_daily_limit ?? 2,

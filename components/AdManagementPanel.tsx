@@ -2,11 +2,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Megaphone, Loader2, AlertCircle, CheckCircle2, MousePointerClick, Image as ImageIcon } from "lucide-react";
 import { putToR2 } from "@/lib/uploadHelpers";
+import AdImage from "./AdImage";
+import type { AdAnimation } from "@/lib/adAnimation";
 
 interface AdConfigState {
   interstitialEnabled: boolean;
   floatingEnabled: boolean;
   imageUrl: string | null;
+  animation: AdAnimation | null;
   linkUrl: string;
   skipAfterSeconds: number;
   staffDailyLimit: number;
@@ -114,8 +117,12 @@ export default function AdManagementPanel() {
         <div className="flex w-full max-w-[200px] flex-col items-center gap-2">
           <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-border bg-surface2">
             {cfg.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={cfg.imageUrl} alt="פרסומת" className="h-full w-full object-cover" />
+              <AdImage
+                src={cfg.imageUrl}
+                animation={cfg.animation}
+                alt="פרסומת"
+                className={cfg.animation ? "w-full" : "h-full w-full object-cover"}
+              />
             ) : (
               <ImageIcon className="h-8 w-8 text-gray-600" />
             )}

@@ -2,9 +2,34 @@ import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { getAdConfig } from "@/lib/adConfig";
+import { BUCKETS, createDownloadUrl, createUploadUrl } from "@/lib/r2";
+import { animKeyFor, buildAdSprite } from "@/lib/adAnimation";
 
 // ראו הסבר ב-app/api/ads/config/route.ts - בלי זה Next.js עלול לשמור תשובה ישנה במטמון.
 export const dynamic = "force-dynamic";
+// המרת גיף מונפש ל-sprite (ראו lib/adAnimation.ts) יכולה לקחת כמה שניות.
+export const maxDuration = 60;
+
+// גיף מונפש נשמר כ-sprite סטטי + נתוני אנימציה בשם הקובץ, כדי שיזוז גם מאחורי מסננים שמקפיאים גיפים.
+// בכל כשל (תמונה רגילה, קובץ פגום, תקלת אחסון) נשארים עם הקובץ המקורי כמו שהוא.
+async function toAnimatedSpriteKey(imageKey: string): Promise<string> {
+  try {
+    const res = await fetch(await createDownloadUrl(BUCKETS.assets, imageKey, undefined, 120));
+    if (!res.ok) return imageKey;
+    const built = await buildAdSprite(Buffer.from(await res.arrayBuffer()));
+    if (!built) return imageKey;
+    const spriteKey = animKeyFor(imageKey, built.anim);
+    const put = await fetch(await createUploadUrl(BUCKETS.assets, spriteKey, "image/webp"), {
+      method: "PUT",
+      body: new Uint8Array(built.sprite),
+      headers: { "Content-Type": "image/webp" }
+    });
+    return put.ok ? spriteKey : imageKey;
+  } catch (e) {
+    console.error("ad sprite conversion failed", e);
+    return imageKey;
+  }
+}
 
 export async function GET() {
   const result = await requireProfile();
@@ -30,7 +55,7 @@ export async function PATCH(request: Request) {
   if (typeof linkUrl === "string" && linkUrl.trim()) patch.link_url = linkUrl.trim().slice(0, 2000);
   if (Number.isFinite(skipAfterSeconds)) patch.skip_after_seconds = Math.max(0, Math.min(60, Math.round(skipAfterSeconds)));
   if (Number.isFinite(staffDailyLimit)) patch.staff_daily_limit = Math.max(0, Math.min(50, Math.round(staffDailyLimit)));
-  if (typeof imageKey === "string" && imageKey.trim()) patch.image_key = imageKey.trim();
+  if (typeof imageKey === "string" && imageKey.trim()) patch.image_key = await toAnimatedSpriteKey(imageKey.trim());
 
   const admin = createAdminSupabase();
   const { error } = await admin.from("site_ad_config").update(patch).eq("id", true);

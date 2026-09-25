@@ -2,9 +2,12 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
+import AdImage from "./AdImage";
+import type { AdAnimation } from "@/lib/adAnimation";
 
 export interface AdInterstitialConfig {
   imageUrl: string | null;
+  animation?: AdAnimation | null;
   linkUrl: string;
   skipAfterSeconds: number;
 }
@@ -39,8 +42,7 @@ export default function AdInterstitial({ config, onDone }: { config: AdInterstit
         <div className="flex flex-col items-center gap-3 p-4">
           {config.imageUrl ? (
             <button onClick={handleImageClick} className="block w-full overflow-hidden rounded-xl">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={config.imageUrl} alt="פרסומת" className="w-full object-cover" />
+              <AdImage src={config.imageUrl} animation={config.animation} alt="פרסומת" className="w-full object-cover" />
             </button>
           ) : (
             <p className="p-6 text-center text-sm text-gray-400">ההורדה שלך מתחילה בעוד רגע…</p>

@@ -269,6 +269,7 @@ export default function BotChat({
         setAdConfig({
           enabled: !!json.interstitialEnabled,
           imageUrl: json.imageUrl ?? null,
+          animation: json.animation ?? null,
           linkUrl: json.linkUrl,
           skipAfterSeconds: json.skipAfterSeconds ?? 4,
           staffDailyLimit: json.staffDailyLimit ?? 2,
