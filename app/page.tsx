@@ -2,6 +2,7 @@ import HomeHero from "@/components/HomeHero";
 import AppGrid from "@/components/AppGrid";
 import UpdatesPopup from "@/components/UpdatesPopup";
 import ReferralHomeBanner from "@/components/ReferralHomeBanner";
+import ForumMoveTour from "@/components/ForumMoveTour";
 import { getApprovedApps, getIconUrl } from "@/lib/apps-data";
 import { getCategoriesServer } from "@/lib/categories";
 import { getUsersStats } from "@/lib/users-data";
@@ -39,6 +40,7 @@ export default async function HomePage() {
     <div className="flex flex-col gap-12">
       {updates.length > 0 && <UpdatesPopup updates={updates} />}
       <ReferralHomeBanner />
+      <ForumMoveTour />
       <HomeHero
         total={apps.length}
         totalDownloads={totalDownloads}

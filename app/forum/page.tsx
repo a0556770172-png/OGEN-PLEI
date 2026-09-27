@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { Lightbulb, MessageSquarePlus } from "lucide-react";
+import StayUpdatedCard from "@/components/StayUpdatedCard";
 import { getCurrentProfile } from "@/lib/profile";
 import { isStaff } from "@/lib/auth-helpers";
 import { getForumThreads, getForumStats, type ForumSort } from "@/lib/forum";
@@ -37,6 +39,10 @@ export default async function ForumPage({ searchParams }: { searchParams: { sort
           {stats.threads.toLocaleString("he-IL")} פוסטים · {stats.posters.toLocaleString("he-IL")} כותבים
         </p>
       </header>
+
+      <Suspense fallback={null}>
+        <StayUpdatedCard loggedIn={!!user} />
+      </Suspense>
 
       <ForumComposer loggedIn={!!user} />
 

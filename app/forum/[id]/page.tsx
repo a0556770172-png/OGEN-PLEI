@@ -8,6 +8,7 @@ import { createAdminSupabase } from "@/lib/supabase/admin";
 import ForumComposer from "@/components/ForumComposer";
 import ForumPostCard from "@/components/ForumPostCard";
 import NotifyButton from "@/components/NotifyButton";
+import EmailNotifyToggle from "@/components/EmailNotifyToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -37,14 +38,17 @@ export default async function ForumThreadPage({ params }: { params: { id: string
           <ArrowRight className="h-4 w-4" /> חזרה לפורום
         </Link>
         {user && (
-          <NotifyButton
-            type="forum_thread"
-            targetId={post.id}
-            label="עקבו אחרי הדיון"
-            activeLabel="עוקבים אחרי הדיון"
-            subscribed={followsThread}
-            size="sm"
-          />
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <NotifyButton
+              type="forum_thread"
+              targetId={post.id}
+              label="עקבו אחרי הדיון"
+              activeLabel="עוקבים אחרי הדיון"
+              subscribed={followsThread}
+              size="sm"
+            />
+            <EmailNotifyToggle size="sm" />
+          </div>
         )}
       </div>
 
