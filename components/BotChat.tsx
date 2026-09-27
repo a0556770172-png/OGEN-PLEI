@@ -5,9 +5,7 @@ import { Send, Loader2, Bot, User as UserIcon, AlertCircle, ThumbsUp, ThumbsDown
 import BotMessageBody from "./BotMessageBody";
 import BotAppCard, { type BotAppCardData } from "./BotAppCard";
 import BotPersonaPicker from "./BotPersonaPicker";
-import AdInterstitial, { type AdInterstitialConfig } from "./AdInterstitial";
 import { getPersona, DEFAULT_PERSONA_ID } from "@/lib/botPersonas";
-import { shouldShowStaffAd } from "@/lib/adThrottle";
 
 const PERSONA_KEY = "ogen-bot-persona";
 const OPENER_OFF_KEY = "ogen-bot-opener-off";
@@ -258,30 +256,9 @@ export default function BotChat({
     }
   }
 
-  // פרסומת ביניים קצרה לפני שהורדה שיזם הבוט מתחילה בפועל - אותם כללי הצגה כמו כפתור
-  // ההורדה הרגיל (DownloadButton): תמיד למשתמש רגיל, מוגבל ליום לצוות/מנהל.
-  const [adTarget, setAdTarget] = useState<{ appId: string; msgId?: string } | null>(null);
-  const [adConfig, setAdConfig] = useState<(AdInterstitialConfig & { enabled: boolean; staffDailyLimit: number; isStaff: boolean }) | null>(null);
-  useEffect(() => {
-    fetch("/api/ads/config")
-      .then((r) => r.json())
-      .then((json) =>
-        setAdConfig({
-          enabled: !!json.interstitialEnabled,
-          imageUrl: json.imageUrl ?? null,
-          animation: json.animation ?? null,
-          linkUrl: json.linkUrl,
-          skipAfterSeconds: json.skipAfterSeconds ?? 4,
-          staffDailyLimit: json.staffDailyLimit ?? 2,
-          isStaff: !!json.isStaff
-        })
-      )
-      .catch(() => {});
-  }, []);
+  // אין פרסומת לפני הורדה (הוסרה לבקשת המנהל) - ההורדה מתחילה מיד, כמו ב-DownloadButton.
   function doDownload(appId: string, msgId?: string) {
-    const show = !!adConfig?.enabled && (adConfig.isStaff ? shouldShowStaffAd(adConfig.staffDailyLimit) : true);
-    if (show) setAdTarget({ appId, msgId });
-    else runDownload(appId, msgId);
+    runDownload(appId, msgId);
   }
 
   async function confirmAction(msg: Msg) {
@@ -379,17 +356,6 @@ export default function BotChat({
             <BotPersonaPicker value={persona} onPick={choosePersona} compact />
           </div>
         </div>
-      )}
-
-      {adTarget && adConfig && (
-        <AdInterstitial
-          config={adConfig}
-          onDone={() => {
-            const t = adTarget;
-            setAdTarget(null);
-            runDownload(t.appId, t.msgId);
-          }}
-        />
       )}
 
       <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-1 pe-2">

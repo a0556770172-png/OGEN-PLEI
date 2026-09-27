@@ -99,7 +99,33 @@ input, textarea, select {
 .shimmer-border {
   background: linear-gradient(90deg, transparent, rgb(var(--c-primary) / 0.5), transparent);
   background-size: 200% 100%;
+}
+/* האנימציה רצה רק בזמן ריחוף על הכרטיס (שם הקו בכלל נראה) - אחרת עשרות כרטיסים בחנות
+   מציירים את עצמם מחדש בכל פריים גם כשהם שקופים, וזה מכביד מאוד על הגלילה. */
+.group:hover .shimmer-border {
   animation: shimmer 2.5s linear infinite;
+}
+
+/* ---- ביצועי גלילה בטלפונים (במיוחד אנדרואיד) ----
+   טשטוש של רקע (backdrop-filter) וכתמי רקע מטושטשים שזזים כל הזמן (AnimatedBackground)
+   מחושבים מחדש בכל צעד של גלילה, והגלילה נתקעת/מקרטעת במכשירים חלשים יותר. במסכי מגע
+   ובמסכים צרים מכבים אותם - המראה כמעט זהה (הרקעים ממילא כהים ושקופים למחצה), והגלילה חלקה. */
+@media (hover: none), (max-width: 767px) {
+  *,
+  *::before,
+  *::after {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  .bg-blob {
+    animation: none !important;
+    filter: none !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bg-blob {
+    animation: none !important;
+  }
 }
 
 .rich-content h1, .rich-content h2, .rich-content h3 { font-weight: 700; margin: 0.6em 0 0.3em; }
