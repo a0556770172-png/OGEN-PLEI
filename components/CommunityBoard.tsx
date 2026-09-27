@@ -8,9 +8,17 @@ import type { Category, CommunityRequest } from "@/types/database";
 const STATUS: Record<string, { label: string; cls: string }> = {
   open: { label: "פתוחה למתנדבים", cls: "bg-gold/15 text-gold" },
   claimed: { label: "מתנדב בטיפול", cls: "bg-primary/15 text-primary-light" },
+  pending_review: { label: "ממתינה לאישור צוות", cls: "bg-amber-500/15 text-amber-400" },
   fulfilled: { label: "בוצעה ✓", cls: "bg-accent/15 text-accent" },
   closed: { label: "נסגרה", cls: "bg-gray-500/15 text-gray-400" }
 };
+
+// זהה ל-CLAIM_TTL_DAYS ב-lib/communityRequests.ts - אחרי שבוע בלי סימון "בוצעה" הבקשה משתחררת.
+const CLAIM_TTL_DAYS = 7;
+function daysLeft(claimedAt: string) {
+  const msLeft = new Date(claimedAt).getTime() + CLAIM_TTL_DAYS * 86_400_000 - Date.now();
+  return Math.max(1, Math.ceil(msLeft / 86_400_000));
+}
 
 export default function CommunityBoard({
   currentUserId,
@@ -104,6 +112,9 @@ export default function CommunityBoard({
             מבקשים אפליקציה או תוכנה? הדביקו קישור לבקשה מפורום חיצוני, ומתנדב יוריד ויעלה אותה עבורכם.
             {openCount > 0 && <span className="text-gold"> · {openCount} בקשות פתוחות למתנדבים</span>}
           </p>
+          <p className="mt-1 text-xs text-gray-500">
+            אפשר להתנדב לבקשה אחת בכל פעם. יש שבוע לסמן "בוצעה" - אחרת הבקשה חוזרת לכולם. סימון "בוצעה" עובר לאישור צוות הפיקוח.
+          </p>
         </div>
         {currentUserId && (
           <button onClick={() => setShowForm((s) => !s)} className="btn-primary text-sm">
@@ -192,6 +203,11 @@ export default function CommunityBoard({
                     <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
                       {r.requester?.username && <span>ביקש/ה: <Link href={`/users/${r.requested_by}`} className="text-gray-300 hover:text-primary-light hover:underline">{r.requester.username}</Link></span>}
                       {r.claimer?.username && <span>מתנדב: <Link href={`/users/${r.claimed_by}`} className="text-primary-light hover:underline">{r.claimer.username}</Link></span>}
+                      {r.status === "claimed" && r.claimed_at && (
+                        <span className={daysLeft(r.claimed_at) <= 2 ? "text-amber-400" : ""}>
+                          {daysLeft(r.claimed_at) <= 1 ? "משתחררת היום אם לא תסומן בוצעה" : `עוד ${daysLeft(r.claimed_at)} ימים לסימון בוצעה`}
+                        </span>
+                      )}
                       {r.source_link && (
                         <a href={r.source_link} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1 text-primary-light hover:underline">
                           <ExternalLink className="h-3.5 w-3.5" /> הבקשה המקורית
@@ -217,12 +233,28 @@ export default function CommunityBoard({
                           <UploadCloud className="h-3.5 w-3.5" /> העלאת הקובץ
                         </Link>
                         <button onClick={() => act(r.id, "fulfill")} disabled={busyId === r.id} className="inline-flex items-center gap-1 rounded-xl bg-accent/15 px-3 py-2 text-xs font-bold text-accent transition hover:bg-accent/25">
-                          <Check className="h-3.5 w-3.5" /> סמן כבוצע
+                          <Check className="h-3.5 w-3.5" /> {isStaffUser ? "סמן כבוצע" : "סמן כבוצע (לאישור צוות)"}
                         </button>
                         <button onClick={() => act(r.id, "unclaim")} disabled={busyId === r.id} className="inline-flex items-center gap-1 rounded-xl bg-surface2 px-3 py-2 text-xs font-bold text-gray-400 transition hover:text-white">
                           <X className="h-3.5 w-3.5" /> ביטול התנדבות
                         </button>
                       </>
+                    )}
+                    {/* סימון "בוצעה" של מתנדב/מבקש ממתין לאישור צוות פיקוח - רק צוות מאשר או דוחה */}
+                    {isStaffUser && r.status === "pending_review" && (
+                      <>
+                        <button onClick={() => act(r.id, "approve_fulfill")} disabled={busyId === r.id} className="inline-flex items-center gap-1 rounded-xl bg-accent/15 px-3 py-2 text-xs font-bold text-accent transition hover:bg-accent/25">
+                          <Check className="h-3.5 w-3.5" /> אישור ביצוע
+                        </button>
+                        <button onClick={() => act(r.id, "reject_fulfill")} disabled={busyId === r.id} className="inline-flex items-center gap-1 rounded-xl bg-red-500/10 px-3 py-2 text-xs font-bold text-red-400 transition hover:bg-red-500/20">
+                          <X className="h-3.5 w-3.5" /> דחייה - עוד לא בוצע
+                        </button>
+                      </>
+                    )}
+                    {!isStaffUser && isClaimer && r.status === "pending_review" && (
+                      <button onClick={() => act(r.id, "unclaim")} disabled={busyId === r.id} className="inline-flex items-center gap-1 rounded-xl bg-surface2 px-3 py-2 text-xs font-bold text-gray-400 transition hover:text-white">
+                        <X className="h-3.5 w-3.5" /> ביטול התנדבות
+                      </button>
                     )}
                     {(isRequester || isStaffUser) && r.status !== "closed" && r.status !== "fulfilled" && (
                       <button onClick={() => act(r.id, "close")} disabled={busyId === r.id} className="inline-flex items-center gap-1 rounded-xl bg-surface2 px-3 py-2 text-xs font-bold text-gray-400 transition hover:text-white">

@@ -3,6 +3,7 @@ import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { notifyForCommunityRequest } from "@/lib/notifications";
+import { releaseStaleClaims } from "@/lib/communityRequests";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 // GET - כל הבקשות, פתוחות קודם, עם שמות המבקש והמתנדב.
 export async function GET() {
+  await releaseStaleClaims().catch(() => {});
   const admin = createAdminSupabase();
   const { data: requests } = await admin
     .from("community_requests")
