@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2, Archive, Bot, Star, Lightbulb, KeyRound, BarChart3, Megaphone } from "lucide-react";
+import { ArrowLeftRight, ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2, Archive, Bot, Star, Lightbulb, KeyRound, BarChart3, Megaphone } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import UserManagementTable from "./UserManagementTable";
 import ProRequestsQueue from "./ProRequestsQueue";
@@ -26,11 +26,12 @@ import ForumModerationPanel from "./ForumModerationPanel";
 import PasswordResetsPanel from "./PasswordResetsPanel";
 import StatsPanel from "./StatsPanel";
 import AdManagementPanel from "./AdManagementPanel";
+import AppOwnershipPanel from "./AppOwnershipPanel";
 import type { ForumPost } from "@/lib/forum";
 import type { AppRow, Profile, ProRequest, UserDeletionRequest, BanAppeal, ReferralEvent } from "@/types/database";
 import type { SiteReviewRow } from "@/lib/siteReviews";
 
-type TabKey = "notifications" | "review" | "allApps" | "archive" | "users" | "pro" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteReviews" | "forum" | "passwordResets" | "bot" | "siteRules" | "settings" | "stats" | "ads";
+type TabKey = "notifications" | "review" | "allApps" | "ownership" | "archive" | "users" | "pro" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteReviews" | "forum" | "passwordResets" | "bot" | "siteRules" | "settings" | "stats" | "ads";
 
 export default function AdminDashboardClient({
   apps,
@@ -90,6 +91,7 @@ export default function AdminDashboardClient({
     { key: "ads", label: "פרסומות", icon: Megaphone },
     { key: "review", label: `בדיקת פרסום (${apps.length})`, icon: ClipboardList },
     { key: "allApps", label: `כל האפליקציות (${activeApps.length})`, icon: LayoutGrid },
+    { key: "ownership", label: "ציבורי ופרטי", icon: ArrowLeftRight },
     { key: "archive", label: `ארכיון (${archivedApps.length})`, icon: Archive },
     { key: "pro", label: `בקשות PRO (${proRequests.length})`, icon: Crown },
     { key: "suggestions", label: "הצעות אפליקציות", icon: Gift },
@@ -142,6 +144,7 @@ export default function AdminDashboardClient({
       {tab === "stats" && <StatsPanel />}
       {tab === "ads" && <AdManagementPanel />}
       {tab === "review" && <ReviewQueue apps={apps} canDelete={true} />}
+      {tab === "ownership" && <AppOwnershipPanel />}
       {tab === "allApps" && (
         <div className="flex flex-col gap-4">
           <IconBackfillPanel />

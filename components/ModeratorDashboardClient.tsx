@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning, ScrollText, History, Star, Lightbulb, Archive, BarChart3 } from "lucide-react";
+import { ArrowLeftRight, ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning, ScrollText, History, Star, Lightbulb, Archive, BarChart3 } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import TicketsPanel from "./TicketsPanel";
 import SuggestionsQueue from "./SuggestionsQueue";
@@ -17,11 +17,12 @@ import AuditLogPanel from "./AuditLogPanel";
 import SiteReviewsPanel from "./SiteReviewsPanel";
 import ForumModerationPanel from "./ForumModerationPanel";
 import StatsPanel from "./StatsPanel";
+import AppOwnershipPanel from "./AppOwnershipPanel";
 import type { SiteReviewRow } from "@/lib/siteReviews";
 import type { ForumPost } from "@/lib/forum";
 import type { AppRow, Profile, BanAppeal } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "allApps" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals" | "teamTracking" | "siteRules" | "siteReviews" | "forum" | "stats";
+type TabKey = "notifications" | "review" | "allApps" | "ownership" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals" | "teamTracking" | "siteRules" | "siteReviews" | "forum" | "stats";
 
 export default function ModeratorDashboardClient({
   apps,
@@ -61,6 +62,7 @@ export default function ModeratorDashboardClient({
     { key: "stats", label: "סטטיסטיקה", icon: BarChart3 },
     { key: "review", label: `בדיקת פרסום (${apps.length})`, icon: ClipboardList },
     { key: "allApps", label: `כל האפליקציות (${allApps.length})`, icon: LayoutGrid },
+    { key: "ownership", label: "ציבורי ופרטי", icon: ArrowLeftRight },
     { key: "suggestions", label: "הצעות אפליקציות", icon: Gift },
     { key: "tickets", label: "הודעות", icon: MessageCircle },
     { key: "ticketsArchive", label: "ארכיון שיחות", icon: Archive },
@@ -103,6 +105,7 @@ export default function ModeratorDashboardClient({
       {tab === "stats" && <StatsPanel />}
       {/* צוות פיקוח יכול גם למחוק אפליקציות, לא רק לאשר/לדחות */}
       {tab === "review" && <ReviewQueue apps={apps} canDelete={true} />}
+      {tab === "ownership" && <AppOwnershipPanel />}
       {tab === "allApps" && (
         <div className="flex flex-col gap-4">
           <IconBackfillPanel />

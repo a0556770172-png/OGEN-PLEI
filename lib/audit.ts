@@ -10,6 +10,7 @@ export type AuditAction =
   | "approve_app_report" | "reject_app_report"
   | "edit_user_profile"
   | "adjust_points"
+  | "transfer_app"
   | "grant_size_override" | "revoke_size_override"
   | "grant_unlimited_public_upload" | "revoke_unlimited_public_upload"
   | "reply_ban_appeal"
