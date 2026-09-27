@@ -79,6 +79,18 @@ function SupportPageInner() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages.length]);
 
+  // שמות חברי הצוות שענו בשיחה (ראו GET ב-app/api/tickets/[id]/route.ts) - נטען מחדש רק
+  // כשמצטרף לשיחה חבר צוות שעוד לא ידוע לנו, ולא בכל פולינג.
+  const [staffNames, setStaffNames] = useState<Record<string, string>>({});
+  const staffSendersKey = [...new Set(messages.filter((m) => m.sender_role === "staff").map((m) => m.sender_id))].sort().join(",");
+  useEffect(() => {
+    if (!selected || !staffSendersKey) return;
+    fetch(`/api/tickets/${selected.id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j?.staffNames && setStaffNames((prev) => ({ ...prev, ...j.staffNames })))
+      .catch(() => {});
+  }, [selected?.id, staffSendersKey]);
+
   async function openTicket(ticket: Ticket) {
     setSelected(ticket);
     setReplyingTo(null);
@@ -169,7 +181,8 @@ function SupportPageInner() {
   }
 
   function quoteMessage(m: TicketMessage) {
-    const senderName = m.sender_role === "staff" ? "צוות עוגן פליי" : "אני";
+    const staffName = staffNames[m.sender_id];
+    const senderName = m.sender_role === "staff" ? (staffName ? `צוות עוגן פליי (${staffName})` : "צוות עוגן פליי") : "אני";
     setReply((prev) => buildQuoteText(senderName, m.body) + prev);
     textareaRef.current?.focus();
   }
@@ -321,6 +334,9 @@ function SupportPageInner() {
                     >
                       <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-gray-400">
                         {m.sender_role === "staff" ? "צוות עוגן פליי" : "אני"}
+                        {m.sender_role === "staff" && staffNames[m.sender_id] && (
+                          <span className="text-primary-light" data-no-translate>· {staffNames[m.sender_id]}</span>
+                        )}
                         <span className="font-normal text-gray-500" title={fullMessageTime(m.created_at)}>
                           · {formatMessageTime(m.created_at)}
                         </span>

@@ -101,6 +101,18 @@ export default function TicketsPanel({
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages.length]);
 
+  // מי מחברי הצוות ענה בכל הודעה (ראו GET ב-app/api/tickets/[id]/route.ts) - אותו מנגנון כמו
+  // בעמוד /support של המשתמש, כדי שגם כאן יהיה ברור מי מהצוות כתב מה.
+  const [staffNames, setStaffNames] = useState<Record<string, string>>({});
+  const staffSendersKey = [...new Set(messages.filter((m) => m.sender_role === "staff").map((m) => m.sender_id))].sort().join(",");
+  useEffect(() => {
+    if (!selected || !staffSendersKey) return;
+    fetch(`/api/tickets/${selected.id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j?.staffNames && setStaffNames((prev) => ({ ...prev, ...j.staffNames })))
+      .catch(() => {});
+  }, [selected?.id, staffSendersKey]);
+
   async function openTicket(ticket: Ticket) {
     setSelected(ticket);
     setReplyingTo(null);
@@ -246,7 +258,8 @@ export default function TicketsPanel({
   }
 
   function quoteMessage(m: TicketMessage) {
-    const senderName = m.sender_role === "staff" ? "צוות" : selected?.user?.username ?? "משתמש";
+    const staffName = staffNames[m.sender_id];
+    const senderName = m.sender_role === "staff" ? (staffName ? `צוות (${staffName})` : "צוות") : selected?.user?.username ?? "משתמש";
     setReply((prev) => buildQuoteText(senderName, m.body) + prev);
     textareaRef.current?.focus();
   }
@@ -429,6 +442,9 @@ export default function TicketsPanel({
                     >
                       <p className="mb-1 flex items-center gap-1.5 text-xs font-bold text-gray-400">
                         {m.sender_role === "staff" ? "צוות" : selected.user?.username ?? "משתמש"}
+                        {m.sender_role === "staff" && staffNames[m.sender_id] && (
+                          <span className="text-primary-light" data-no-translate>· {staffNames[m.sender_id]}</span>
+                        )}
                         <span className="font-normal text-gray-500" title={fullMessageTime(m.created_at)}>
                           · {formatMessageTime(m.created_at)}
                         </span>

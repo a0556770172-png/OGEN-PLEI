@@ -18,6 +18,7 @@ const ACTION_LABELS: Record<string, string> = {
   approve_app_report: "אישור דיווח על אפליקציה",
   reject_app_report: "דחיית דיווח על אפליקציה",
   edit_user_profile: "עריכת פרטי משתמש",
+  adjust_points: "שינוי מוניטין",
   pin_app: "נעיצת אפליקציה לראש העמוד",
   unpin_app: "ביטול נעיצת אפליקציה",
   grant_size_override: "מתן הרשאת גודל חריגה",

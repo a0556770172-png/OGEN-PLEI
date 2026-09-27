@@ -38,6 +38,38 @@ export async function getEmailNotificationSettings(): Promise<Settings> {
   );
 }
 
+// מזהי המשתמשים שהדליקו "התראות גם במייל" ויש להם כתובת מייל.
+export async function getEmailEnabledUserIds(): Promise<string[]> {
+  const admin = createAdminSupabase();
+  const { data } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("email_notifications_enabled", true)
+    .not("email", "is", null)
+    .limit(1000);
+  return (data ?? []).map((p) => p.id);
+}
+
+// התראה שממתינה יותר מזה כבר לא רלוונטית למייל (למשל אחרי תקלה ארוכה בשליחה) - לא שולחים
+// למשתמשים מייל עם היסטוריה ישנה.
+const MAX_PENDING_AGE_MS = 3 * 24 * 60 * 60 * 1000;
+
+// התראות ממתינות של מי שלא הדליק מייל לא יישלחו לעולם - מסמנים אותן skipped כדי שהתור לא
+// יתנפח, וכדי שמי שידליק את המתג בהמשך יקבל רק התראות חדשות ולא הצפה של היסטוריה ישנה.
+// באותה הזדמנות מסמנים skipped גם התראות ישנות מדי (ראו MAX_PENDING_AGE_MS).
+async function skipPendingOfOtherUsers(enabledIds: string[]) {
+  const admin = createAdminSupabase();
+  let q = admin.from("user_notifications").update({ email_status: "skipped" }).eq("email_status", "pending");
+  if (enabledIds.length > 0) q = q.not("user_id", "in", `(${enabledIds.join(",")})`);
+  await q;
+
+  await admin
+    .from("user_notifications")
+    .update({ email_status: "skipped" })
+    .eq("email_status", "pending")
+    .lt("created_at", new Date(Date.now() - MAX_PENDING_AGE_MS).toISOString());
+}
+
 function digestHtml(username: string, items: { title: string; body: string; url: string | null }[]) {
   const rows = items
     .map(
@@ -110,13 +142,22 @@ export async function runEmailDigestBatch(): Promise<EmailDigestRunResult> {
     return { ok: true, sentEmails: 0, skippedReason: "המכסה היומית נוצלה", remainingToday: 0 };
   }
 
-  // רק התראות ממתינות של משתמשים שהדליקו את המתג בפרופיל ויש להם מייל.
+  // כל התראה נכנסת לתור כ-pending, גם של מי שלא הדליק מייל. חשוב לסנן לפי המשתמשים כבר
+  // בשאילתה: PostgREST מחזיר לכל היותר 1000 שורות, וכשהתור התמלא בהתראות של משתמשים בלי
+  // מייל - ההתראות של מי שכן הדליק לא נכנסו בכלל ל-1000 הראשונות, ואף מייל לא נשלח.
+  const enabledIds = await getEmailEnabledUserIds();
+  await skipPendingOfOtherUsers(enabledIds);
+  if (enabledIds.length === 0) {
+    return { ok: true, sentEmails: 0, skippedReason: "אין משתמשים שהדליקו התראות במייל", remainingToday: remaining };
+  }
+
   const { data: pending } = await admin
     .from("user_notifications")
     .select("id, user_id, kind, title, body, url, created_at, user:profiles!user_notifications_user_id_fkey(email, username, email_notifications_enabled)")
     .eq("email_status", "pending")
+    .in("user_id", enabledIds)
     .order("created_at", { ascending: true })
-    .limit(2000);
+    .limit(1000);
 
   const eligible = (pending ?? []).filter((n: any) => n.user?.email_notifications_enabled && n.user?.email);
   if (eligible.length === 0) {

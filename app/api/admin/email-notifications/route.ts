@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
-import { getEmailNotificationSettings } from "@/lib/emailNotifications";
+import { getEmailNotificationSettings, getEmailEnabledUserIds } from "@/lib/emailNotifications";
 
 export const dynamic = "force-dynamic";
 
@@ -28,13 +28,19 @@ async function getStats() {
     .eq("email_status", "sent")
     .gte("email_sent_at", dayStartUtc.toISOString());
 
-  const { data: pendingRows } = await admin
-    .from("user_notifications")
-    .select("user_id, user:profiles!user_notifications_user_id_fkey(email_notifications_enabled, email)")
-    .eq("email_status", "pending")
-    .limit(5000);
+  // מסננים כבר בשאילתה לפי מי שהדליק מייל - PostgREST מחזיר עד 1000 שורות, ובלי הסינון
+  // המונה היה מראה מדגם מקרי מתוך התור (ראו ההסבר ב-lib/emailNotifications.ts).
+  const enabledIds = await getEmailEnabledUserIds();
+  const { data: pendingRows } = enabledIds.length
+    ? await admin
+        .from("user_notifications")
+        .select("user_id")
+        .eq("email_status", "pending")
+        .in("user_id", enabledIds)
+        .limit(1000)
+    : { data: [] as { user_id: string }[] };
 
-  const eligiblePending = (pendingRows ?? []).filter((r: any) => r.user?.email_notifications_enabled && r.user?.email);
+  const eligiblePending = pendingRows ?? [];
   const pendingUsers = new Set(eligiblePending.map((r: any) => r.user_id)).size;
 
   return {

@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Ban, ShieldCheck, Crown, Loader2, ShieldOff, UserCog, Trash2, Paperclip, Pencil, ThumbsUp, MessageSquare, Star, Clock, Search, KeyRound } from "lucide-react";
+import { Ban, ShieldCheck, Crown, Loader2, ShieldOff, UserCog, Trash2, Paperclip, Pencil, ThumbsUp, MessageSquare, Star, Clock, Search, KeyRound, Plus, Minus } from "lucide-react";
 import type { Profile } from "@/types/database";
 
 const ROLE_LABEL: Record<string, string> = { user: "משתמש", developer: "מפתח", admin: "מנהל", moderator: "פיקוח" };
@@ -138,6 +138,21 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
     }
   }
 
+  // sign: 1 = הוספה (מנהל בלבד), -1 = הורדה. הכמות נשאלת ב-prompt, כמו בשאר הפעולות כאן.
+  async function adjustPoints(id: string, username: string, sign: 1 | -1) {
+    const input = window.prompt(
+      sign > 0 ? `כמה מוניטין להוסיף ל-"${username}"?` : `כמה מוניטין להוריד מ-"${username}"?`,
+      "10"
+    );
+    if (input === null) return;
+    const amount = Number(input.trim());
+    if (!Number.isInteger(amount) || amount <= 0) {
+      alert("יש להזין מספר שלם וחיובי");
+      return;
+    }
+    await act(id, "adjust_points", { pointsDelta: sign * amount });
+  }
+
   // צוות פיקוח לא יכול למחוק ישירות - הכפתור מגיש בקשת מחיקה שממתינה לאישור מנהל.
   async function requestDeleteUser(id: string, username: string) {
     const ok = window.confirm(`לשלוח בקשה למנהל למחיקת המשתמש "${username}"? המשתמש לא יימחק עד שהמנהל יאשר.`);
@@ -215,6 +230,27 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
                 <div className={`flex items-center gap-1 text-base font-black ${p.points >= 300 ? "text-gold" : "text-white"}`}>
                   <Star className="h-4 w-4" /> {p.points.toLocaleString("he-IL")}
                 </div>
+                {/* שינוי מוניטין ידני: מנהל - הוספה והורדה, צוות פיקוח - הורדה בלבד (נאכף גם בשרת) */}
+                {busyId !== p.id && (isAdmin || p.role !== "admin") && (
+                  <div className="mt-1 flex items-center gap-1">
+                    {isAdmin && (
+                      <button
+                        title="הוספת מוניטין"
+                        onClick={() => adjustPoints(p.id, p.username, 1)}
+                        className="rounded-md border border-border px-1.5 text-xs font-bold text-accent hover:bg-accent/10"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    <button
+                      title="הורדת מוניטין"
+                      onClick={() => adjustPoints(p.id, p.username, -1)}
+                      className="rounded-md border border-border px-1.5 text-xs font-bold text-red-400 hover:bg-red-500/10"
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-1 text-xs text-gray-400">

@@ -3,6 +3,7 @@ import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { deleteUserCompletely } from "@/lib/user-deletion";
 import { logAudit } from "@/lib/audit";
+import { addPoints } from "@/lib/points";
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const result = await requireProfile();
@@ -16,7 +17,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: "לא ניתן לבצע פעולה זו על החשבון שלך" }, { status: 400 });
   }
 
-  const { action, username, sizeOverrideMb, hours, banReason, banHours } = await request.json();
+  const { action, username, sizeOverrideMb, hours, banReason, banHours, pointsDelta } = await request.json();
 
   // פעולות אלה (מינוי/הדחה מפיקוח, מתן/הסרת PRO, מתן הרשאת קבצים, עריכת פרטי משתמש) הן
   // בסמכות מנהל בפועל בלבד - גם חבר צוות פיקוח שרואה את המסך הזה לא יכול לבצע אותן.
@@ -60,6 +61,39 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       undoable: false
     });
     return NextResponse.json({ ok: true });
+  }
+
+  // שינוי מוניטין ידני: מנהל בפועל יכול להוסיף וגם להוריד, צוות פיקוח רק להוריד (למשל על
+  // התנהגות לא ראויה). צוות פיקוח לא יכול לגעת במוניטין של מנהל. המוניטין לא יורד מתחת ל-0.
+  // עובר דרך addPoints כדי שהוספה שחוצה את סף ה-PRO תעניק PRO אוטומטית, כמו בכל מקור נקודות.
+  if (action === "adjust_points") {
+    const delta = Number(pointsDelta);
+    if (!Number.isInteger(delta) || delta === 0 || Math.abs(delta) > 100_000) {
+      return NextResponse.json({ error: "יש להזין מספר שלם של נקודות (שונה מ-0)" }, { status: 400 });
+    }
+    if (delta > 0 && profile.role !== "admin") {
+      return NextResponse.json({ error: "צוות פיקוח יכול רק להוריד מוניטין - הוספה בסמכות מנהל בלבד" }, { status: 403 });
+    }
+    const { data: target } = await admin.from("profiles").select("username, role, points").eq("id", params.id).single();
+    if (!target) return NextResponse.json({ error: "המשתמש לא נמצא" }, { status: 404 });
+    if (target.role === "admin" && profile.role !== "admin") {
+      return NextResponse.json({ error: "לא ניתן לשנות מוניטין של מנהל" }, { status: 403 });
+    }
+
+    const before = target.points ?? 0;
+    const after = Math.max(0, before + delta);
+    if (after !== before) await addPoints(params.id, after - before);
+
+    await logAudit({
+      actorId: profile.id,
+      action: "adjust_points",
+      targetType: "user",
+      targetId: params.id,
+      targetLabel: target.username,
+      meta: { from: before, to: after, delta: after - before },
+      undoable: false
+    });
+    return NextResponse.json({ ok: true, points: after });
   }
 
   // הרשאת גודל חד-פעמית: מנהל/צוות פיקוח קובעים למשתמש ספציפי מכסת קובץ חריגה לפעם אחת
