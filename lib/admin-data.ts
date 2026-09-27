@@ -179,6 +179,16 @@ export async function getPendingBanAppealsCount(): Promise<number> {
   return count ?? 0;
 }
 
+// בקשות קהילה שמתנדב/מבקש סימן "בוצעה" וממתינות לאישור צוות (ראו app/api/community-requests/[id]).
+export async function getPendingCommunityReviewCount(): Promise<number> {
+  const admin = createAdminSupabase();
+  const { count } = await admin
+    .from("community_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending_review");
+  return count ?? 0;
+}
+
 // כל אירועי ההפניה (Referral) - לטאב "הפניות" בפאנל הניהול. הכי חדש קודם.
 export async function getReferralEvents(): Promise<ReferralEvent[]> {
   const admin = createAdminSupabase();

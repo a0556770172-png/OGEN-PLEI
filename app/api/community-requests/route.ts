@@ -29,8 +29,8 @@ export async function GET() {
     claimer: r.claimed_by ? userMap.get(r.claimed_by) ?? null : null
   }));
 
-  // סדר תצוגה: פתוחות -> נתפסו -> בוצעו -> נסגרו, ובתוך כל קבוצה מהחדש לישן.
-  const order: Record<string, number> = { open: 0, claimed: 1, fulfilled: 2, closed: 3 };
+  // סדר תצוגה: פתוחות -> נתפסו -> ממתינות לאישור צוות -> בוצעו -> נסגרו, ובתוך כל קבוצה מהחדש לישן.
+  const order: Record<string, number> = { open: 0, claimed: 1, pending_review: 2, fulfilled: 3, closed: 4 };
   enriched.sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
 
   return NextResponse.json({ requests: enriched });

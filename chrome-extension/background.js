@@ -2,9 +2,15 @@
 // worker של כרום נכשל אצל חלק מהמשתמשים בטעינת קובץ נפרד עם importScripts (שגיאת
 // "failed to load" גם כשהקובץ קיים בפועל בתיקייה) - זו בעיה ידועה של כרום בהרצת
 // service worker על חלק מהמערכות. הטמעה ישירה כאן פותרת את זה לגמרי.
-const SUPABASE_URL = "https://ipflzyjbhfqktnjjjsyg.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_wH5MS_iGTl9c7HlN-y7GTg_5v49mZcW";
-const DEFAULT_SITE_URL = "https://ogen-plei-qype.vercel.app";
+// (עותק של config.js - לשמור מסונכרן.) התוסף מדבר רק עם כתובת האתר ולא ישירות עם Supabase:
+// ההתחברות וחידוש הטוקן עוברים דרך /api/staff/token באתר. קודם התוסף היה מחובר ישירות ל-Supabase
+// בענן, ואחרי המעבר לשרת העצמאי ההתחברות נשברה.
+const DEFAULT_SITE_URL = "https://ogenplay.com";
+function normalizeSiteUrl(url) {
+  const value = (url || "").trim().replace(/\/$/, "");
+  if (!value || /vercel\.app/i.test(value)) return DEFAULT_SITE_URL;
+  return value;
+}
 
 const ALARM_NAME = "ogen-play-poll";
 // חשוב: כרום (Manifest V3) לא מאפשר ל-alarm חוזר לפעול יותר מפעם בדקה - זו מגבלה טכנית
@@ -19,7 +25,9 @@ const ITEM_LABELS = {
   tickets: "הודעות ממתינות למענה",
   deletionRequests: "בקשות מחיקת משתמשים",
   council: "ועדות שנפתחו אוטומטית",
-  reports: "דיווחים על אפליקציות"
+  reports: "דיווחים על אפליקציות",
+  banAppeals: "ערעורי חסימה ממתינים",
+  communityReview: "בקשות קהילה לאישור ביצוע"
 };
 
 async function getStored(keys) {
@@ -33,15 +41,16 @@ async function refreshAccessToken(siteUrl) {
   const { refreshToken } = await getStored(["refreshToken"]);
   if (!refreshToken) return null;
   try {
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+    const res = await fetch(`${siteUrl}/api/staff/token`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY },
-      body: JSON.stringify({ refresh_token: refreshToken })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ grant: "refresh", refreshToken }),
+      cache: "no-store"
     });
     const json = await res.json();
-    if (!res.ok || !json.access_token) return null;
-    await setStored({ accessToken: json.access_token, refreshToken: json.refresh_token });
-    return json.access_token;
+    if (!res.ok || !json.accessToken) return null;
+    await setStored({ accessToken: json.accessToken, refreshToken: json.refreshToken });
+    return json.accessToken;
   } catch {
     return null;
   }
@@ -50,7 +59,7 @@ async function refreshAccessToken(siteUrl) {
 async function fetchSummary(siteUrl, accessToken) {
   // cache: "no-store" + פרמטר "_t" משתנה - הגנה כפולה נגד מטמון דפדפן/CDN שיגיש תשובה
   // ישנה במקום לפנות בפועל לשרת בכל סריקה (זה בדיוק מה שגרם למספרים "להיתקע").
-  const url = `${siteUrl.replace(/\/$/, "")}/api/staff/notifications-summary?_t=${Date.now()}`;
+  const url = `${siteUrl}/api/staff/notifications-summary?_t=${Date.now()}`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
     cache: "no-store"
@@ -72,7 +81,8 @@ async function poll() {
 
 async function pollInner() {
   const { accessToken, siteUrl, lastCounts } = await getStored(["accessToken", "siteUrl", "lastCounts"]);
-  const url = siteUrl || DEFAULT_SITE_URL;
+  const url = normalizeSiteUrl(siteUrl);
+  if (siteUrl && siteUrl !== url) await setStored({ siteUrl: url });
 
   if (!accessToken) {
     chrome.action.setBadgeText({ text: "" });
@@ -102,7 +112,7 @@ async function pollInner() {
     return;
   }
 
-  await setStored({ lastSummary: json, lastFetchedAt: Date.now(), lastPollError: null });
+  await setStored({ lastSummary: json, lastFetchedAt: Date.now(), lastPollError: null, role: json.profile?.role || null });
 
   const total = json.total ?? 0;
   chrome.action.setBadgeText({ text: total > 0 ? String(total) : "" });

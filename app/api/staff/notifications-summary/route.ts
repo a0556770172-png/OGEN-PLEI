@@ -9,7 +9,9 @@ import {
   getTicketsNeedingReplyCount,
   getPendingDeletionRequestsCount,
   getOpenAutoApprovedCouncilCount,
-  getPendingAppReportsCount
+  getPendingAppReportsCount,
+  getPendingBanAppealsCount,
+  getPendingCommunityReviewCount
 } from "@/lib/admin-data";
 
 export const dynamic = "force-dynamic";
@@ -69,18 +71,20 @@ export async function GET(request: Request) {
     );
   }
 
-  const [review, pro, suggestions, tickets, deletionRequests, council, reports] = await Promise.all([
+  const [review, pro, suggestions, tickets, deletionRequests, council, reports, banAppeals, communityReview] = await Promise.all([
     getPendingReviewCount(),
     profile.role === "admin" ? getPendingProRequestsCount() : Promise.resolve(0),
     getPendingSuggestionsCount(),
     getTicketsNeedingReplyCount(),
     profile.role === "admin" ? getPendingDeletionRequestsCount() : Promise.resolve(0),
     getOpenAutoApprovedCouncilCount(),
-    getPendingAppReportsCount()
+    getPendingAppReportsCount(),
+    getPendingBanAppealsCount(),
+    getPendingCommunityReviewCount()
   ]);
 
-  const items = { review, pro, suggestions, tickets, deletionRequests, council, reports };
-  const total = review + pro + suggestions + tickets + deletionRequests + council + reports;
+  const items = { review, pro, suggestions, tickets, deletionRequests, council, reports, banAppeals, communityReview };
+  const total = Object.values(items).reduce((sum, n) => sum + n, 0);
 
   return json({
     total,

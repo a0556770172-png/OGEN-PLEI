@@ -1,12 +1,4 @@
-const ITEM_LABELS = {
-  review: "אפליקציות ממתינות לבדיקה",
-  pro: "בקשות PRO ממתינות",
-  suggestions: "הצעות אפליקציות ממתינות",
-  tickets: "הודעות ממתינות למענה",
-  deletionRequests: "בקשות מחיקת משתמשים",
-  council: "ועדות שנפתחו אוטומטית",
-  reports: "דיווחים על אפליקציות"
-};
+// ITEM_LABELS, DEFAULT_SITE_URL ו-normalizeSiteUrl מגיעים מ-config.js (נטען לפני הקובץ הזה).
 
 function el(id) { return document.getElementById(id); }
 
@@ -25,8 +17,16 @@ function renderSummary(summary) {
     const count = items[key] ?? 0;
     const row = document.createElement("div");
     row.className = "row";
-    row.innerHTML = `<span>${ITEM_LABELS[key]}</span><span class="count ${count === 0 ? "zero" : ""}">${count}</span>`;
+    const label = document.createElement("span");
+    label.textContent = ITEM_LABELS[key];
+    const badge = document.createElement("span");
+    badge.className = `count ${count === 0 ? "zero" : ""}`;
+    badge.textContent = String(count);
+    row.append(label, badge);
     rows.appendChild(row);
+  }
+  if (summary?.profile?.username) {
+    el("who").textContent = `מחובר/ת כ: ${summary.profile.username}`;
   }
 }
 
@@ -50,8 +50,13 @@ function showLoginView(errorMsg) {
   el("loginError").textContent = errorMsg || "";
 }
 
+async function siteBase() {
+  const { siteUrl } = await getStored(["siteUrl"]);
+  return normalizeSiteUrl(siteUrl);
+}
+
 async function init() {
-  const { accessToken, loginError, siteUrl } = await getStored(["accessToken", "loginError", "siteUrl"]);
+  const { accessToken, loginError } = await getStored(["accessToken", "loginError"]);
   if (accessToken) {
     showSummaryView();
     chrome.runtime.sendMessage({ type: "poll-now" }, () => showSummaryView());
@@ -70,51 +75,47 @@ async function init() {
     el("loginBtn").disabled = true;
     el("loginBtn").textContent = "מתחבר...";
     try {
-      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      // ההתחברות עוברת דרך האתר עצמו (ראו app/api/staff/token), שגם מוודא שהחשבון הוא צוות
+      // פיקוח/ניהול - לחשבון רגיל לא מוחזר טוקן בכלל.
+      const res = await fetch(`${await siteBase()}/api/staff/token`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY },
-        body: JSON.stringify({ email, password })
-      });
-      const json = await res.json();
-      if (!res.ok || !json.access_token) {
-        throw new Error(json.error_description || json.msg || "פרטי התחברות שגויים");
-      }
-      await setStored({ accessToken: json.access_token, refreshToken: json.refresh_token, loginError: null });
-
-      // מוודאים מיד שהמשתמש הזה בכלל צוות פיקוח/ניהול - אם לא, ה-endpoint יחזיר 403 והתוסף
-      // ינקה את הטוקן וידרוש התחברות מחדש עם החשבון הנכון.
-      const url = (siteUrl || DEFAULT_SITE_URL).replace(/\/$/, "");
-      const checkRes = await fetch(`${url}/api/staff/notifications-summary?_t=${Date.now()}`, {
-        headers: { Authorization: `Bearer ${json.access_token}` },
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ grant: "password", email, password }),
         cache: "no-store"
       });
-      if (!checkRes.ok) {
-        const checkJson = await checkRes.json().catch(() => ({}));
-        await setStored({ accessToken: null, refreshToken: null });
-        // מצב דיבאג זמני: מציגים גם את השדות debug* אם קיימים בתשובה, כדי לאבחן במקום לנחש
-        const debugParts = Object.keys(checkJson)
-          .filter((k) => k.startsWith("debug"))
-          .map((k) => `${k}=${checkJson[k]}`)
-          .join(", ");
-        throw new Error((checkJson.error || "החשבון הזה אינו צוות פיקוח/ניהול") + (debugParts ? ` [${debugParts}]` : ""));
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.accessToken) {
+        throw new Error(json.error || `שגיאת התחברות (${res.status})`);
       }
+      await setStored({ accessToken: json.accessToken, refreshToken: json.refreshToken, role: json.role, loginError: null });
+      el("password").value = "";
 
       showSummaryView();
       chrome.runtime.sendMessage({ type: "poll-now" }, () => showSummaryView());
     } catch (err) {
-      el("loginError").textContent = err.message || "שגיאה בהתחברות";
+      el("loginError").textContent =
+        err instanceof TypeError ? "אין חיבור לאתר - בדקו את החיבור לאינטרנט" : err.message || "שגיאה בהתחברות";
     } finally {
       el("loginBtn").disabled = false;
       el("loginBtn").textContent = "התחברות";
     }
   });
 
+  el("password").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") el("loginBtn").click();
+  });
+
   el("refreshBtn")?.addEventListener("click", () => {
     chrome.runtime.sendMessage({ type: "poll-now" }, () => showSummaryView());
   });
 
+  el("openBtn")?.addEventListener("click", async () => {
+    const { role } = await getStored(["role"]);
+    chrome.tabs.create({ url: `${await siteBase()}${role === "admin" ? "/dashboard/admin" : "/dashboard/moderator"}` });
+  });
+
   el("logoutBtn")?.addEventListener("click", async () => {
-    await setStored({ accessToken: null, refreshToken: null, lastSummary: null, lastCounts: null });
+    await setStored({ accessToken: null, refreshToken: null, lastSummary: null, lastCounts: null, role: null });
     chrome.action.setBadgeText({ text: "" });
     showLoginView();
   });

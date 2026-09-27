@@ -120,7 +120,7 @@ export interface AppRow {
   developer?: Profile;
 }
 
-export type CommunityRequestStatus = "open" | "claimed" | "fulfilled" | "closed";
+export type CommunityRequestStatus = "open" | "claimed" | "pending_review" | "fulfilled" | "closed";
 
 // פיצ'ר "בקשות קהילתיות": משתמש מדביק קישור לבקשה מפורום חיצוני, ומתנדב מוריד מהמקור
 // ומעלה עבורו את הקובץ. ראו app/community וכן app/api/community-requests.

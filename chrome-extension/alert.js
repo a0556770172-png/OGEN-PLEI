@@ -20,8 +20,8 @@ if (increases.length === 0) {
 }
 
 el("openBtn").addEventListener("click", async () => {
-  const { siteUrl } = await new Promise((resolve) => chrome.storage.local.get(["siteUrl"], resolve));
-  chrome.tabs.create({ url: (siteUrl || DEFAULT_SITE_URL || "").replace(/\/$/, "") + "/dashboard/admin" });
+  const { siteUrl, role } = await new Promise((resolve) => chrome.storage.local.get(["siteUrl", "role"], resolve));
+  chrome.tabs.create({ url: normalizeSiteUrl(siteUrl) + (role === "admin" ? "/dashboard/admin" : "/dashboard/moderator") });
   window.close();
 });
 
