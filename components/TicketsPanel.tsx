@@ -7,6 +7,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import TicketAttachment from "./TicketAttachment";
 import MessageReactionsBar from "./MessageReactions";
+import { uploadAttachment } from "@/lib/uploadAttachment";
 import { FormattedMessageBody, buildQuoteText, copyMessageWithLink, toggleBoldAtSelection } from "@/lib/chatFormat";
 import { formatMessageTime, fullMessageTime } from "@/lib/formatTime";
 import type { Ticket, TicketMessage, Profile } from "@/types/database";
@@ -139,22 +140,12 @@ export default function TicketsPanel({
 
   async function uploadPendingFile(ticketId: string) {
     if (!pendingFile) return null;
-    const initRes = await fetch(`/api/tickets/${ticketId}/attachment-init`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileName: pendingFile.name, fileSize: pendingFile.size, contentType: pendingFile.type })
-    });
-    const initJson = await initRes.json().catch(() => ({}));
-    if (!initRes.ok) {
-      alert(initJson.error || "שגיאה בהעלאת הקובץ");
+    try {
+      return await uploadAttachment(`/api/tickets/${ticketId}/attachment-init`, pendingFile);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "שגיאה בהעלאת הקובץ");
       return null;
     }
-    const putRes = await fetch(initJson.uploadUrl, { method: "PUT", body: pendingFile, headers: { "Content-Type": pendingFile.type } });
-    if (!putRes.ok) {
-      alert("שגיאה בהעלאת הקובץ ל-R2");
-      return null;
-    }
-    return { attachmentKey: initJson.attachmentKey, attachmentName: initJson.attachmentName, attachmentType: initJson.attachmentType };
   }
 
   async function sendReply(e: React.FormEvent) {
@@ -534,14 +525,16 @@ export default function TicketsPanel({
                       <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/*,video/*,audio/*"
                         className="hidden"
-                        onChange={(e) => setPendingFile(e.target.files?.[0] ?? null)}
+                        onChange={(e) => {
+                          setPendingFile(e.target.files?.[0] ?? null);
+                          e.target.value = "";
+                        }}
                       />
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        title="צירוף תמונה/וידאו/הקלטת קול"
+                        title="צירוף קובץ (כל סוג: תמונה, וידאו, ZIP וכו' - עד 50MB)"
                         className="btn-ghost px-3"
                       >
                         <Paperclip className="h-4 w-4" />

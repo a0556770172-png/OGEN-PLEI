@@ -2,10 +2,12 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Send, Loader2, MessagesSquare, Plus, CheckCircle2, RotateCcw, Siren,
-  Quote, Reply, Copy, Pencil, Trash2, Bold, Check, X
+  Quote, Reply, Copy, Pencil, Trash2, Bold, Check, X, Paperclip
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import MessageReactionsBar from "./MessageReactions";
+import TicketAttachment from "./TicketAttachment";
+import { uploadAttachment, type UploadedAttachment } from "@/lib/uploadAttachment";
 import { FormattedMessageBody, buildQuoteText, copyMessageWithLink, toggleBoldAtSelection } from "@/lib/chatFormat";
 import { formatMessageTime, fullMessageTime } from "@/lib/formatTime";
 import type { CouncilThread, CouncilMessage, Profile } from "@/types/database";
@@ -29,6 +31,8 @@ export default function CouncilPanel({ currentProfile }: { currentProfile: Profi
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [unreadByThread, setUnreadByThread] = useState<Record<string, number>>({});
 
@@ -107,14 +111,32 @@ export default function CouncilPanel({ currentProfile }: { currentProfile: Profi
 
   async function sendReply(e: React.FormEvent) {
     e.preventDefault();
-    if (!selected || !reply.trim()) return;
+    if (!selected || (!reply.trim() && !pendingFile)) return;
     setBusy(true);
-    await fetch(`/api/council/threads/${selected.id}/messages`, {
+    // קובץ מצורף (כל סוג, כולל ZIP) מועלה קודם ישירות ל-R2, ואז נשלח עם ההודעה.
+    let attachment: UploadedAttachment | null = null;
+    if (pendingFile) {
+      try {
+        attachment = await uploadAttachment(`/api/council/threads/${selected.id}/attachment-init`, pendingFile);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "שגיאה בהעלאת הקובץ");
+        setBusy(false);
+        return;
+      }
+    }
+    const res = await fetch(`/api/council/threads/${selected.id}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: reply, replyToId: replyingTo?.id ?? null })
+      body: JSON.stringify({ message: reply, replyToId: replyingTo?.id ?? null, ...attachment })
     });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      alert(j.error || "שגיאה בשליחת ההודעה");
+      setBusy(false);
+      return;
+    }
     setReply("");
+    setPendingFile(null);
     setReplyingTo(null);
     setBusy(false);
     await refreshMessages();
@@ -368,6 +390,10 @@ export default function CouncilPanel({ currentProfile }: { currentProfile: Profi
                             </>
                           )}
 
+                          {m.attachment_key && (
+                            <TicketAttachment attachmentKey={m.attachment_key} attachmentName={m.attachment_name ?? null} attachmentType={m.attachment_type ?? null} />
+                          )}
+
                           <MessageReactionsBar reactions={m.reactions} currentUserId={currentProfile.id} onToggle={(emoji) => toggleReaction(m.id, emoji)} />
 
                           {editingId !== m.id && (
@@ -401,8 +427,35 @@ export default function CouncilPanel({ currentProfile }: { currentProfile: Profi
                 </div>
               )}
 
+              {pendingFile && (
+                <div className="flex items-center gap-2 rounded-lg bg-surface2 px-3 py-2 text-xs text-gray-300">
+                  <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate" data-no-translate>{pendingFile.name}</span>
+                  <button type="button" onClick={() => setPendingFile(null)} className="text-gray-500 hover:text-red-400"><X className="h-3.5 w-3.5" /></button>
+                </div>
+              )}
+
               <form onSubmit={sendReply} className="flex items-end gap-2">
-                <button type="button" onClick={toggleBold} title="הדגשת כתב" className="btn-ghost shrink-0 px-3"><Bold className="h-4 w-4" /></button>
+                <div className="flex shrink-0 flex-col gap-1">
+                  <button type="button" onClick={toggleBold} title="הדגשת כתב" className="btn-ghost px-3"><Bold className="h-4 w-4" /></button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => {
+                      setPendingFile(e.target.files?.[0] ?? null);
+                      e.target.value = "";
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="צירוף קובץ (כל סוג: תמונה, וידאו, ZIP וכו' - עד 50MB)"
+                    className="btn-ghost px-3"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </button>
+                </div>
                 <textarea
                   ref={textareaRef}
                   value={reply}
@@ -417,7 +470,7 @@ export default function CouncilPanel({ currentProfile }: { currentProfile: Profi
                   className="input-field flex-1 resize-none"
                   placeholder="הקלידו הודעה לצוות..."
                 />
-                <button type="submit" disabled={busy || !reply.trim()} className="btn-primary shrink-0">
+                <button type="submit" disabled={busy || (!reply.trim() && !pendingFile)} className="btn-primary shrink-0">
                   {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </button>
               </form>

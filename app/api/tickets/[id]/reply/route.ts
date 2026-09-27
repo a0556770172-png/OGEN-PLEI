@@ -27,12 +27,14 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ error: "שיחה זו משוייכת לחבר צוות אחר" }, { status: 403 });
   }
 
-  // צירוף קבצים למשתמשים אסור לגמרי; לצוות מותר רק למנהל בפועל או למי שקיבל הרשאה מפורשת.
+  // קבצים מצורפים: המשתמש שפתח את הפנייה - תמיד. צוות - מנהל בפועל, או מי שקיבל הרשאה מפורשת.
   if (attachmentKey) {
-    if (!staff) {
-      return NextResponse.json({ error: "לא ניתן לצרף קבצים" }, { status: 403 });
+    // הקובץ חייב להיות כזה שהועלה לפנייה הזו בדיוק (ראו attachment-init) - אחרת אפשר היה
+    // "לצרף" מפתח של קובץ מפנייה אחרת ולקבל ככה גישה אליו.
+    if (typeof attachmentKey !== "string" || !attachmentKey.startsWith(`ticket-attachments/${ticket.id}/`)) {
+      return NextResponse.json({ error: "קובץ מצורף לא תקין" }, { status: 400 });
     }
-    if (profile.role !== "admin" && !profile.can_send_attachments) {
+    if (staff && ticket.user_id !== user.id && profile.role !== "admin" && !profile.can_send_attachments) {
       return NextResponse.json({ error: "אין לך הרשאה לשלוח קבצים מצורפים" }, { status: 403 });
     }
   }

@@ -4,9 +4,10 @@ import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   MessageCircle, Plus, Send, Loader2, AlertCircle,
-  Quote, Reply, Copy, Pencil, Trash2, Bold, Check, X
+  Quote, Reply, Copy, Pencil, Trash2, Bold, Check, X, Paperclip
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { uploadAttachment, type UploadedAttachment } from "@/lib/uploadAttachment";
 import TicketAttachment from "@/components/TicketAttachment";
 import MessageReactionsBar from "@/components/MessageReactions";
 import { FormattedMessageBody, buildQuoteText, copyMessageWithLink, toggleBoldAtSelection } from "@/lib/chatFormat";
@@ -44,6 +45,8 @@ function SupportPageInner() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function loadTickets() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -138,13 +141,24 @@ function SupportPageInner() {
 
   async function sendReply(e: React.FormEvent) {
     e.preventDefault();
-    if (!selected || !reply.trim()) return;
+    if (!selected || (!reply.trim() && !pendingFile)) return;
     setBusy(true);
     setError("");
+    // קובץ מצורף (כל סוג - תמונה, וידאו, ZIP וכו') מועלה קודם ישירות ל-R2, ואז נשלח עם ההודעה.
+    let attachment: UploadedAttachment | null = null;
+    if (pendingFile) {
+      try {
+        attachment = await uploadAttachment(`/api/tickets/${selected.id}/attachment-init`, pendingFile);
+      } catch (err) {
+        setBusy(false);
+        setError(err instanceof Error ? err.message : "שגיאה בהעלאת הקובץ");
+        return;
+      }
+    }
     const res = await fetch(`/api/tickets/${selected.id}/reply`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: reply, replyToId: replyingTo?.id ?? null })
+      body: JSON.stringify({ message: reply, replyToId: replyingTo?.id ?? null, ...attachment })
     });
     const json = await res.json().catch(() => null);
     setBusy(false);
@@ -153,6 +167,7 @@ function SupportPageInner() {
       return;
     }
     setReply("");
+    setPendingFile(null);
     setReplyingTo(null);
     await openTicket(selected);
     await loadTickets();
@@ -410,8 +425,35 @@ function SupportPageInner() {
                 </div>
               )}
 
+              {pendingFile && (
+                <div className="flex items-center gap-2 rounded-lg bg-surface2 px-3 py-2 text-xs text-gray-300">
+                  <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate" data-no-translate>{pendingFile.name}</span>
+                  <button type="button" onClick={() => setPendingFile(null)} className="text-gray-500 hover:text-red-400"><X className="h-3.5 w-3.5" /></button>
+                </div>
+              )}
+
               <form onSubmit={sendReply} className="flex items-end gap-2">
-                <button type="button" onClick={toggleBold} title="הדגשת כתב" className="btn-ghost shrink-0 px-3"><Bold className="h-4 w-4" /></button>
+                <div className="flex shrink-0 flex-col gap-1">
+                  <button type="button" onClick={toggleBold} title="הדגשת כתב" className="btn-ghost px-3"><Bold className="h-4 w-4" /></button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => {
+                      setPendingFile(e.target.files?.[0] ?? null);
+                      e.target.value = "";
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="צירוף קובץ (כל סוג: תמונה, וידאו, ZIP וכו' - עד 50MB)"
+                    className="btn-ghost px-3"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </button>
+                </div>
                 <textarea
                   ref={textareaRef}
                   value={reply}
@@ -426,7 +468,7 @@ function SupportPageInner() {
                   className="input-field flex-1 resize-none"
                   placeholder="הקלידו תגובה..."
                 />
-                <button type="submit" disabled={busy || !reply.trim()} className="btn-primary shrink-0">
+                <button type="submit" disabled={busy || (!reply.trim() && !pendingFile)} className="btn-primary shrink-0">
                   {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </button>
               </form>

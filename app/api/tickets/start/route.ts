@@ -13,12 +13,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "רק צוות יכול לפתוח שיחה יזומה" }, { status: 403 });
   }
 
-  const { targetUserId, subject, message, attachmentKey, attachmentName, attachmentType } = await request.json().catch(() => ({}));
-  if (!targetUserId || !subject?.trim() || (!message?.trim() && !attachmentKey)) {
+  // ההודעה הפותחת היא טקסט בלבד - קובץ מצורף שולחים בהודעה הבאה, אחרי שהפנייה כבר קיימת
+  // (כך attachment-init/reply יכולים לוודא שהקובץ הועלה לפנייה הזו בדיוק).
+  const { targetUserId, subject, message } = await request.json().catch(() => ({}));
+  if (!targetUserId || !subject?.trim() || !message?.trim()) {
     return NextResponse.json({ error: "חובה לבחור משתמש, נושא ותוכן הודעה" }, { status: 400 });
-  }
-  if (attachmentKey && profile.role !== "admin" && !profile.can_send_attachments) {
-    return NextResponse.json({ error: "אין לך הרשאה לשלוח קבצים מצורפים" }, { status: 403 });
   }
 
   const admin = createAdminSupabase();
@@ -39,17 +38,14 @@ export async function POST(request: Request) {
     ticket_id: ticket.id,
     sender_id: user.id,
     sender_role: "staff",
-    body: message?.trim() || "",
-    attachment_key: attachmentKey ?? null,
-    attachment_name: attachmentName ?? null,
-    attachment_type: attachmentType ?? null
+    body: message.trim()
   });
 
   // התראת דחיפה למשתמש/מפתח שהצוות פתח אליו שיחה - כדי שהוא ידע מיד וילחץ ישר אל השיחה
   // (ראו components/NotificationBell.tsx לתג ההתראה בתוך האתר עצמו).
   sendPushToUser(targetUserId, {
     title: `הודעה חדשה מהצוות: ${subject.trim()}`,
-    body: (message?.trim() || "[קובץ מצורף]").slice(0, 120),
+    body: message.trim().slice(0, 120),
     url: "/support"
   }).catch(() => {});
 

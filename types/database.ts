@@ -244,6 +244,9 @@ export interface CouncilMessage {
   edited_at: string | null;
   deleted_at: string | null;
   created_at: string;
+  attachment_key?: string | null;
+  attachment_name?: string | null;
+  attachment_type?: string | null;
   sender?: Profile;
   replyTo?: CouncilMessage;
 }

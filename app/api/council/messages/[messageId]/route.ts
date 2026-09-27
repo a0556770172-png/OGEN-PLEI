@@ -48,7 +48,7 @@ export async function DELETE(_request: Request, { params }: { params: { messageI
 
   const { error } = await admin
     .from("council_messages")
-    .update({ body: "", deleted_at: new Date().toISOString() })
+    .update({ body: "", attachment_key: null, attachment_name: null, attachment_type: null, deleted_at: new Date().toISOString() })
     .eq("id", params.messageId);
   if (error) return NextResponse.json({ error: "שגיאה במחיקת ההודעה" }, { status: 500 });
 

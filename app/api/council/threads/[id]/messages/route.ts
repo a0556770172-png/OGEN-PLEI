@@ -12,9 +12,13 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ error: "רק צוות יכול לכתוב בוועדה" }, { status: 403 });
   }
 
-  const { message, replyToId } = await request.json().catch(() => ({}));
-  if (!message?.trim()) {
+  const { message, replyToId, attachmentKey, attachmentName, attachmentType } = await request.json().catch(() => ({}));
+  if (!message?.trim() && !attachmentKey) {
     return NextResponse.json({ error: "אי אפשר לשלוח הודעה ריקה" }, { status: 400 });
+  }
+  // קובץ מצורף חייב להיות כזה שהועלה לוועדה הזו בדיוק (ראו attachment-init).
+  if (attachmentKey && (typeof attachmentKey !== "string" || !attachmentKey.startsWith(`council-attachments/${params.id}/`))) {
+    return NextResponse.json({ error: "קובץ מצורף לא תקין" }, { status: 400 });
   }
 
   const admin = createAdminSupabase();
@@ -24,8 +28,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
   const { error } = await admin.from("council_messages").insert({
     thread_id: params.id,
     sender_id: user.id,
-    body: message.trim(),
-    reply_to_id: replyToId ?? null
+    body: message?.trim() || "",
+    reply_to_id: replyToId ?? null,
+    ...(attachmentKey
+      ? { attachment_key: attachmentKey, attachment_name: attachmentName ?? null, attachment_type: attachmentType ?? null }
+      : {})
   });
   if (error) return NextResponse.json({ error: "שגיאה בשליחת ההודעה" }, { status: 500 });
 

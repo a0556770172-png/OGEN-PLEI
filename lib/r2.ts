@@ -101,7 +101,11 @@ export async function createUploadUrl(bucket: string, key: string, _contentType:
 export async function createDownloadUrl(bucket: string, key: string, filename?: string, expiresIn = 300): Promise<string> {
   const extraQuery: Record<string, string> = {};
   if (filename) {
-    extraQuery["response-content-disposition"] = `attachment; filename="${filename.replace(/["]/g, "")}"`;
+    // filename רגיל חייב להיות ASCII - שם בעברית (למשל "מסמך.zip") היה מגיע משובש. לכן יש גם
+    // filename* לפי RFC 5987 עם השם המלא ב-UTF-8, שכל הדפדפנים המודרניים מעדיפים; ה-ASCII נשאר גיבוי.
+    const asciiName = filename.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "");
+    const utf8Name = encodeURIComponent(filename).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+    extraQuery["response-content-disposition"] = `attachment; filename="${asciiName}"; filename*=UTF-8''${utf8Name}`;
   }
   return presignR2Url({ method: "GET", bucket, key, expiresIn, extraQuery });
 }
