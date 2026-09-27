@@ -112,7 +112,13 @@ async function pollInner() {
     return;
   }
 
-  await setStored({ lastSummary: json, lastFetchedAt: Date.now(), lastPollError: null, role: json.profile?.role || null });
+  await setStored({
+    lastSummary: json,
+    lastFetchedAt: Date.now(),
+    lastPollError: null,
+    role: json.profile?.role || null,
+    dashboardPath: json.dashboardPath || null
+  });
 
   const total = json.total ?? 0;
   chrome.action.setBadgeText({ text: total > 0 ? String(total) : "" });
@@ -122,14 +128,17 @@ async function pollInner() {
 
   // משווים לכל קטגוריה בנפרד מול הפעם האחרונה - כדי להודיע ספציפית "יש X חדש" ולא רק
   // "המספר הכללי עלה" בלי לדעת על מה בדיוק.
+  // הקטגוריות ושמותיהן מגיעים מהאתר (json.labels) - כך קטגוריה חדשה באתר מופיעה כאן
+  // אוטומטית. ITEM_LABELS המקומי הוא רק גיבוי לגרסת אתר ישנה שלא שולחת labels.
+  const labels = json.labels || ITEM_LABELS;
   const prev = lastCounts || {};
   const newItems = json.items || {};
   const increases = [];
-  for (const key of Object.keys(ITEM_LABELS)) {
+  for (const key of Object.keys(labels)) {
     const before = prev[key] ?? 0;
     const now = newItems[key] ?? 0;
     if (now > before) {
-      increases.push({ key, label: ITEM_LABELS[key], delta: now - before, now });
+      increases.push({ key, label: labels[key], delta: now - before, now });
     }
   }
 

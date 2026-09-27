@@ -86,9 +86,29 @@ export async function GET(request: Request) {
   const items = { review, pro, suggestions, tickets, deletionRequests, council, reports, banAppeals, communityReview };
   const total = Object.values(items).reduce((sum, n) => sum + n, 0);
 
+  // השמות והסדר נשלחים מכאן (ולא רק כתובים בתוך התוסף), כדי שקטגוריה חדשה שתתווסף כאן
+  // תופיע אוטומטית בתוסף הכרום ובאפליקציה - בלי להתקין מחדש גרסה חדשה של התוסף.
+  const labels: Record<keyof typeof items, string> = {
+    review: "אפליקציות ממתינות לבדיקה",
+    pro: "בקשות PRO ממתינות",
+    suggestions: "הצעות אפליקציות ממתינות",
+    tickets: "הודעות ממתינות למענה",
+    deletionRequests: "בקשות מחיקת משתמשים",
+    council: "ועדות שנפתחו אוטומטית",
+    reports: "דיווחים על אפליקציות",
+    banAppeals: "ערעורי חסימה ממתינים",
+    communityReview: "בקשות קהילה לאישור ביצוע"
+  };
+  // בקשות PRO ובקשות מחיקה הן בסמכות מנהל בלבד (לצוות פיקוח הן תמיד 0) - לא מציגים אותן לצוות פיקוח.
+  const visibleKeys = (Object.keys(labels) as (keyof typeof items)[]).filter(
+    (k) => profile.role === "admin" || (k !== "pro" && k !== "deletionRequests")
+  );
+
   return json({
     total,
     items,
+    labels: Object.fromEntries(visibleKeys.map((k) => [k, labels[k]])),
+    dashboardPath: profile.role === "admin" ? "/dashboard/admin" : "/dashboard/moderator",
     profile: { username: profile.username, role: profile.role, is_moderator: profile.is_moderator },
     fetchedAt: Date.now()
   });

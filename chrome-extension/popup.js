@@ -13,12 +13,14 @@ function renderSummary(summary) {
   const rows = el("rows");
   rows.innerHTML = "";
   const items = summary?.items || {};
-  for (const key of Object.keys(ITEM_LABELS)) {
+  // הקטגוריות מגיעות מהאתר - ראו ההסבר ב-background.js
+  const labels = summary?.labels || ITEM_LABELS;
+  for (const key of Object.keys(labels)) {
     const count = items[key] ?? 0;
     const row = document.createElement("div");
     row.className = "row";
     const label = document.createElement("span");
-    label.textContent = ITEM_LABELS[key];
+    label.textContent = labels[key];
     const badge = document.createElement("span");
     badge.className = `count ${count === 0 ? "zero" : ""}`;
     badge.textContent = String(count);
@@ -110,8 +112,8 @@ async function init() {
   });
 
   el("openBtn")?.addEventListener("click", async () => {
-    const { role } = await getStored(["role"]);
-    chrome.tabs.create({ url: `${await siteBase()}${role === "admin" ? "/dashboard/admin" : "/dashboard/moderator"}` });
+    const { role, dashboardPath } = await getStored(["role", "dashboardPath"]);
+    chrome.tabs.create({ url: `${await siteBase()}${dashboardPath || (role === "admin" ? "/dashboard/admin" : "/dashboard/moderator")}` });
   });
 
   el("logoutBtn")?.addEventListener("click", async () => {
