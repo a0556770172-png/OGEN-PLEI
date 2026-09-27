@@ -25,8 +25,9 @@ export async function GET(request: Request) {
 
     // המייל אומת בדיוק עכשיו - זה הרגע לתת תגמול הפניה (אם המשתמש נרשם דרך קישור של חבר).
     // אידמפוטנטי; נכשל בשקט כדי לא לחסום את זרימת ההתחברות.
+    let user: any = null;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      ({ data: { user } } = await supabase.auth.getUser());
       if (user) await grantReferralIfPending(user.id, extractClientIp(request.headers));
     } catch {
       // ignore
@@ -35,7 +36,13 @@ export async function GET(request: Request) {
     // התחברות/הרשמה עם Google (בניגוד לאימות מייל רגיל) - יש כבר סשן פעיל בדיוק עכשיו,
     // אז מנווטים ישר פנימה במקום להראות שוב את מסך ההתחברות (אין למשתמש כזה סיסמה בכלל).
     // תמיד לדף הבית, בדיוק כמו בהתחברות רגילה - ראו app/login/page.tsx.
+    // חריג: משתמש שנרשם עכשיו לראשונה עם Google מקבל קודם מסך לבחירת שם משתמש
+    // (אחרת נשאר לו השם שנוצר אוטומטית מהמייל) - ראו app/welcome/username/page.tsx.
     if (isOAuth) {
+      const justCreated = user && Date.now() - new Date(user.created_at).getTime() < 10 * 60 * 1000;
+      if (justCreated && !user.user_metadata?.username_chosen) {
+        return NextResponse.redirect(`${origin}/welcome/username`);
+      }
       return NextResponse.redirect(`${origin}/`);
     }
   }
