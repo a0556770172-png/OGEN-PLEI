@@ -118,7 +118,7 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
     }
   }
 
-  // עריכת שם משתמש - מנהל בפועל בלבד. הצגת prompt פשוט במקום טופס נפרד, כי זה שדה יחיד.
+  // עריכת שם משתמש - מנהל וצוות פיקוח. הצגת prompt פשוט במקום טופס נפרד, כי זה שדה יחיד.
   async function editUsername(id: string, currentUsername: string) {
     const next = window.prompt("שם משתמש חדש:", currentUsername);
     if (next === null) return;
@@ -274,7 +274,8 @@ export default function UserManagementTable({ profiles, isAdmin = false }: { pro
                     <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                   ) : (
                     <>
-                      {isAdmin && (
+                      {/* עריכת שם משתמש - מנהל וצוות פיקוח (צוות פיקוח לא על מנהל; נאכף גם בשרת) */}
+                      {(isAdmin || p.role !== "admin") && (
                         <button title="עריכת שם משתמש" onClick={() => editUsername(p.id, p.username)} className="rounded-lg p-1.5 text-gray-400 hover:bg-surface2 hover:text-white"><Pencil className="h-4 w-4" /></button>
                       )}
                       {isAdmin && p.role !== "admin" && (

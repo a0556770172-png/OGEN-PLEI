@@ -24,7 +24,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   // הרשאת גודל (set_size_override/clear_size_override) פתוחה גם לצוות פיקוח - אבל עם
   // תקרה נמוכה יותר (1GB), שנאכפת בהמשך למטה. מנהל בפועל ללא הגבלה.
   const adminOnlyActions = [
-    "promote_moderator", "demote_moderator", "make_pro", "remove_pro", "grant_attachments", "revoke_attachments", "edit_profile",
+    "promote_moderator", "demote_moderator", "make_pro", "remove_pro", "grant_attachments", "revoke_attachments",
     "grant_like", "revoke_like", "grant_comment", "revoke_comment",
     "set_unlimited_public_upload", "clear_unlimited_public_upload"
   ];
@@ -34,7 +34,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   const admin = createAdminSupabase();
 
+  // עריכת שם משתמש - מנהל וגם צוות פיקוח. צוות פיקוח לא יכול לשנות שם של מנהל.
   if (action === "edit_profile") {
+    if (profile.role !== "admin") {
+      const { data: target } = await admin.from("profiles").select("role").eq("id", params.id).single();
+      if (target?.role === "admin") {
+        return NextResponse.json({ error: "לא ניתן לשנות שם משתמש של מנהל" }, { status: 403 });
+      }
+    }
     const trimmed = typeof username === "string" ? username.trim() : "";
     if (trimmed.length < 3) {
       return NextResponse.json({ error: "שם המשתמש חייב להכיל לפחות 3 תווים" }, { status: 400 });
