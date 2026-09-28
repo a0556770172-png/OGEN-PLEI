@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { grantReferralIfPending, extractClientIp } from "@/lib/referral";
+import { grantReferralIfPending, extractClientIp, linkReferralFromCookie } from "@/lib/referral";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -28,6 +28,13 @@ export async function GET(request: Request) {
     let user: any = null;
     try {
       ({ data: { user } } = await supabase.auth.getUser());
+      // הרשמה חדשה עם Google: בהרשמה רגילה קוד ההפניה נשלח עם פרטי ההרשמה והטריגר
+      // handle_new_user מקשר את referred_by. דרך Google אי אפשר לשלוח אותו, ולכן משתמש
+      // שהגיע מקישור של חבר נרשם בלי קישור - והמפנה לא קיבל כלום. כאן קוראים את הקוד
+      // מהעוגייה ogen_ref (ראו lib/referralClient.ts) ומקשרים לפני מתן התגמול.
+      if (user && isOAuth && Date.now() - new Date(user.created_at).getTime() < 10 * 60 * 1000) {
+        await linkReferralFromCookie(user.id, request.headers.get("cookie"));
+      }
       if (user) await grantReferralIfPending(user.id, extractClientIp(request.headers));
     } catch {
       // ignore

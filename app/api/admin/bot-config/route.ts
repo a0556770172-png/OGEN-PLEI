@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { countUsableKeys } from "@/lib/botKeys";
+import { getBotConfig } from "@/lib/bot";
+import { runHealthProbe } from "@/lib/botHealth";
 
 // הגדרות הצ'אט-בוט - מנהל בפועל בלבד. מפתח ה-API לעולם לא מוחזר ללקוח (רק hasKey).
 export async function GET() {
@@ -30,8 +32,29 @@ export async function GET() {
     hasKey: keyCount > 0,
     fallbackModel: fallbackActive ? data!.model_fallback : null,
     fallbackUntil: fallbackActive ? fbUntil : null,
+    autoHidden: data?.auto_hidden ?? false,
+    autoHiddenAt: data?.auto_hidden_at ?? null,
+    healthCheckedAt: data?.health_checked_at ?? null,
     updatedAt: data?.updated_at ?? null
   });
+}
+
+// POST { action: "checkNow" } - בדיקה מיידית אם מפתח/מודל כלשהו עובד. אם כן - הבוט מוחזר
+// מהסתרה אוטומטית (ראו lib/botHealth.ts). מחזיר האם הבדיקה הצליחה.
+export async function POST(request: Request) {
+  const result = await requireProfile();
+  if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+  if (result.profile.role !== "admin") return NextResponse.json({ error: "רק מנהל בפועל" }, { status: 403 });
+
+  const body = await request.json().catch(() => ({}));
+  if (body.action !== "checkNow") return NextResponse.json({ error: "פעולה לא חוקית" }, { status: 400 });
+
+  const cfg = await getBotConfig();
+  const ok = await runHealthProbe(cfg);
+  if (!ok) {
+    await createAdminSupabase().from("bot_config").update({ health_checked_at: new Date().toISOString() }).eq("id", true);
+  }
+  return NextResponse.json({ ok });
 }
 
 export async function PATCH(request: Request) {

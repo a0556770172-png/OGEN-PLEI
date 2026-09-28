@@ -22,6 +22,10 @@ export interface BotConfig {
   model_fallback: string | null;
   /** עד מתי העקיפה הזמנית בתוקף; אחריה מנסים שוב את המודל המועדף */
   model_fallback_until: string | null;
+  /** הבוט הוסתר אוטומטית אחרי כישלונות ברצף (ראו lib/botHealth.ts) */
+  auto_hidden: boolean;
+  fail_streak: number;
+  health_checked_at: string | null;
 }
 
 // קריאת הגדרות הבוט - שרת בלבד (מפתח ה-API אסור שיגיע ללקוח).
@@ -42,13 +46,17 @@ export async function getBotConfig(): Promise<BotConfig> {
     proactive_enabled: data?.proactive_enabled ?? true,
     max_tool_rounds: data?.max_tool_rounds ?? 5,
     model_fallback: data?.model_fallback ?? null,
-    model_fallback_until: data?.model_fallback_until ?? null
+    model_fallback_until: data?.model_fallback_until ?? null,
+    auto_hidden: data?.auto_hidden ?? false,
+    fail_streak: data?.fail_streak ?? 0,
+    health_checked_at: data?.health_checked_at ?? null
   };
 }
 
-// הבוט "חי" רק אם הופעל בניהול וגם יש לפחות מפתח API אחד זמין.
+// הבוט "חי" רק אם הופעל בניהול, יש לפחות מפתח API אחד זמין, והוא לא הוסתר אוטומטית
+// בגלל כישלונות ברצף (ראו lib/botHealth.ts).
 export function botIsLive(cfg: BotConfig): boolean {
-  return cfg.enabled && cfg.keyCount > 0;
+  return cfg.enabled && cfg.keyCount > 0 && !cfg.auto_hidden;
 }
 
 // המודל שבו כדאי להתחיל עכשיו: אם יש עקיפה זמנית בתוקף - המודל שאליו עברנו;

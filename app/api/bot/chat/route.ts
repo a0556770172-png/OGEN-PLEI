@@ -19,6 +19,7 @@ import { buildBotUserContext } from "@/lib/botContext";
 import { personaSystemBlock } from "@/lib/botPersonas";
 import { detectBotManipulation, ABUSE_BLOCK_SENTINEL, BOT_BLOCK_MINUTES } from "@/lib/botGuard";
 import { notifyAdminsInApp } from "@/lib/notifications";
+import { recordBotFailure, recordBotSuccess } from "@/lib/botHealth";
 import { logAudit } from "@/lib/audit";
 import type { ToolContext } from "@/lib/botTools";
 import { isEnglishRequest, ENGLISH_REPLY_RULE } from "@/lib/i18n/serverLang";
@@ -244,6 +245,9 @@ export async function POST(request: Request) {
   } catch (err: any) {
     if (createdNewConv) await admin.from("bot_conversations").delete().eq("id", convId);
     const detail = String(err?.message ?? err).slice(0, 250);
+    // ספירת כישלונות ברצף - אחרי 2 הבוט מוסתר אוטומטית מכולם עד שבדיקת רקע תמצא מפתח/מודל
+    // שעובד (ראו lib/botHealth.ts).
+    await recordBotFailure(cfg, detail).catch(() => {});
     // התראה למנהל: כל המפתחות/המודלים נכשלו (למשל מכסת Gemini נגמרה) - זו תקלת שירות
     // אמיתית שדורשת טיפול (מפתח חדש/המתנה למכסה), לא רק "עומס רגעי" - המנהל צריך לדעת מיד
     // ולא לגלות דרך צילום מסך ממשתמש.
@@ -363,6 +367,8 @@ export async function POST(request: Request) {
     }
   }
   await admin.from("bot_conversations").update({ updated_at: new Date().toISOString() }).eq("id", convId);
+  // תשובה מוצלחת מאפסת את רצף הכישלונות (ולא כותבת כלום אם הוא כבר 0).
+  await recordBotSuccess(cfg).catch(() => {});
 
   return NextResponse.json({
     conversationId: convId,

@@ -11,6 +11,31 @@ export function extractClientIp(headers: Headers): string | null {
   return headers.get("x-real-ip");
 }
 
+// קישור משתמש חדש למפנה לפי עוגיית ogen_ref (נשמרת ע"י components/ReferralCapture.tsx).
+// נדרש בהרשמה עם Google, שבה אי אפשר לצרף את קוד ההפניה לפרטי ההרשמה כמו ב-signUp הרגיל.
+// מקשר רק אם עוד אין מפנה, ולא לעצמו. אידמפוטנטי.
+export async function linkReferralFromCookie(userId: string, cookieHeader: string | null): Promise<void> {
+  const m = cookieHeader?.match(/(?:^|;\s*)ogen_ref=([^;]+)/);
+  if (!m) return;
+  let code = "";
+  try {
+    code = decodeURIComponent(m[1]).trim();
+  } catch {
+    return;
+  }
+  if (!code || code.length > 40) return;
+
+  const admin = createAdminSupabase();
+  const { data: me } = await admin.from("profiles").select("referred_by").eq("id", userId).maybeSingle();
+  if (!me || me.referred_by) return;
+
+  const escaped = code.replace(/[\\%_]/g, (c) => `\\${c}`);
+  const { data: referrer } = await admin.from("profiles").select("id").ilike("username", escaped).limit(1).maybeSingle();
+  if (!referrer || referrer.id === userId) return;
+
+  await admin.from("profiles").update({ referred_by: referrer.id }).eq("id", userId).is("referred_by", null);
+}
+
 // ============================================================
 // מתן התגמול על הפניה - נקרא אחרי אימות מייל (app/auth/callback) וגם כגיבוי
 // מ-heartbeat (למקרה שאימות מייל כבוי באתר). אידמפוטנטי לחלוטין: אם אין הפניה

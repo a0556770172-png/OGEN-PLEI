@@ -6,11 +6,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Bell, X, ArrowLeft } from "lucide-react";
 
 const SESSION_KEY = "ogen-notif-peek-shown";
+const LAST_SHOWN_KEY = "ogen-notif-peek-last";
 
 type FeedItem = { id: string; title: string; created_at: string };
 
-// "חמוד קטן" שמופיע בכניסה לאתר אם יש התראות שלא נראו - עוקב אחרי מפתח/אפליקציה/
-// פוסט/דיון וכו'. פעם אחת לכל session, ונעלם לבד אחרי כמה שניות.
+// "חמוד קטן" שמופיע בכניסה לאתר אם יש התראה חדשה - עוקב אחרי מפתח/אפליקציה/פוסט/דיון וכו'.
+// מופיע רק כשהגיעה התראה שעוד לא הוצגה בו: זוכרים (localStorage) את ההתראה האחרונה שהוצגה.
+// בעבר הוא הופיע בכל כניסה חדשה לאתר כל עוד היו התראות שלא נקראו - גם על אותו עדכון שוב ושוב.
 export default function NewNotificationsPeek() {
   const pathname = usePathname();
   const [data, setData] = useState<{ count: number; latest: string | null } | null>(null);
@@ -33,13 +35,17 @@ export default function NewNotificationsPeek() {
         .then((j) => {
           if (!active || !j || (j.unread ?? 0) < 1) return;
           const items: FeedItem[] = j.items ?? [];
-          setData({ count: j.unread, latest: items[0]?.title ?? null });
-          setShow(true);
+          const newestId = items[0]?.id ?? null;
           try {
             sessionStorage.setItem(SESSION_KEY, "1");
+            // כבר הראינו את ההתראה החדשה ביותר הזו - אין מה להציג שוב
+            if (newestId && localStorage.getItem(LAST_SHOWN_KEY) === newestId) return;
+            if (newestId) localStorage.setItem(LAST_SHOWN_KEY, newestId);
           } catch {
             // ignore
           }
+          setData({ count: j.unread, latest: items[0]?.title ?? null });
+          setShow(true);
         })
         .catch(() => {});
     }, 1800);

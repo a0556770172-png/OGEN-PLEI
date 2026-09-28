@@ -16,6 +16,9 @@ interface Config {
   hasKey: boolean;
   fallbackModel?: string | null;
   fallbackUntil?: string | null;
+  autoHidden?: boolean;
+  autoHiddenAt?: string | null;
+  healthCheckedAt?: string | null;
 }
 
 interface Insights {
@@ -120,7 +123,10 @@ export default function BotConfigPanel() {
           maxToolRounds: j.maxToolRounds ?? 5,
           hasKey: j.hasKey,
           fallbackModel: j.fallbackModel ?? null,
-          fallbackUntil: j.fallbackUntil ?? null
+          fallbackUntil: j.fallbackUntil ?? null,
+          autoHidden: j.autoHidden ?? false,
+          autoHiddenAt: j.autoHiddenAt ?? null,
+          healthCheckedAt: j.healthCheckedAt ?? null
         })
       )
       .catch(() => {});
@@ -235,6 +241,28 @@ export default function BotConfigPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [convSort]);
 
+  const [checking, setChecking] = useState(false);
+  const [checkMsg, setCheckMsg] = useState("");
+
+  // בדיקה מיידית אם הבוט חזר לעבוד (במקום לחכות לבדיקת הרקע הבאה).
+  async function checkNow() {
+    setChecking(true);
+    setCheckMsg("");
+    const res = await fetch("/api/admin/bot-config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "checkNow" })
+    }).catch(() => null);
+    const j = await res?.json().catch(() => ({}));
+    setChecking(false);
+    if (j?.ok) {
+      setCheckMsg("");
+      if (cfg) setCfg({ ...cfg, autoHidden: false });
+    } else {
+      setCheckMsg("עדיין אף מפתח/מודל לא עובד. הבוט נשאר מוסתר, והשרת ימשיך לבדוק לבד.");
+    }
+  }
+
   async function save(partial: Partial<Config> & { clearFallback?: boolean }) {
     if (!cfg) return;
     setSaving(true);
@@ -307,6 +335,25 @@ export default function BotConfigPanel() {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* הבוט הוסתר אוטומטית אחרי כישלונות ברצף - ראו lib/botHealth.ts */}
+      {cfg.autoHidden && (
+        <div className="card flex flex-wrap items-center gap-3 border-amber-500/40 bg-amber-500/10 p-4">
+          <AlertCircle className="h-5 w-5 shrink-0 text-amber-400" />
+          <div className="min-w-0 flex-1 text-sm">
+            <p className="font-bold text-amber-300">הבוט מוסתר אוטומטית מכל המשתמשים</p>
+            <p className="text-xs text-gray-400">
+              כל המפתחות/המודלים נכשלו פעמיים ברצף{cfg.autoHiddenAt ? ` (${new Date(cfg.autoHiddenAt).toLocaleString("he-IL")})` : ""}.
+              השרת בודק לבד כל כמה דקות ויחזיר את הבוט ברגע שמפתח ומודל יעבדו.
+              {cfg.healthCheckedAt ? ` בדיקה אחרונה: ${new Date(cfg.healthCheckedAt).toLocaleTimeString("he-IL")}.` : ""}
+            </p>
+          </div>
+          <button onClick={checkNow} disabled={checking} className="btn-ghost text-xs">
+            {checking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plug className="h-4 w-4" />} בדוק עכשיו
+          </button>
+          {checkMsg && <p className="w-full text-xs text-gray-300">{checkMsg}</p>}
+        </div>
+      )}
+
       <div className="card flex flex-col gap-4 p-6">
         <div className="flex items-center gap-2 text-lg font-bold text-white">
           <Bot className="h-5 w-5 text-primary-light" /> הגדרות הצ'אט-בוט (Gemini)

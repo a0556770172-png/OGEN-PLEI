@@ -5,20 +5,25 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowUpCircle, X } from "lucide-react";
 import type { AppUpdateInfo } from "@/lib/updates";
 
+const SEEN_KEY = "ogen-updates-seen";
+
 // פיצ'ר 5: חלונית שקופצת בכניסה לאתר ומיידעת את המשתמש על עדכוני גרסה לאפליקציות שהוא
-// כבר הוריד. מוצגת פעם אחת לכל "סשן" גלישה (sessionStorage) כדי לא להטריד בכל ניווט.
+// כבר הוריד. מוצגת פעם אחת לכל עדכון: נזכרים (ב-localStorage, שנשמר גם אחרי סגירת הדפדפן)
+// באילו גרסאות המשתמש כבר ראה את ההודעה. בעבר זה נשמר ב-sessionStorage, ולכן החלונית חזרה
+// בכל כניסה חדשה לאתר על אותו עדכון בדיוק. עכשיו היא חוזרת רק כשיש גרסה חדשה שעוד לא הוצגה.
 export default function UpdatesPopup({ updates }: { updates: AppUpdateInfo[] }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (!updates.length) return;
+    const ids = updates.map((u) => `${u.appId}@${u.currentVersion}`);
     try {
-      // מפתח ייחודי לפי רשימת האפליקציות המעודכנות - אם עלה עדכון חדש נוסף, החלונית תופיע שוב.
-      const key = "ogen-updates-seen:" + updates.map((u) => `${u.appId}@${u.currentVersion}`).sort().join(",");
-      if (sessionStorage.getItem(key)) return;
-      sessionStorage.setItem(key, "1");
+      const seen: string[] = JSON.parse(localStorage.getItem(SEEN_KEY) || "[]");
+      if (ids.every((id) => seen.includes(id))) return;
+      // שומרים רק את מה שרלוונטי עכשיו (+ היסטוריה קצרה), כדי שהרשימה לא תגדל בלי סוף.
+      localStorage.setItem(SEEN_KEY, JSON.stringify([...new Set([...ids, ...seen])].slice(0, 200)));
     } catch {
-      // אם sessionStorage חסום - פשוט נציג את החלונית (לא קריטי)
+      // localStorage חסום - פשוט נציג את החלונית (לא קריטי)
     }
     setOpen(true);
   }, [updates]);
