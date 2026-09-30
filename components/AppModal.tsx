@@ -1,5 +1,6 @@
 "use client";
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -55,7 +56,11 @@ export default function AppModal({
   const offline = app.offline_support && OFFLINE_SUPPORT_LABEL[app.offline_support];
   const OfflineIcon = offline ? offline.icon : null;
 
-  return (
+  // החלונית מוצגת ישירות תחת <body> (portal) ולא בתוך <main> - אחרת היא יורשת את שכבת ה-z
+  // הנמוכה של main (10), והכותרת הדביקה של האתר (40) מוסתרת מעליה וחותכת את ראש החלונית.
+  // בלי my-auto (מירכוז אנכי): התוכן שנטען אחר כך (לייקים, ביקורות) הגדיל את החלונית והמירכוז
+  // "הקפיץ" אותה למעלה בערך שנייה אחרי הפתיחה. עכשיו היא מעוגנת תמיד מלמעלה.
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -65,12 +70,12 @@ export default function AppModal({
       dir="rtl"
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 16 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, y: 16 }}
-        transition={{ type: "spring", stiffness: 320, damping: 28 }}
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 16 }}
+        transition={{ duration: 0.18, ease: "easeOut" }}
         onClick={(e) => e.stopPropagation()}
-        className="card relative my-auto w-full max-w-3xl p-6 sm:p-8"
+        className="card relative w-full max-w-3xl p-6 sm:p-8"
       >
         <button
           onClick={onClose}
@@ -164,6 +169,7 @@ export default function AppModal({
           </Link>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }
