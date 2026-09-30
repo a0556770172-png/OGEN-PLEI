@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { UploadCloud, Loader2, AlertCircle, CheckCircle2, FileArchive, Image as ImageIcon, Sparkles, ShieldAlert } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
+import UploadSuccess from "@/components/UploadSuccess";
 import { putToR2, extractIconFailureReason } from "@/lib/uploadHelpers";
 import { MIN_ANDROID_VERSIONS } from "@/lib/androidVersions";
 import { parseApkForForm } from "@/lib/apkManifest";
@@ -75,6 +76,7 @@ function UploadAppInner() {
   const [pendingAppId, setPendingAppId] = useState<string | null>(null);
   const [followUpIcon, setFollowUpIcon] = useState<File | null>(null);
   const [savingIcon, setSavingIcon] = useState(false);
+  const [doneNote, setDoneNote] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     const pName = searchParams.get("name");
@@ -207,11 +209,8 @@ function UploadAppInner() {
       // באייקון. ההבדל היחיד הוא איך מודיעים למפתח: אם אין אייקון, לא מציגים "בוצע
       // בהצלחה" סתמי אלא דורשים ממנו להשלים תמונה (לאו דווקא האייקון הרשמי) עכשיו.
       if (uploadedIconKey) {
+        if (iconUploadFailed) setDoneNote("שימו לב: העלאת האייקון שבחרתם נכשלה - אפשר להוסיף אייקון בעריכת האפליקציה.");
         setStatus("done");
-        if (iconUploadFailed) {
-          setError("שימו לב: העלאת האייקון שבחרתם נכשלה, אך האפליקציה נשלחה בהצלחה לבדיקה.");
-        }
-        setTimeout(() => router.push("/profile"), iconUploadFailed ? 3000 : 1200);
       } else {
         setPendingAppId(finalizeJson.app.id);
         setStatus("needs-icon");
@@ -237,7 +236,6 @@ function UploadAppInner() {
       await putToR2(patchJson.iconUploadUrl, followUpIcon);
 
       setStatus("done");
-      setTimeout(() => router.push("/profile"), 1200);
     } catch (err: any) {
       setError(err.message || "שגיאה בשמירת האייקון");
     } finally {
@@ -248,8 +246,19 @@ function UploadAppInner() {
   function skipIconForNow() {
     // האפליקציה כבר נשלחה לבדיקה כרגיל - רק מסמנים לעצמנו (ולצוות הבדיקה) שאין לה
     // אייקון, כדי שהמנהל יוכל להזכיר למפתח להוסיף אחד מאוחר יותר.
+    setDoneNote("אפשר להוסיף אייקון בכל עת דרך עריכת האפליקציה באזור המפתח.");
     setStatus("done");
-    setTimeout(() => router.push("/profile"), 1200);
+  }
+
+  // אחרי העלאה מוצלחת - מסך הצלחה ברור ("הועלתה ונשלחה לבדיקה") שחוזר לבד לדף הבית.
+  if (status === "done") {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <div className="card p-8">
+          <UploadSuccess kind="private" note={doneNote} />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -275,11 +284,6 @@ function UploadAppInner() {
         {error && (
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
             <AlertCircle className="h-4 w-4 shrink-0" /> {error}
-          </div>
-        )}
-        {status === "done" && (
-          <div className="mb-4 flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent">
-            <CheckCircle2 className="h-4 w-4 shrink-0" /> ההעלאה בוצעה בהצלחה וממתינה לבדיקה!
           </div>
         )}
 

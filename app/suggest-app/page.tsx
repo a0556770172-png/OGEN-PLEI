@@ -8,6 +8,7 @@ import { putToR2 } from "@/lib/uploadHelpers";
 import { MIN_ANDROID_VERSIONS } from "@/lib/androidVersions";
 import { parseApkForForm } from "@/lib/apkManifest";
 import RichTextEditor from "@/components/RichTextEditor";
+import UploadSuccess from "@/components/UploadSuccess";
 import type { AppSuggestion, Category } from "@/types/database";
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
@@ -175,6 +176,17 @@ export default function SuggestAppPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  // אחרי שליחה מוצלחת - מסך הצלחה ברור שחוזר לבד לדף הבית (במקום הודעה קטנה מעל טופס ריק).
+  if (success) {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <div className="card p-8">
+          <UploadSuccess kind="public" />
+        </div>
+      </div>
+    );
   }
 
   return (

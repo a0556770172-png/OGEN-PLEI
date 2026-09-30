@@ -38,7 +38,7 @@ export async function notifyForApprovedApp(appId: string): Promise<void> {
   const admin = createAdminSupabase();
   const { data: app } = await admin
     .from("apps")
-    .select("id, name, category, developer_id, source, was_published, developer:profiles!apps_developer_id_fkey(username)")
+    .select("*, developer:profiles!apps_developer_id_fkey(username)")
     .eq("id", appId)
     .single();
   if (!app) return;
@@ -47,8 +47,19 @@ export async function notifyForApprovedApp(appId: string): Promise<void> {
   const isPublic = app.source === "public_suggestion";
   const devName = (app as any).developer?.username ?? "מפתח";
 
-  if (!app.was_published) {
-    await admin.from("apps").update({ was_published: true }).eq("id", appId);
+  // פרסום ראשון, או גרסה חדשה שעוד לא פורסמה - האפליקציה עולה לראש החנות (published_at,
+  // ראו lib/apps-data.ts). אישור חוזר של אותה גרסה בדיוק לא מקפיץ אותה שוב.
+  const isNewVersion = !app.was_published || app.version !== app.published_version;
+  const publishPatch: Record<string, unknown> = {};
+  if (!app.was_published) publishPatch.was_published = true;
+  if (isNewVersion) {
+    publishPatch.published_at = new Date().toISOString();
+    publishPatch.published_version = app.version;
+  }
+  if (Object.keys(publishPatch).length > 0) {
+    const { error } = await admin.from("apps").update(publishPatch).eq("id", appId);
+    // לפני מיגרציה 0065 העמודות לא קיימות - לפחות לשמור את was_published
+    if (error && !app.was_published) await admin.from("apps").update({ was_published: true }).eq("id", appId);
   }
 
   const conditions: { type: SubType; target: string }[] = [

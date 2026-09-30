@@ -4,13 +4,15 @@ import type { AppRow } from "@/types/database";
 
 export async function getApprovedApps(): Promise<AppRow[]> {
   const supabase = createServerSupabase();
-  // אפליקציות נעוצות ע"י מנהל (pinned) קודם - החדשה שבהן ראשונה - ואז השאר לפי תאריך.
+  // אפליקציות נעוצות ע"י מנהל (pinned) קודם - החדשה שבהן ראשונה - ואז השאר לפי מועד הפרסום
+  // האחרון (published_at): אפליקציה שקיבלה גרסה חדשה מאושרת עולה למעלה כאילו היא חדשה.
   const { data, error } = await supabase
     .from("apps")
     .select("*, developer:profiles!apps_developer_id_fkey(username)")
     .eq("status", "approved")
     .order("pinned", { ascending: false })
     .order("pinned_at", { ascending: false, nullsFirst: false })
+    .order("published_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 
   // עמידות: אם עמודות הנעיצה עדיין לא קיימות (המיגרציה 0033 לא הורצה במסד) - המיון לעיל
