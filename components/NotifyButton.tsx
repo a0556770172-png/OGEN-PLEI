@@ -54,7 +54,16 @@ export default function NotifyButton({
 
   const pad = size === "sm" ? "px-2.5 py-1 text-xs" : "px-3.5 py-2 text-sm";
 
-  if (!ready) return null;
+  // שומר מקום בגודל הכפתור עד שהמצב נטען - אחרת הוא "צץ" ודוחף למטה את כל מה שמתחתיו
+  // (למשל בחלונית אפליקציה, שנראתה כאילו קופצת שנייה אחרי הפתיחה).
+  if (!ready) {
+    return (
+      <span aria-hidden className={`invisible inline-flex items-center gap-1.5 rounded-xl border font-bold ${pad}`}>
+        <Bell className="h-4 w-4" />
+        {label}
+      </span>
+    );
+  }
 
   return (
     <button

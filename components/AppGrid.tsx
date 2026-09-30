@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Smartphone, Monitor, SlidersHorizontal, ArrowDownWideNarrow, ArrowDownAZ, HardDrive, Check, Bell, BellRing, Clock } from "lucide-react";
 import AppCard from "./AppCard";
@@ -131,6 +131,7 @@ export default function AppGrid({
   }, [items, query, category, mainTab, sort, searchIndex]);
 
   const activeItem = activeId ? items.find(({ app }) => app.id === activeId) ?? null : null;
+  const closeModal = useCallback(() => setActiveId(null), []);
 
   // טעינה הדרגתית: מתחילים תמיד מ-PAGE_SIZE הראשונים, ומתאפסים בכל שינוי חיפוש/סינון/מיון/טאב
   // כדי שלא "ייתקע" מספר גבוה מתוצאה קודמת כשעוברים לתוצאה חדשה וקצרה יותר.
@@ -298,6 +299,7 @@ export default function AppGrid({
                   iconUrl={iconUrl}
                   categories={categories}
                   hasUpdate={updates.has(app.id)}
+                  hoverLift={!activeId}
                   onOpen={() => setActiveId(app.id)}
                 />
               </motion.div>
@@ -308,18 +310,18 @@ export default function AppGrid({
 
       {hasMore && <div ref={sentinelRef} aria-hidden className="h-1 w-full" />}
 
-      <AnimatePresence>
-        {activeItem && (
-          <AppModal
-            app={activeItem.app}
-            iconUrl={activeItem.iconUrl}
-            categories={categories}
-            viewerIsStaff={viewerIsStaff}
-            viewerLoggedIn={loggedIn}
-            onClose={() => setActiveId(null)}
-          />
-        )}
-      </AnimatePresence>
+      {/* החלונית מנהלת בעצמה את אנימציות הפתיחה/סגירה ב-CSS (ראו AppModal) - בלי AnimatePresence */}
+      {activeItem && (
+        <AppModal
+          key={activeItem.app.id}
+          app={activeItem.app}
+          iconUrl={activeItem.iconUrl}
+          categories={categories}
+          viewerIsStaff={viewerIsStaff}
+          viewerLoggedIn={loggedIn}
+          onClose={closeModal}
+        />
+      )}
     </section>
   );
 }

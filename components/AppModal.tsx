@@ -1,9 +1,8 @@
 "use client";
-import { useEffect } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
 import { Package, User, Calendar, HardDrive, Smartphone, Wifi, WifiOff, HelpCircle, X, ExternalLink, Pin, Pencil } from "lucide-react";
 import type { AppRow, Category } from "@/types/database";
 import { formatFileSize } from "@/lib/format";
@@ -41,17 +40,36 @@ export default function AppModal({
   const category = categories?.find((c) => c.value === app.category)?.label ?? app.category;
   const isPaused = app.download_paused || (app.download_paused_until ? new Date(app.download_paused_until).getTime() > Date.now() : false);
 
-  // נעילת גלילת הרקע + סגירה ב-Escape כל עוד המודל פתוח.
+  // סגירה עם אנימציית CSS: מסמנים "נסגר" (data-closing), וכשאנימציית היציאה של השכבה נגמרת -
+  // קוראים ל-onClose. גיבוי בזמן: אם האנימציה לא רצה (למשל prefers-reduced-motion) - סוגרים בכל זאת.
+  const [closing, setClosing] = useState(false);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const closedRef = useRef(false);
+  const finishClose = useCallback(() => {
+    if (closedRef.current) return;
+    closedRef.current = true;
+    onCloseRef.current();
+  }, []);
+  const requestClose = useCallback(() => setClosing(true), []);
   useEffect(() => {
+    if (!closing) return;
+    const t = setTimeout(finishClose, 260);
+    return () => clearTimeout(t);
+  }, [closing, finishClose]);
+
+  // נעילת גלילת הרקע + סגירה ב-Escape - פעם אחת בפתיחה ופעם אחת בסגירה (לא בכל רינדור של
+  // החנות), ולפני הציור (useLayoutEffect) כדי שהנעילה והפתיחה של החלונית יקרו באותו פריים.
+  useLayoutEffect(() => {
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setClosing(true); };
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", onKey);
     };
-  }, [onClose]);
+  }, []);
 
   const offline = app.offline_support && OFFLINE_SUPPORT_LABEL[app.offline_support];
   const OfflineIcon = offline ? offline.icon : null;
@@ -60,25 +78,28 @@ export default function AppModal({
   // הנמוכה של main (10), והכותרת הדביקה של האתר (40) מוסתרת מעליה וחותכת את ראש החלונית.
   // בלי my-auto (מירכוז אנכי): התוכן שנטען אחר כך (לייקים, ביקורות) הגדיל את החלונית והמירכוז
   // "הקפיץ" אותה למעלה בערך שנייה אחרי הפתיחה. עכשיו היא מעוגנת תמיד מלמעלה.
+  // האנימציות ב-CSS (modal-overlay/modal-panel ב-app/globals.css) ולא ב-framer-motion - ראו שם למה.
+  // בלי backdrop-blur: טשטוש של כל המסך מעל רקע שזז כל הזמן היה כבד וגרם להבהובים; רקע כהה מספיק.
+  // scrollbar-gutter:stable - לפס הגלילה של החלונית עצמה שמור מקום, כך שהיא לא זזה הצידה כשהוא מופיע.
   return createPortal(
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={onClose}
-      className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm sm:p-8"
+    <div
+      onClick={requestClose}
+      onAnimationEnd={(e) => {
+        if (closing && e.target === e.currentTarget) finishClose();
+      }}
+      data-closing={closing ? "true" : undefined}
+      className="modal-overlay fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto overscroll-contain bg-black/75 p-4 [scrollbar-gutter:stable] sm:p-8"
       dir="rtl"
     >
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 16 }}
-        transition={{ duration: 0.18, ease: "easeOut" }}
+      <div
         onClick={(e) => e.stopPropagation()}
-        className="card relative w-full max-w-3xl p-6 sm:p-8"
+        role="dialog"
+        aria-modal="true"
+        aria-label={app.name}
+        className="modal-panel card relative w-full max-w-3xl p-6 sm:p-8"
       >
         <button
-          onClick={onClose}
+          onClick={requestClose}
           aria-label="סגירה"
           className="absolute left-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface text-gray-400 transition hover:text-white"
         >
@@ -168,8 +189,8 @@ export default function AppModal({
             <ExternalLink className="h-4 w-4" /> פתיחה בעמוד מלא
           </Link>
         </div>
-      </motion.div>
-    </motion.div>,
+      </div>
+    </div>,
     document.body
   );
 }

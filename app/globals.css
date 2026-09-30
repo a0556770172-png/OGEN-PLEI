@@ -108,6 +108,27 @@ input, textarea, select {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ---- חלונית אפליקציה (components/AppModal.tsx) ----
+   מונפשת ב-CSS ולא ב-framer-motion: ב-framer-motion 11.18 בסוף כל אנימציית שקיפות (WAAPI) היא
+   מבטלת את האנימציה מיד (AcceleratedAnimation onfinish -> cancel) אבל כותבת את הערך הסופי רק
+   בפריים הבא - וביניהם האלמנט מוצג לפריים אחד עם הערך הישן. בשכבה הכהה שמכסה את כל המסך זה נראה
+   כמו הבהוב של כל המסך בפתיחה ובסגירה. ב-CSS הסגנון הרגיל של האלמנט הוא כבר המצב הסופי (keyframes
+   עם from בלבד), כך שאין "מסירה" בסוף. הסגירה משתמשת ב-forwards - האלמנט נשאר שקוף עד שהוא מוסר. */
+@keyframes modal-overlay-in { from { opacity: 0; } }
+@keyframes modal-overlay-out { to { opacity: 0; } }
+@keyframes modal-panel-in { from { opacity: 0; transform: translateY(16px); } }
+@keyframes modal-panel-out { to { opacity: 0; transform: translateY(16px); } }
+.modal-overlay { animation: modal-overlay-in 180ms ease-out; }
+.modal-overlay[data-closing="true"] { animation: modal-overlay-out 160ms ease-in forwards; }
+.modal-panel { animation: modal-panel-in 180ms ease-out; }
+.modal-overlay[data-closing="true"] .modal-panel { animation: modal-panel-out 160ms ease-in forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay,
+  .modal-panel,
+  .modal-overlay[data-closing="true"],
+  .modal-overlay[data-closing="true"] .modal-panel { animation: none; }
+}
+
 .shimmer-border {
   background: linear-gradient(90deg, transparent, rgb(var(--c-primary) / 0.5), transparent);
   background-size: 200% 100%;
