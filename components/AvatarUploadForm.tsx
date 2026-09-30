@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Loader2, AlertCircle, CheckCircle2, User } from "lucide-react";
+import { Camera, Loader2, AlertCircle, AlertTriangle, CheckCircle2, User } from "lucide-react";
 import { putToR2 } from "@/lib/uploadHelpers";
 
 export default function AvatarUploadForm({
@@ -17,6 +17,7 @@ export default function AvatarUploadForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [showRules, setShowRules] = useState(false);
 
   async function handleFile(file: File) {
     setError("");
@@ -77,7 +78,7 @@ export default function AvatarUploadForm({
         </div>
         <button
           type="button"
-          onClick={() => inputRef.current?.click()}
+          onClick={() => setShowRules(true)}
           disabled={busy}
           className="absolute -bottom-1 -left-1 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-[#fff] shadow-glow transition hover:scale-105"
         >
@@ -98,6 +99,42 @@ export default function AvatarUploadForm({
 
       <p className="text-center text-sm font-bold text-white">{username}</p>
       <p className="text-center text-xs text-gray-500">לחצו על סמל המצלמה כדי להעלות תמונת פרופיל חדשה (עד 5MB)</p>
+
+      {/* תזכורת לפני כל העלאת תמונת פרופיל - לפי חוקי האתר אסור להעלות תמונה של אדם */}
+      {showRules && (
+        <div
+          className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setShowRules(false)}
+          dir="rtl"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-2xl border border-gold/40 bg-surface p-6 text-center shadow-2xl"
+          >
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gold/15 text-gold">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <p className="text-lg font-black text-white">זכור!</p>
+            <p className="mt-2 text-sm leading-relaxed text-gray-300">
+              על פי חוקי עוגן פליי חל איסור להעלות תמונת פרופיל של אדם מכל סוג שהוא. אנא שימו לב לזה.
+            </p>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+              <button onClick={() => setShowRules(false)} className="flex-1 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-gray-400 hover:text-white">
+                ביטול
+              </button>
+              <button
+                onClick={() => {
+                  setShowRules(false);
+                  inputRef.current?.click();
+                }}
+                className="btn-primary flex-1 justify-center"
+              >
+                <Camera className="h-4 w-4" /> הבנתי, בחירת תמונה
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
