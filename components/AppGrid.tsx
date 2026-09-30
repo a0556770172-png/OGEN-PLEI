@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Smartphone, Monitor, SlidersHorizontal, ArrowDownWideNarrow, ArrowDownAZ, HardDrive, Check, Bell, BellRing } from "lucide-react";
+import { Search, Smartphone, Monitor, SlidersHorizontal, ArrowDownWideNarrow, ArrowDownAZ, HardDrive, Check, Bell, BellRing, Clock } from "lucide-react";
 import AppCard from "./AppCard";
 import AppModal from "./AppModal";
 import type { AppRow, Category } from "@/types/database";
@@ -28,9 +28,11 @@ export function isApk(app: AppRow) {
 }
 
 // אפשרויות המיון (פיצ'ר 3) - "ברירת מחדל" שומרת על הסדר מהשרת (נעוצים קודם, ואז לפי חדשים).
-type SortKey = "default" | "downloads" | "name" | "size";
+type SortKey = "default" | "newest" | "downloads" | "name" | "size";
 const SORT_OPTIONS: { key: SortKey; label: string; icon: typeof ArrowDownAZ }[] = [
   { key: "default", label: "מומלצים (ברירת מחדל)", icon: Check },
+  // "נוספו לאחרונה" - לפי תאריך ההוספה לחנות בלבד (בלי הנעוצים ובלי הקפצת עדכוני גרסה של ברירת המחדל)
+  { key: "newest", label: "נוספו לאחרונה", icon: Clock },
   { key: "downloads", label: "הכי מורדים", icon: ArrowDownWideNarrow },
   { key: "name", label: "שם (א-ת)", icon: ArrowDownAZ },
   { key: "size", label: "גודל (גדול לקטן)", icon: HardDrive }
@@ -121,7 +123,8 @@ export default function AppGrid({
 
     if (sort === "default") return list;
     const sorted = [...list];
-    if (sort === "downloads") sorted.sort((a, b) => (b.app.downloads_count ?? 0) - (a.app.downloads_count ?? 0));
+    if (sort === "newest") sorted.sort((a, b) => new Date(b.app.created_at).getTime() - new Date(a.app.created_at).getTime());
+    else if (sort === "downloads") sorted.sort((a, b) => (b.app.downloads_count ?? 0) - (a.app.downloads_count ?? 0));
     else if (sort === "name") sorted.sort((a, b) => a.app.name.localeCompare(b.app.name, "he"));
     else if (sort === "size") sorted.sort((a, b) => (b.app.file_size_bytes ?? 0) - (a.app.file_size_bytes ?? 0));
     return sorted;
