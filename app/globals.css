@@ -52,6 +52,12 @@ html, body {
   color: rgb(var(--c-white));
 }
 
+/* שומר תמיד מקום לפס הגלילה. חלונית אפליקציה (AppModal) נועלת את גלילת הדף, ופס הגלילה נעלם -
+   בלי זה כל הדף "קפץ" הצידה לרגע בכל פתיחה וסגירה של אפליקציה. */
+html {
+  scrollbar-gutter: stable;
+}
+
 * {
   scrollbar-color: #3a3f55 rgb(var(--c-bg));
 }
