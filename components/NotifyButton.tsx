@@ -54,13 +54,22 @@ export default function NotifyButton({
 
   const pad = size === "sm" ? "px-2.5 py-1 text-xs" : "px-3.5 py-2 text-sm";
 
+  // שני הטקסטים (רגיל/מנוי פעיל) יושבים באותו תא - הכפתור תמיד ברוחב של הארוך מביניהם, כך
+  // שהוא לא משנה רוחב כשהמצב נטען או כשלוחצים עליו.
+  const labels = (
+    <span className="grid">
+      <span className={`col-start-1 row-start-1 ${subscribed ? "invisible" : ""}`}>{label}</span>
+      <span className={`col-start-1 row-start-1 ${subscribed ? "" : "invisible"}`}>{activeLabel}</span>
+    </span>
+  );
+
   // שומר מקום בגודל הכפתור עד שהמצב נטען - אחרת הוא "צץ" ודוחף למטה את כל מה שמתחתיו
   // (למשל בחלונית אפליקציה, שנראתה כאילו קופצת שנייה אחרי הפתיחה).
   if (!ready) {
     return (
       <span aria-hidden className={`invisible inline-flex items-center gap-1.5 rounded-xl border font-bold ${pad}`}>
         <Bell className="h-4 w-4" />
-        {label}
+        {labels}
       </span>
     );
   }
@@ -83,7 +92,7 @@ export default function NotifyButton({
       ) : (
         <Bell className="h-4 w-4" />
       )}
-      {subscribed ? activeLabel : label}
+      {labels}
     </button>
   );
 }

@@ -299,7 +299,6 @@ export default function AppGrid({
                   iconUrl={iconUrl}
                   categories={categories}
                   hasUpdate={updates.has(app.id)}
-                  hoverLift={!activeId}
                   onOpen={() => setActiveId(app.id)}
                 />
               </motion.div>

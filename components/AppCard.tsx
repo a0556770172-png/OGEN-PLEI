@@ -14,25 +14,26 @@ export default function AppCard({
   iconUrl,
   categories,
   hasUpdate = false,
-  hoverLift = true,
   onOpen
 }: {
   app: AppRow;
   iconUrl?: string | null;
   categories?: Category[];
   hasUpdate?: boolean;
-  /** כבוי כשחלונית אפליקציה פתוחה: אחרת הכרטיס שמתחת לעכבר "נופל" כשהחלונית מכסה אותו וקופץ בסגירה */
-  hoverLift?: boolean;
   onOpen?: () => void;
 }) {
   const category = categories?.find((c) => c.value === app.category)?.label ?? app.category;
 
   return (
     <motion.div
-      whileHover={hoverLift ? { y: -6 } : undefined}
+      whileHover={{ y: -6 }}
       // מעבר חלק בלי קפיץ (spring עם overshoot "קפץ" כשהחלונית נפתחה/נסגרה מעל הכרטיס)
       transition={{ duration: 0.2, ease: "easeOut" }}
-      onClick={onOpen}
+      // הלחיצה השנייה של לחיצה כפולה לא פותחת שוב (אחרת היא פתחה אפליקציה מתחת לחלונית שנסגרה)
+      onClick={(e) => {
+        if (e.detail > 1) return;
+        onOpen?.();
+      }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();

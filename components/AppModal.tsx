@@ -41,35 +41,75 @@ export default function AppModal({
   const isPaused = app.download_paused || (app.download_paused_until ? new Date(app.download_paused_until).getTime() > Date.now() : false);
 
   // סגירה עם אנימציית CSS: מסמנים "נסגר" (data-closing), וכשאנימציית היציאה של השכבה נגמרת -
-  // קוראים ל-onClose. גיבוי בזמן: אם האנימציה לא רצה (למשל prefers-reduced-motion) - סוגרים בכל זאת.
+  // קוראים ל-onClose. גיבוי בזמן למקרה שהאנימציה לא רצה.
   const [closing, setClosing] = useState(false);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const closedRef = useRef(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const openedAtRef = useRef(0);
+  const downOnBackdropRef = useRef(false);
+
   const finishClose = useCallback(() => {
     if (closedRef.current) return;
     closedRef.current = true;
     onCloseRef.current();
   }, []);
-  const requestClose = useCallback(() => setClosing(true), []);
+
+  const requestClose = useCallback(() => {
+    if (closedRef.current) return;
+    // משתמשים שביקשו להפחית אנימציות - סגירה מיידית (בלי להמתין לגיבוי בזמן)
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      finishClose();
+      return;
+    }
+    // סגירה באמצע אנימציית הפתיחה: היציאה מתחילה מהערכים הנוכחיים (ולא מ"גלוי לגמרי"),
+    // אחרת השכבה הכהה קפצה לרגע לחושך מלא ורק אז דעכה - בדיוק ההבהוב שתיקנו.
+    const o = overlayRef.current;
+    const p = panelRef.current;
+    if (o && p) {
+      o.style.setProperty("--from-o", getComputedStyle(o).opacity);
+      p.style.setProperty("--from-o", getComputedStyle(p).opacity);
+      const t = getComputedStyle(p).transform;
+      p.style.setProperty("--from-t", t && t !== "none" ? t : "none");
+    }
+    setClosing(true);
+  }, [finishClose]);
+
   useEffect(() => {
     if (!closing) return;
-    const t = setTimeout(finishClose, 260);
+    const t = setTimeout(finishClose, 400);
     return () => clearTimeout(t);
   }, [closing, finishClose]);
 
-  // נעילת גלילת הרקע + סגירה ב-Escape - פעם אחת בפתיחה ופעם אחת בסגירה (לא בכל רינדור של
+  // נעילת גלילת הרקע + Escape + פוקוס - פעם אחת בפתיחה ופעם אחת בסגירה (לא בכל רינדור של
   // החנות), ולפני הציור (useLayoutEffect) כדי שהנעילה והפתיחה של החלונית יקרו באותו פריים.
   useLayoutEffect(() => {
+    openedAtRef.current = performance.now();
     const prevOverflow = document.body.style.overflow;
+    const prevFocus = document.activeElement as HTMLElement | null;
     document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setClosing(true); };
+    // צובע את שולי פס הגלילה בצבע הרקע הכהה, כדי שלא יישאר פס בהיר לא מוחשך בקצה המסך
+    document.documentElement.classList.add("modal-open");
+    panelRef.current?.focus({ preventScroll: true });
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") requestClose(); };
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prevOverflow;
+      document.documentElement.classList.remove("modal-open");
       window.removeEventListener("keydown", onKey);
+      prevFocus?.focus?.({ preventScroll: true });
     };
-  }, []);
+  }, [requestClose]);
+
+  // לחיצה על הרקע סוגרת רק אם גם הלחיצה התחילה על הרקע (לא גרירת בחירת טקסט מתוך החלונית),
+  // לא בלחיצה השנייה של לחיצה כפולה, ולא ב-300ms הראשונים (לחיצה כפולה על כרטיס פתחה וסגרה מיד).
+  function onBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target !== e.currentTarget || !downOnBackdropRef.current) return;
+    if (e.detail > 1 || performance.now() - openedAtRef.current < 300) return;
+    requestClose();
+  }
 
   const offline = app.offline_support && OFFLINE_SUPPORT_LABEL[app.offline_support];
   const OfflineIcon = offline ? offline.icon : null;
@@ -83,20 +123,26 @@ export default function AppModal({
   // scrollbar-gutter:stable - לפס הגלילה של החלונית עצמה שמור מקום, כך שהיא לא זזה הצידה כשהוא מופיע.
   return createPortal(
     <div
-      onClick={requestClose}
+      ref={overlayRef}
+      onPointerDown={(e) => {
+        downOnBackdropRef.current = e.target === e.currentTarget;
+      }}
+      onClick={onBackdropClick}
       onAnimationEnd={(e) => {
-        if (closing && e.target === e.currentTarget) finishClose();
+        // רק סוף אנימציית היציאה של השכבה עצמה (לא אנימציית הפתיחה, ולא אנימציות של רכיבים בפנים)
+        if (e.target === e.currentTarget && e.animationName === "modal-overlay-out") finishClose();
       }}
       data-closing={closing ? "true" : undefined}
       className="modal-overlay fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto overscroll-contain bg-black/75 p-4 [scrollbar-gutter:stable] sm:p-8"
       dir="rtl"
     >
       <div
-        onClick={(e) => e.stopPropagation()}
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={app.name}
-        className="modal-panel card relative w-full max-w-3xl p-6 sm:p-8"
+        tabIndex={-1}
+        className="modal-panel card relative w-full max-w-3xl p-6 outline-none sm:p-8"
       >
         <button
           onClick={requestClose}
