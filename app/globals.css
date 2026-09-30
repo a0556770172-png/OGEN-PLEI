@@ -98,8 +98,14 @@ input, textarea, select {
   text-align: right;
 }
 
+/* מעבר CSS רק לצבעים/מסגרת/צל - לא transition-all. הרבה כרטיסים באתר (חלונית האפליקציה, כרטיסי
+   החנות, טפסים) מונפשים גם ע"י framer-motion (שקיפות/תזוזה). transition-all גרם לשתי האנימציות
+   "להילחם" על אותם ערכים - ומכאן הקפיצות וההבהובים בפתיחה/סגירה של אפליקציה ובריחוף על כרטיס. */
 .card {
-  @apply rounded-2xl border border-border bg-surface shadow-card transition-all duration-300;
+  @apply rounded-2xl border border-border bg-surface shadow-card;
+  transition-property: color, background-color, border-color, box-shadow;
+  transition-duration: 300ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .shimmer-border {
