@@ -8,6 +8,7 @@ import AnimatedBackground from "@/components/AnimatedBackground";
 import ModeratorAgreementGate from "@/components/ModeratorAgreementGate";
 import SiteRulesGate from "@/components/SiteRulesGate";
 import SiteVisitTracker from "@/components/SiteVisitTracker";
+import BanWatcher from "@/components/BanWatcher";
 import ReferralCapture from "@/components/ReferralCapture";
 import FeatureAnnounce from "@/components/FeatureAnnounce";
 import NewNotificationsPeek from "@/components/NewNotificationsPeek";
@@ -119,6 +120,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SiteTranslator />
         <AnimatedBackground />
         <SiteVisitTracker />
+        <BanWatcher />
         <ReferralCapture />
         <FeatureAnnounce />
         <NewNotificationsPeek />
