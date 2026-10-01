@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning, ScrollText, History, Star, Lightbulb, Archive, BarChart3, Copy } from "lucide-react";
+import { ArrowLeftRight, ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning, ScrollText, History, Star, Lightbulb, Archive, BarChart3, Copy, HandHelping } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import VersionProposalsQueue from "./VersionProposalsQueue";
 import DuplicatesQueue from "./DuplicatesQueue";
+import CommunityReviewQueue from "./CommunityReviewQueue";
 import TicketsPanel from "./TicketsPanel";
 import SuggestionsQueue from "./SuggestionsQueue";
 import NotificationsPanel from "./NotificationsPanel";
@@ -24,12 +25,13 @@ import type { SiteReviewRow } from "@/lib/siteReviews";
 import type { ForumPost } from "@/lib/forum";
 import type { AppRow, Profile, BanAppeal } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "duplicates" | "allApps" | "ownership" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals" | "teamTracking" | "siteRules" | "siteReviews" | "forum" | "stats";
+type TabKey = "notifications" | "review" | "duplicates" | "community" | "allApps" | "ownership" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals" | "teamTracking" | "siteRules" | "siteReviews" | "forum" | "stats";
 
 export default function ModeratorDashboardClient({
   apps,
   versionProposalsCount = 0,
   duplicatesCount = 0,
+  communityReviewCount = 0,
   allApps,
   suggestionsPendingCount,
   ticketsNeedingReplyCount,
@@ -42,6 +44,7 @@ export default function ModeratorDashboardClient({
   apps: AppRow[];
   versionProposalsCount?: number;
   duplicatesCount?: number;
+  communityReviewCount?: number;
   allApps: AppRow[];
   suggestionsPendingCount: number;
   ticketsNeedingReplyCount: number;
@@ -57,11 +60,11 @@ export default function ModeratorDashboardClient({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const wanted = params.get("tab") as TabKey | null;
-    if (wanted && ["tickets", "council", "review", "duplicates"].includes(wanted)) setTab(wanted);
+    if (wanted && ["tickets", "council", "review", "duplicates", "community"].includes(wanted)) setTab(wanted);
   }, []);
 
   const pendingBanAppealsCount = banAppeals.filter((a) => a.status === "pending").length;
-  const notificationCount = apps.length + versionProposalsCount + duplicatesCount + suggestionsPendingCount + ticketsNeedingReplyCount + pendingBanAppealsCount;
+  const notificationCount = apps.length + versionProposalsCount + duplicatesCount + communityReviewCount + suggestionsPendingCount + ticketsNeedingReplyCount + pendingBanAppealsCount;
 
   const tabs = [
     { key: "notifications", label: `התראות${notificationCount ? ` (${notificationCount})` : ""}`, icon: BellRing },
@@ -77,6 +80,7 @@ export default function ModeratorDashboardClient({
     { key: "council", label: "ועדה", icon: Siren },
     { key: "reports", label: "דיווחים על אפליקציות", icon: Flag },
     { key: "duplicates", label: `כפילויות${duplicatesCount ? ` (${duplicatesCount})` : ""}`, icon: Copy },
+    { key: "community", label: `בקשות קהילה${communityReviewCount ? ` (${communityReviewCount})` : ""}`, icon: HandHelping },
     { key: "sizeOverrides", label: "הרשאות גודל", icon: HardDrive },
     { key: "banAppeals", label: `ערעורי חסימה${pendingBanAppealsCount ? ` (${pendingBanAppealsCount})` : ""}`, icon: MessageSquareWarning },
     { key: "teamTracking", label: "מעקב צוותים", icon: History },
@@ -87,6 +91,7 @@ export default function ModeratorDashboardClient({
 
   const notificationItems = [
     { key: "review", label: "אפליקציות ממתינות לבדיקה", description: "אפליקציות חדשות וגרסאות חדשות שממתינות לאישור/דחייה שלך", count: apps.length + versionProposalsCount, icon: ClipboardList },
+    { key: "community", label: "בקשות קהילה לאישור", description: "בקשות שסומנו \"בוצעה\" - אישור נותן למתנדב את המוניטין", count: communityReviewCount, icon: HandHelping },
     { key: "duplicates", label: "דיווחי כפילות", description: "משתמשים שדיווחו שאפליקציה מופיעה פעמיים / עושה את אותה פעולה", count: duplicatesCount, icon: Copy },
     { key: "suggestions", label: "הצעות אפליקציות ממתינות", description: "משתמשים שהציעו אפליקציה להוספה למאגר", count: suggestionsPendingCount, icon: Gift },
     { key: "tickets", label: "הודעות ממתינות למענה", description: "הודעות שמשתמשים כתבו ועדיין לא קיבלו תגובה", count: ticketsNeedingReplyCount, icon: MessageCircle },
@@ -133,6 +138,7 @@ export default function ModeratorDashboardClient({
       {tab === "users" && <UserManagementTable profiles={profiles} />}
       {tab === "council" && <CouncilPanel currentProfile={currentProfile} />}
       {tab === "duplicates" && <DuplicatesQueue />}
+      {tab === "community" && <CommunityReviewQueue />}
       {tab === "reports" && <AppReportsQueue />}
       {tab === "sizeOverrides" && <SizeOverridePanel profiles={profiles} isAdmin={false} />}
       {tab === "banAppeals" && <BanAppealsPanel appeals={banAppeals} />}

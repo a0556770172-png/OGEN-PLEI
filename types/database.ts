@@ -127,6 +127,8 @@ export type CommunityRequestStatus = "open" | "claimed" | "pending_review" | "fu
 // פיצ'ר "בקשות קהילתיות": משתמש מדביק קישור לבקשה מפורום חיצוני, ומתנדב מוריד מהמקור
 // ומעלה עבורו את הקובץ. ראו app/community וכן app/api/community-requests.
 export interface CommunityRequest {
+  comments_count?: number;
+  fulfiller?: { username: string } | null;
   id: string;
   requested_by: string;
   title: string;

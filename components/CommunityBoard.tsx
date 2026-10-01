@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, Plus, Loader2, ExternalLink, HandHelping, X, Check, Trash2, RotateCcw, UploadCloud, Send, AlertCircle, Link2 } from "lucide-react";
 import type { Category, CommunityRequest } from "@/types/database";
+import CommunityComments from "./CommunityComments";
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   open: { label: "פתוחה למתנדבים", cls: "bg-gold/15 text-gold" },
@@ -273,6 +274,12 @@ export default function CommunityBoard({
                     )}
                   </div>
                 </div>
+                <CommunityComments
+                  requestId={r.id}
+                  initialCount={r.comments_count ?? 0}
+                  currentUserId={currentUserId}
+                  isStaffUser={isStaffUser}
+                />
               </div>
             );
           })}

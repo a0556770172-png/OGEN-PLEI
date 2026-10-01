@@ -220,3 +220,11 @@ export async function notifyForCommunityRequest(requestId: string, title: string
     url: "/community"
   });
 }
+
+// התראה (פעמון באתר + Push) לרשימת משתמשים ספציפית - למשל תגובה בבקשת קהילה, או תשובת מפתח לביקורת.
+export async function notifyUsers(
+  userIds: string[],
+  notif: { kind: string; title: string; body: string; url: string }
+): Promise<void> {
+  await deliver(userIds, notif);
+}

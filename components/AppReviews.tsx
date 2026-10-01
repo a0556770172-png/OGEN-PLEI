@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Star, MessageSquare, Loader2, Trash2 } from "lucide-react";
+import { Star, MessageSquare, Loader2, Trash2, Reply, BadgeCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface ReviewItem {
@@ -8,6 +8,8 @@ interface ReviewItem {
   user_id: string;
   rating: number;
   comment: string | null;
+  developer_reply?: string | null;
+  developer_reply_at?: string | null;
   created_at: string;
   user?: { username: string } | null;
 }
@@ -43,6 +45,10 @@ export default function AppReviews({ appId, viewerIsStaff = false }: { appId: st
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  // בעל האפליקציה - יכול לענות לתגובות (תשובת מפתח מוצגת מתחת לתגובה)
+  const [developerId, setDeveloperId] = useState<string | null>(null);
+  const [replyingId, setReplyingId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
 
   async function load() {
     setLoading(true);
@@ -51,6 +57,7 @@ export default function AppReviews({ appId, viewerIsStaff = false }: { appId: st
     setReviews(json.reviews ?? []);
     setAvgRating(json.avgRating ?? 0);
     setCount(json.count ?? 0);
+    setDeveloperId(json.developerId ?? null);
     setLoading(false);
   }
 
@@ -93,6 +100,26 @@ export default function AppReviews({ appId, viewerIsStaff = false }: { appId: st
     setBusy(false);
     setMyRating(0);
     setMyComment("");
+    await load();
+  }
+
+  const isOwner = !!userId && userId === developerId;
+
+  async function saveReply(reviewId: string, reply: string) {
+    setBusy(true);
+    const res = await fetch(`/api/apps/${appId}/reviews`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reviewId, reply })
+    });
+    const json = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) {
+      alert(json.error || "שגיאה בשמירת התשובה");
+      return;
+    }
+    setReplyingId(null);
+    setReplyText("");
     await load();
   }
 
@@ -180,6 +207,63 @@ export default function AppReviews({ appId, viewerIsStaff = false }: { appId: st
                     )}
                   </div>
                   {r.comment && <p className="mt-1.5 text-sm text-gray-300">{r.comment}</p>}
+
+                  {r.developer_reply && replyingId !== r.id && (
+                    <div className="ms-4 mt-2 rounded-xl border-s-2 border-primary/40 bg-primary/5 px-3 py-2">
+                      <p className="flex flex-wrap items-center gap-1.5 text-xs font-bold text-primary-light">
+                        <BadgeCheck className="h-3.5 w-3.5" /> תשובת המפתח
+                        {isOwner && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => { setReplyingId(r.id); setReplyText(r.developer_reply ?? ""); }}
+                              className="ms-2 text-[11px] font-normal text-gray-400 hover:text-white"
+                            >
+                              עריכה
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => confirm("למחוק את התשובה?") && saveReply(r.id, "")}
+                              className="text-[11px] font-normal text-red-400 hover:text-red-300"
+                            >
+                              מחיקה
+                            </button>
+                          </>
+                        )}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-gray-300">{r.developer_reply}</p>
+                    </div>
+                  )}
+
+                  {isOwner && !r.developer_reply && replyingId !== r.id && r.user_id !== userId && (
+                    <button
+                      type="button"
+                      onClick={() => { setReplyingId(r.id); setReplyText(""); }}
+                      className="mt-1.5 inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-bold text-primary-light hover:bg-primary/10"
+                    >
+                      <Reply className="h-3 w-3" /> תגובה כמפתח
+                    </button>
+                  )}
+
+                  {isOwner && replyingId === r.id && (
+                    <div className="ms-4 mt-2 flex flex-col gap-1.5">
+                      <textarea
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        rows={2}
+                        maxLength={600}
+                        autoFocus
+                        className="input-field text-sm"
+                        placeholder="התשובה שלך כמפתח (תוצג לכולם מתחת לתגובה)"
+                      />
+                      <div className="flex gap-2">
+                        <button onClick={() => saveReply(r.id, replyText)} disabled={busy || !replyText.trim()} className="btn-primary px-3 py-1.5 text-xs">
+                          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Reply className="h-3.5 w-3.5" />} שליחת תשובה
+                        </button>
+                        <button onClick={() => setReplyingId(null)} className="btn-ghost px-3 py-1.5 text-xs">ביטול</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

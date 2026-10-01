@@ -19,16 +19,23 @@ export async function GET() {
     .order("created_at", { ascending: false });
 
   const rows = requests ?? [];
-  const ids = [...new Set(rows.flatMap((r) => [r.requested_by, r.claimed_by].filter(Boolean)))] as string[];
+  const ids = [...new Set(rows.flatMap((r) => [r.requested_by, r.claimed_by, r.fulfilled_by].filter(Boolean)))] as string[];
   const { data: users } = ids.length
     ? await admin.from("profiles").select("id, username").in("id", ids)
     : { data: [] as { id: string; username: string }[] };
   const userMap = new Map((users ?? []).map((u) => [u.id, u]));
 
+  // מספר התגובות לכל בקשה (מוצג על כפתור "תגובות"). אם מיגרציה 0068 עוד לא רצה - פשוט 0.
+  const commentCounts = new Map<string, number>();
+  const { data: commentRows } = await admin.from("community_request_comments").select("request_id");
+  for (const c of commentRows ?? []) commentCounts.set(c.request_id, (commentCounts.get(c.request_id) ?? 0) + 1);
+
   const enriched = rows.map((r) => ({
     ...r,
     requester: userMap.get(r.requested_by) ?? null,
-    claimer: r.claimed_by ? userMap.get(r.claimed_by) ?? null : null
+    claimer: r.claimed_by ? userMap.get(r.claimed_by) ?? null : null,
+    fulfiller: r.fulfilled_by ? userMap.get(r.fulfilled_by) ?? null : null,
+    comments_count: commentCounts.get(r.id) ?? 0
   }));
 
   // סדר תצוגה: פתוחות -> נתפסו -> ממתינות לאישור צוות -> בוצעו -> נסגרו, ובתוך כל קבוצה מהחדש לישן.

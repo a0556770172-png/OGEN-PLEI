@@ -4,16 +4,25 @@ import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { canComment, COMMENT_UNLOCK_THRESHOLD, COMMENT_UNLOCK_POINTS } from "@/lib/engagement-eligibility";
 import { logAudit } from "@/lib/audit";
-import { notifyForAppComment } from "@/lib/notifications";
+import { notifyForAppComment, notifyUsers } from "@/lib/notifications";
 
 // GET: כל הביקורות (כוכבים + תגובה) על אפליקציה - ציבורי.
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   const admin = createAdminSupabase();
-  const { data: reviews } = await admin
+  let { data: reviews, error } = await admin
     .from("app_reviews")
-    .select("id, user_id, rating, comment, created_at, updated_at")
+    .select("id, user_id, rating, comment, developer_reply, developer_reply_at, created_at, updated_at")
     .eq("app_id", params.id)
     .order("created_at", { ascending: false });
+  // לפני מיגרציה 0068 אין עמודות תשובת מפתח - נופלים לשליפה הישנה כדי שהתגובות לא ייעלמו.
+  if (error) {
+    ({ data: reviews } = await admin
+      .from("app_reviews")
+      .select("id, user_id, rating, comment, created_at, updated_at")
+      .eq("app_id", params.id)
+      .order("created_at", { ascending: false }) as any);
+  }
+  const { data: appRow } = await admin.from("apps").select("developer_id").eq("id", params.id).maybeSingle();
 
   const rows = reviews ?? [];
   const userIds = [...new Set(rows.map((r) => r.user_id))];
@@ -25,7 +34,53 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   const enriched = rows.map((r) => ({ ...r, user: userMap.get(r.user_id) ?? null }));
   const avgRating = rows.length ? rows.reduce((s, r) => s + r.rating, 0) / rows.length : 0;
 
-  return NextResponse.json({ reviews: enriched, avgRating, count: rows.length });
+  return NextResponse.json({ reviews: enriched, avgRating, count: rows.length, developerId: appRow?.developer_id ?? null });
+}
+
+// PATCH: בעל האפליקציה עונה לתגובה/דירוג שנכתבו על האפליקציה שלו ({ reviewId, reply }).
+// תשובה ריקה מוחקת את התשובה. מי שכתב את התגובה מקבל התראה בפעמון על תשובה חדשה.
+export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+  const result = await requireProfile();
+  if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+  const { user, profile } = result;
+
+  const { reviewId, reply } = await request.json().catch(() => ({}));
+  const text = typeof reply === "string" ? reply.trim() : "";
+  if (typeof reviewId !== "string" || !reviewId) return NextResponse.json({ error: "חסר מזהה תגובה" }, { status: 400 });
+  if (text.length > 600) return NextResponse.json({ error: "התשובה ארוכה מדי (עד 600 תווים)" }, { status: 400 });
+
+  const admin = createAdminSupabase();
+  const { data: app } = await admin.from("apps").select("id, name, developer_id").eq("id", params.id).maybeSingle();
+  if (!app) return NextResponse.json({ error: "האפליקציה לא נמצאה" }, { status: 404 });
+  if (app.developer_id !== user.id) {
+    return NextResponse.json({ error: "רק בעל האפליקציה יכול לענות לתגובות עליה" }, { status: 403 });
+  }
+
+  const { data: review } = await admin
+    .from("app_reviews")
+    .select("id, user_id, developer_reply")
+    .eq("id", reviewId)
+    .eq("app_id", app.id)
+    .maybeSingle();
+  if (!review) return NextResponse.json({ error: "התגובה לא נמצאה" }, { status: 404 });
+
+  const { error } = await admin
+    .from("app_reviews")
+    .update({ developer_reply: text || null, developer_reply_at: text ? new Date().toISOString() : null })
+    .eq("id", review.id);
+  if (error) return NextResponse.json({ error: `שגיאה בשמירת התשובה: ${error.message}` }, { status: 500 });
+
+  if (text && !review.developer_reply && review.user_id !== user.id) {
+    notifyUsers([review.user_id], {
+      kind: "app_review_reply",
+      title: `${profile.username} ענה/תה לתגובה שלך על ${app.name}`,
+      body: text.slice(0, 100),
+      url: `/apps/${app.id}`
+    }).catch(() => {});
+  }
+
+  revalidatePath(`/apps/${app.id}`);
+  return NextResponse.json({ ok: true });
 }
 
 // POST: יצירה/עדכון של הביקורת של המשתמש המחובר על האפליקציה הזו (כוכבים תמיד פתוח לכולם -

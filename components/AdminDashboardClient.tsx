@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2, Archive, Bot, Star, Lightbulb, KeyRound, BarChart3, Megaphone, Copy } from "lucide-react";
+import { ArrowLeftRight, ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2, Archive, Bot, Star, Lightbulb, KeyRound, BarChart3, Megaphone, Copy, HandHelping } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import VersionProposalsQueue from "./VersionProposalsQueue";
 import DuplicatesQueue from "./DuplicatesQueue";
+import CommunityReviewQueue from "./CommunityReviewQueue";
 import UserManagementTable from "./UserManagementTable";
 import ProRequestsQueue from "./ProRequestsQueue";
 import TicketsPanel from "./TicketsPanel";
@@ -33,12 +34,13 @@ import type { ForumPost } from "@/lib/forum";
 import type { AppRow, Profile, ProRequest, UserDeletionRequest, BanAppeal, ReferralEvent } from "@/types/database";
 import type { SiteReviewRow } from "@/lib/siteReviews";
 
-type TabKey = "notifications" | "review" | "duplicates" | "allApps" | "ownership" | "archive" | "users" | "pro" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteReviews" | "forum" | "passwordResets" | "bot" | "siteRules" | "settings" | "stats" | "ads";
+type TabKey = "notifications" | "review" | "duplicates" | "community" | "allApps" | "ownership" | "archive" | "users" | "pro" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteReviews" | "forum" | "passwordResets" | "bot" | "siteRules" | "settings" | "stats" | "ads";
 
 export default function AdminDashboardClient({
   apps,
   versionProposalsCount = 0,
   duplicatesCount = 0,
+  communityReviewCount = 0,
   allApps,
   profiles,
   proRequests,
@@ -57,6 +59,7 @@ export default function AdminDashboardClient({
   apps: AppRow[];
   versionProposalsCount?: number;
   duplicatesCount?: number;
+  communityReviewCount?: number;
   allApps: AppRow[];
   profiles: Profile[];
   proRequests: ProRequest[];
@@ -80,7 +83,7 @@ export default function AdminDashboardClient({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const wanted = params.get("tab") as TabKey | null;
-    if (wanted && ["tickets", "council", "review", "duplicates"].includes(wanted)) setTab(wanted);
+    if (wanted && ["tickets", "council", "review", "duplicates", "community"].includes(wanted)) setTab(wanted);
   }, []);
 
   const pendingBanAppealsCount = banAppeals.filter((a) => a.status === "pending").length;
@@ -89,7 +92,7 @@ export default function AdminDashboardClient({
   const activeApps = allApps.filter((a) => a.status !== "archived");
 
   const notificationCount =
-    apps.length + versionProposalsCount + duplicatesCount + proRequests.length + suggestionsPendingCount + ticketsNeedingReplyCount + deletionRequests.length + councilAutoApprovedCount + pendingBanAppealsCount;
+    apps.length + versionProposalsCount + duplicatesCount + communityReviewCount + proRequests.length + suggestionsPendingCount + ticketsNeedingReplyCount + deletionRequests.length + councilAutoApprovedCount + pendingBanAppealsCount;
 
   const tabs = [
     { key: "notifications", label: `התראות${notificationCount ? ` (${notificationCount})` : ""}`, icon: BellRing },
@@ -111,6 +114,7 @@ export default function AdminDashboardClient({
     { key: "auditLog", label: "מעקב פיקוח", icon: History },
     { key: "reports", label: "דיווחים על אפליקציות", icon: Flag },
     { key: "duplicates", label: `כפילויות${duplicatesCount ? ` (${duplicatesCount})` : ""}`, icon: Copy },
+    { key: "community", label: `בקשות קהילה${communityReviewCount ? ` (${communityReviewCount})` : ""}`, icon: HandHelping },
     { key: "sizeOverrides", label: "הרשאות גודל", icon: HardDrive },
     { key: "banAppeals", label: `ערעורי חסימה${pendingBanAppealsCount ? ` (${pendingBanAppealsCount})` : ""}`, icon: MessageSquareWarning },
     { key: "referrals", label: "הפניות", icon: Share2 },
@@ -123,6 +127,7 @@ export default function AdminDashboardClient({
 
   const notificationItems = [
     { key: "review", label: "אפליקציות ממתינות לבדיקה", description: "אפליקציות חדשות וגרסאות חדשות שממתינות לאישור/דחייה שלך", count: apps.length + versionProposalsCount, icon: ClipboardList },
+    { key: "community", label: "בקשות קהילה לאישור", description: "בקשות שסומנו \"בוצעה\" - אישור נותן למתנדב את המוניטין", count: communityReviewCount, icon: HandHelping },
     { key: "duplicates", label: "דיווחי כפילות", description: "משתמשים שדיווחו שאפליקציה מופיעה פעמיים / עושה את אותה פעולה", count: duplicatesCount, icon: Copy },
     { key: "pro", label: "בקשות PRO ממתינות", description: "מפתחים שביקשו שדרוג לחשבון PRO", count: proRequests.length, icon: Crown },
     { key: "suggestions", label: "הצעות אפליקציות ממתינות", description: "משתמשים שהציעו אפליקציה להוספה למאגר", count: suggestionsPendingCount, icon: Gift },
@@ -178,6 +183,7 @@ export default function AdminDashboardClient({
       {tab === "council" && <CouncilPanel currentProfile={currentProfile} />}
       {tab === "auditLog" && <AuditLogPanel />}
       {tab === "duplicates" && <DuplicatesQueue />}
+      {tab === "community" && <CommunityReviewQueue />}
       {tab === "reports" && <AppReportsQueue />}
       {tab === "sizeOverrides" && <SizeOverridePanel profiles={profiles} isAdmin={true} />}
       {tab === "banAppeals" && <BanAppealsPanel appeals={banAppeals} />}
