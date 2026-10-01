@@ -10,6 +10,7 @@ import {
   getPendingDeletionRequestsCount,
   getOpenAutoApprovedCouncilCount,
   getPendingAppReportsCount,
+  getPendingDuplicateReportsCount,
   getPendingBanAppealsCount,
   getPendingCommunityReviewCount
 } from "@/lib/admin-data";
@@ -71,7 +72,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const [review, pro, suggestions, tickets, deletionRequests, council, reports, banAppeals, communityReview] = await Promise.all([
+  const [review, pro, suggestions, tickets, deletionRequests, council, reports, duplicates, banAppeals, communityReview] = await Promise.all([
     getPendingReviewCount(),
     profile.role === "admin" ? getPendingProRequestsCount() : Promise.resolve(0),
     getPendingSuggestionsCount(),
@@ -79,11 +80,12 @@ export async function GET(request: Request) {
     profile.role === "admin" ? getPendingDeletionRequestsCount() : Promise.resolve(0),
     getOpenAutoApprovedCouncilCount(),
     getPendingAppReportsCount(),
+    getPendingDuplicateReportsCount(),
     getPendingBanAppealsCount(),
     getPendingCommunityReviewCount()
   ]);
 
-  const items = { review, pro, suggestions, tickets, deletionRequests, council, reports, banAppeals, communityReview };
+  const items = { review, pro, suggestions, tickets, deletionRequests, council, reports, duplicates, banAppeals, communityReview };
   const total = Object.values(items).reduce((sum, n) => sum + n, 0);
 
   // השמות והסדר נשלחים מכאן (ולא רק כתובים בתוך התוסף), כדי שקטגוריה חדשה שתתווסף כאן
@@ -96,6 +98,7 @@ export async function GET(request: Request) {
     deletionRequests: "בקשות מחיקת משתמשים",
     council: "ועדות שנפתחו אוטומטית",
     reports: "דיווחים על אפליקציות",
+    duplicates: "דיווחי כפילות",
     banAppeals: "ערעורי חסימה ממתינים",
     communityReview: "בקשות קהילה לאישור ביצוע"
   };

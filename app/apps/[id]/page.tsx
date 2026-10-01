@@ -15,6 +15,8 @@ import { isStaff } from "@/lib/auth-helpers";
 import NotifyButton from "@/components/NotifyButton";
 import UpdateAppButton from "@/components/UpdateAppButton";
 import UpdatedBadge from "@/components/UpdatedBadge";
+import AppSourceTag from "@/components/AppSourceTag";
+import DuplicateReportButton from "@/components/DuplicateReportButton";
 import { Package, User, Calendar, HardDrive, Flag, Smartphone, Wifi, WifiOff, HelpCircle, Pencil } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -75,6 +77,7 @@ export default async function AppDetailPage({ params }: { params: { id: string }
             <div className="mb-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               <h1 className="text-2xl font-black text-white sm:text-3xl">{app.name}</h1>
               <StatusBadge status={app.status} />
+              <AppSourceTag source={app.source} />
               <UpdatedBadge lastUpdatedAt={app.last_updated_at} />
             </div>
             <p className="mb-4 text-gray-400">{app.short_description}</p>
@@ -108,6 +111,7 @@ export default async function AppDetailPage({ params }: { params: { id: string }
                 extra={
                   <>
                     <ReportAppButton appId={app.id} />
+                    <DuplicateReportButton appId={app.id} />
                     <AppLikeButton appId={app.id} />
                   </>
                 }

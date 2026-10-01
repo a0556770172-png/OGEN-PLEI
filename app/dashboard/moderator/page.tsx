@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/profile";
-import { getReviewQueueApps, getAllAppsForAdmin, getPendingSuggestionsCount, getTicketsNeedingReplyCount, getAllProfiles, getBanAppeals, getPendingVersionProposalsCount } from "@/lib/admin-data";
+import { getReviewQueueApps, getAllAppsForAdmin, getPendingSuggestionsCount, getTicketsNeedingReplyCount, getAllProfiles, getBanAppeals, getPendingVersionProposalsCount, getPendingDuplicateReportsCount } from "@/lib/admin-data";
 import { getSiteReviews } from "@/lib/siteReviews";
 import { getForumModerationFeed } from "@/lib/forum";
 import ModeratorDashboardClient from "@/components/ModeratorDashboardClient";
@@ -14,7 +14,7 @@ export default async function ModeratorDashboard() {
   // לפיקוח מגיע לכאן, ולא מאבד את הגישה לאזור המפתח שלו אם יש לו כזה.
   if (!profile.is_moderator && profile.role !== "admin") redirect("/");
 
-  const [apps, allApps, suggestionsPendingCount, ticketsNeedingReplyCount, profiles, banAppeals, siteReviews, forumPosts, versionProposalsCount] =
+  const [apps, allApps, suggestionsPendingCount, ticketsNeedingReplyCount, profiles, banAppeals, siteReviews, forumPosts, versionProposalsCount, duplicatesCount] =
     await Promise.all([
       getReviewQueueApps(),
       getAllAppsForAdmin(),
@@ -24,7 +24,8 @@ export default async function ModeratorDashboard() {
       getBanAppeals(),
       getSiteReviews({ includeHidden: true }),
       getForumModerationFeed(),
-      getPendingVersionProposalsCount()
+      getPendingVersionProposalsCount(),
+      getPendingDuplicateReportsCount()
     ]);
 
   return (
@@ -36,6 +37,7 @@ export default async function ModeratorDashboard() {
       <ModeratorDashboardClient
         apps={apps}
         versionProposalsCount={versionProposalsCount}
+        duplicatesCount={duplicatesCount}
         allApps={allApps}
         suggestionsPendingCount={suggestionsPendingCount}
         ticketsNeedingReplyCount={ticketsNeedingReplyCount}

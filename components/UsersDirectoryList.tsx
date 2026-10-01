@@ -62,7 +62,7 @@ export default function UsersDirectoryList({ users }: { users: PublicUserSummary
     const q = query.trim().toLowerCase();
     return users
       .filter((u) => (!q || u.username.toLowerCase().includes(q)) && (!onlyOnline || isOnline(u)))
-      .sort((a, b) => a.username.localeCompare(b.username, "he"));
+      .sort((a, b) => b.points - a.points || a.username.localeCompare(b.username, "he"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [users, query, onlyOnline, onlineIds]);
 

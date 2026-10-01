@@ -14,6 +14,8 @@ import AppReviews from "./AppReviews";
 import NotifyButton from "./NotifyButton";
 import UpdateAppButton from "./UpdateAppButton";
 import UpdatedBadge from "./UpdatedBadge";
+import AppSourceTag from "./AppSourceTag";
+import DuplicateReportButton from "./DuplicateReportButton";
 
 // פיצ'ר 2a: עמוד האפליקציה נפתח בחלונית צפה מעל הדף הנוכחי (במקום ניווט מלא), כדי לשמור
 // על רצף הגלישה ומקום הגלילה. הנתונים כבר קיימים בכרטיס (מהעמוד הראשי), ורכיבי הלקוח
@@ -166,6 +168,7 @@ export default function AppModal({
             <div className="mb-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               <h1 className="text-2xl font-black text-white">{app.name}</h1>
               <StatusBadge status={app.status} />
+              <AppSourceTag source={app.source} />
               <UpdatedBadge lastUpdatedAt={app.last_updated_at} />
               {app.pinned && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-bold text-gold"><Pin className="h-3 w-3" /> נעוץ</span>
@@ -198,6 +201,7 @@ export default function AppModal({
                 extra={
                   <>
                     <ReportAppButton appId={app.id} />
+                    <DuplicateReportButton appId={app.id} />
                     <AppLikeButton appId={app.id} />
                   </>
                 }

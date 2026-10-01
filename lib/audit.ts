@@ -8,6 +8,7 @@ export type AuditAction =
   | "approve_pro" | "reject_pro"
   | "approve_deletion_request" | "reject_deletion_request"
   | "approve_app_report" | "reject_app_report"
+  | "resolve_duplicate_report" | "reject_duplicate_report"
   | "edit_user_profile"
   | "adjust_points"
   | "transfer_app"

@@ -34,17 +34,37 @@ export async function getUsersStats() {
   return { totalUsers: totalUsers ?? 0, totalDevelopers: totalDevelopers ?? 0 };
 }
 
+// PostgREST מחזיר לכל היותר ~1000 שורות בשאילתה אחת (גם בלי limit) - לכן דפדוף עד הסוף,
+// אחרת משתמשים (ואפליקציות לספירה) מעבר לתקרה פשוט נעלמו מעמוד המשתמשים (ראו גם lib/admin-data.ts).
+const PAGE_SIZE = 1000;
+async function fetchAllRows<T>(query: (from: number, to: number) => PromiseLike<{ data: T[] | null }>): Promise<T[]> {
+  const all: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data } = await query(from, from + PAGE_SIZE - 1);
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;
+  }
+  return all;
+}
+
+// כל המשתמשים, מהמוניטין הגבוה לנמוך.
 export async function getPublicUsersList(): Promise<PublicUserSummary[]> {
   const admin = createAdminSupabase();
-  const { data: profiles } = await admin
-    .from("profiles")
-    .select("id, username, role, is_moderator, is_pro, avatar_key, points, created_at, last_seen_at")
-    .order("created_at", { ascending: false });
+  const rows = await fetchAllRows<any>((from, to) =>
+    admin
+      .from("profiles")
+      .select("id, username, role, is_moderator, is_pro, avatar_key, points, created_at, last_seen_at")
+      .order("points", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: true })
+      .range(from, to)
+  );
 
-  const rows = profiles ?? [];
-  const { data: appsData } = await admin.from("apps").select("developer_id").neq("status", "archived");
+  const appsData = await fetchAllRows<{ developer_id: string }>((from, to) =>
+    admin.from("apps").select("developer_id").neq("status", "archived").order("id").range(from, to)
+  );
   const appsCountByDev = new Map<string, number>();
-  for (const row of appsData ?? []) {
+  for (const row of appsData) {
     appsCountByDev.set(row.developer_id, (appsCountByDev.get(row.developer_id) ?? 0) + 1);
   }
 

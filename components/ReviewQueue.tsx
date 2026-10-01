@@ -6,6 +6,8 @@ import type { AppRow, Category } from "@/types/database";
 import StatusBadge from "./StatusBadge";
 import { formatFileSize } from "@/lib/format";
 import { isApk } from "./AppGrid";
+import AppSourceTag from "./AppSourceTag";
+import { useApprovalReminder } from "./ApprovalReminder";
 
 type VerifyResult = { status: string; visibleToPublic: boolean; updatedAt: string | null } | { error: string };
 
@@ -26,6 +28,7 @@ export default function ReviewQueue({
   const [verifyResults, setVerifyResults] = useState<Record<string, VerifyResult>>({});
   const [categories, setCategories] = useState<Category[]>([]);
   const [query, setQuery] = useState("");
+  const { ask, dialog } = useApprovalReminder();
 
   useEffect(() => {
     fetch("/api/categories").then((r) => r.json()).then((json) => setCategories(json.categories ?? [])).catch(() => {});
@@ -61,6 +64,10 @@ export default function ReviewQueue({
   }
 
   async function act(appId: string, action: string) {
+    if (action === "approve") {
+      const app = apps.find((a) => a.id === appId);
+      if (!(await ask({ appName: app?.name ?? "", kind: app?.source === "public_suggestion" ? "public" : "private" }))) return;
+    }
     let note: string | null = null;
     if (action === "reject") {
       note = window.prompt("סיבת הדחייה (יוצג למפתח):") || "";
@@ -164,6 +171,7 @@ export default function ReviewQueue({
 
   return (
     <div className="flex flex-col gap-3">
+      {dialog}
       <div className="relative w-full sm:max-w-xs">
         <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-gray-500" />
         <input
@@ -185,6 +193,7 @@ export default function ReviewQueue({
               <div className="mb-1 flex flex-wrap items-center gap-2">
                 <h3 className="font-bold text-white">{app.name}</h3>
                 <StatusBadge status={app.status} />
+                <AppSourceTag source={app.source} />
                 {!app.icon_key && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-bold text-gold">
                     <ImageOff className="h-3 w-3" /> אין אייקון

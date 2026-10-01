@@ -151,6 +151,16 @@ export async function getPendingProRequestsCount(): Promise<number> {
   return count ?? 0;
 }
 
+// דיווחי כפילות ממתינים (לשונית "כפילויות"). אם מיגרציה 0067 עוד לא רצה - מחזירים 0.
+export async function getPendingDuplicateReportsCount(): Promise<number> {
+  const admin = createAdminSupabase();
+  const { count, error } = await admin
+    .from("duplicate_reports")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending");
+  return error ? 0 : count ?? 0;
+}
+
 export async function getPendingAppReportsCount(): Promise<number> {
   const admin = createAdminSupabase();
   const { count } = await admin

@@ -91,7 +91,7 @@ export default function SiteSettingsPanel({
         <MessageSquare className="h-5 w-5 text-primary-light" /> כפתור הפורום בעמוד הבית
       </div>
       <p className="text-sm text-gray-400">
-        שולט בהצגת הכפתור "הצעות לשיפור ורעיונות" (מוביל לפורום) בעמוד הבית. כשמכובה, אף אחד לא רואה את הכפתור בכלל.
+        שולט בהצגת הכפתור "פורום עוגן פליי" (מוביל לפורום) בעמוד הבית. כשמכובה, אף אחד לא רואה את הכפתור בכלל.
       </p>
       <div className="flex items-center gap-3">
         <button

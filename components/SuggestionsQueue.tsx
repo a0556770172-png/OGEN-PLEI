@@ -5,6 +5,7 @@ import { Check, X, Loader2, Gift, Download, ShieldQuestion, CheckCircle2, XCircl
 import { createClient } from "@/lib/supabase/client";
 import type { AppSuggestion } from "@/types/database";
 import { formatFileSize } from "@/lib/format";
+import { useApprovalReminder } from "./ApprovalReminder";
 
 type VerifyResult = { status: string; visibleToPublic: boolean } | { error: string };
 
@@ -16,6 +17,7 @@ export default function SuggestionsQueue() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [verifyResults, setVerifyResults] = useState<Record<string, VerifyResult>>({});
+  const { ask, dialog } = useApprovalReminder();
 
   async function verify(appId: string) {
     setVerifyingId(appId);
@@ -60,6 +62,10 @@ export default function SuggestionsQueue() {
   }
 
   async function act(id: string, status: "approved" | "rejected") {
+    if (status === "approved") {
+      const s = suggestions.find((x) => x.id === id);
+      if (!(await ask({ appName: s?.app_name ?? "", kind: "public" }))) return;
+    }
     setBusyId(id);
     const res = await fetch(`/api/suggestions/${id}`, {
       method: "PATCH",
@@ -83,6 +89,7 @@ export default function SuggestionsQueue() {
 
   return (
     <div className="flex flex-col gap-3">
+      {dialog}
       {suggestions.map((s) => (
         <div key={s.id} className="card flex flex-col gap-3 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">

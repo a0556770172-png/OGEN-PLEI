@@ -7,6 +7,7 @@ import type { AppRow, Category } from "@/types/database";
 import { formatFileSize } from "@/lib/format";
 import { isRecentlyUpdated } from "@/lib/updatedBadge";
 import UpdatedBadge from "./UpdatedBadge";
+import AppSourceTag from "./AppSourceTag";
 
 // הכרטיס נפתח בחלונית צפה (Modal) במקום ניווט לעמוד נפרד, כדי לשמור על מקום הגלילה
 // (פיצ'ר 2a). לחיצה על שם המעלה מובילה לעמוד המשתמש שלו (פיצ'ר 3b) - עם עצירת ההתפשטות
@@ -78,7 +79,10 @@ export default function AppCard({
           </div>
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-lg font-bold text-white">{app.name}</h3>
-            <p className="text-xs text-gray-500">{category} · גרסה {app.version}</p>
+            <p className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+              <span>{category} · גרסה {app.version}</span>
+              <AppSourceTag source={app.source} size="sm" />
+            </p>
           </div>
         </div>
         <p className="line-clamp-2 text-sm text-gray-400">{app.short_description}</p>

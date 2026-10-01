@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Download, Check, X, Loader2, User, HardDrive, ArrowLeft, Sparkles, Repeat, Smartphone, Monitor } from "lucide-react";
 import { formatFileSize } from "@/lib/format";
 import { detectFileKind } from "@/lib/fileKind";
+import { useApprovalReminder } from "./ApprovalReminder";
 
 type Proposal = {
   id: string;
@@ -36,6 +37,7 @@ export default function VersionProposalsQueue() {
   const router = useRouter();
   const [proposals, setProposals] = useState<Proposal[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const { ask, dialog } = useApprovalReminder();
 
   const load = useCallback(async () => {
     try {
@@ -65,8 +67,16 @@ export default function VersionProposalsQueue() {
     if (action === "reject") {
       note = window.prompt("סיבת הדחייה (תוצג למי שהעלה):");
       if (note === null) return;
-    } else if (p.kind === "public" && p.app && !confirm(`לאשר? הגרסה הישנה תימחק, והבעלות על "${p.app.name}" תעבור ל-${p.uploader?.username ?? "המעלה"}.`)) {
-      return;
+    } else {
+      const ownerChanges = p.kind === "public" && !!p.app && p.app.developer_id !== p.uploader_id;
+      const ok = await ask({
+        appName: p.app?.name ?? p.name ?? "",
+        kind: p.kind === "public" ? "public" : "private",
+        extra: ownerChanges
+          ? `באישור: הגרסה הישנה תימחק, והבעלות תעבור ל-${p.uploader?.username ?? "המעלה"}.`
+          : "באישור: הגרסה הישנה תימחק לגמרי מהשרת."
+      });
+      if (!ok) return;
     }
     setBusyId(p.id);
     const res = await fetch(`/api/admin/update-proposals/${p.id}`, {
@@ -88,6 +98,7 @@ export default function VersionProposalsQueue() {
 
   return (
     <div className="flex flex-col gap-3">
+      {dialog}
       <h2 className="flex items-center gap-2 text-lg font-bold text-white">
         <Sparkles className="h-5 w-5 text-accent" /> גרסאות חדשות ממתינות ({proposals.length})
       </h2>

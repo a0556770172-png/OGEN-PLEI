@@ -7,6 +7,8 @@ const ACTION_LABELS: Record<string, string> = {
   unban_user: "ביטול חסימת משתמש",
   approve_app: "אישור אפליקציה",
   approve_app_version: "אישור גרסה חדשה",
+  resolve_duplicate_report: "טיפול בדיווח כפילות",
+  reject_duplicate_report: "דחיית דיווח כפילות",
   reject_app_version: "דחיית גרסה חדשה",
   reject_app: "דחיית אפליקציה",
   delete_app: "מחיקת אפליקציה",

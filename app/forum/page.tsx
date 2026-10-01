@@ -10,7 +10,7 @@ import ForumPostCard from "@/components/ForumPostCard";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
-  title: "הצעות לשיפור ורעיונות — עוגן פליי",
+  title: "פורום עוגן פליי",
   description: "פורום קהילתי: מה מפריע, מה חסר, ואיך אפשר לשפר ולקדם את עוגן פליי."
 };
 
@@ -30,7 +30,7 @@ export default async function ForumPage({ searchParams }: { searchParams: { sort
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-gold to-primary text-[#fff] shadow-glow">
           <Lightbulb className="h-6 w-6" />
         </div>
-        <h1 className="text-2xl font-black">הצעות לשיפור ורעיונות</h1>
+        <h1 className="text-2xl font-black">פורום עוגן פליי</h1>
         <p className="mx-auto mt-2 max-w-md text-sm text-gray-400">
           מה מפריע לכם? מה חסר? איך הייתם משפרים ומקדמים את עוגן פליי? כתבו, הגיבו, ותנו לייק —
           <b className="text-gold"> כל לייק לפוסט מוסיף מוניטין לכותב</b>.
