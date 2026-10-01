@@ -299,6 +299,7 @@ export default function AppGrid({
                   iconUrl={iconUrl}
                   categories={categories}
                   hasUpdate={updates.has(app.id)}
+                  viewerIsStaff={viewerIsStaff}
                   onOpen={() => setActiveId(app.id)}
                 />
               </motion.div>

@@ -8,6 +8,7 @@ import { formatFileSize } from "@/lib/format";
 import { isRecentlyUpdated } from "@/lib/updatedBadge";
 import UpdatedBadge from "./UpdatedBadge";
 import AppSourceTag from "./AppSourceTag";
+import StaffSourceToggle from "./StaffSourceToggle";
 
 // הכרטיס נפתח בחלונית צפה (Modal) במקום ניווט לעמוד נפרד, כדי לשמור על מקום הגלילה
 // (פיצ'ר 2a). לחיצה על שם המעלה מובילה לעמוד המשתמש שלו (פיצ'ר 3b) - עם עצירת ההתפשטות
@@ -17,12 +18,15 @@ export default function AppCard({
   iconUrl,
   categories,
   hasUpdate = false,
+  viewerIsStaff = false,
   onOpen
 }: {
   app: AppRow;
   iconUrl?: string | null;
   categories?: Category[];
   hasUpdate?: boolean;
+  // צוות פיקוח/מנהל - האות פ/צ היא כפתור להעברה בין פרטית לציבורית
+  viewerIsStaff?: boolean;
   onOpen?: () => void;
 }) {
   const category = categories?.find((c) => c.value === app.category)?.label ?? app.category;
@@ -81,7 +85,11 @@ export default function AppCard({
             <h3 className="truncate text-lg font-bold text-white">{app.name}</h3>
             <p className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
               <span>{category} · גרסה {app.version}</span>
-              <AppSourceTag source={app.source} size="letter" />
+              {viewerIsStaff ? (
+                <StaffSourceToggle appId={app.id} appName={app.name} source={app.source} />
+              ) : (
+                <AppSourceTag source={app.source} size="letter" />
+              )}
             </p>
           </div>
         </div>
