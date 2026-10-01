@@ -81,7 +81,7 @@ export default function AppCard({
             <h3 className="truncate text-lg font-bold text-white">{app.name}</h3>
             <p className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
               <span>{category} · גרסה {app.version}</span>
-              <AppSourceTag source={app.source} size="sm" />
+              <AppSourceTag source={app.source} size="letter" />
             </p>
           </div>
         </div>
