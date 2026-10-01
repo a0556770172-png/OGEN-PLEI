@@ -28,8 +28,12 @@ const ISSUE_TYPES = [
 // רק אחרי שהם מאשרים אותו. הטופס מובנה קצת יותר (סוג בעיה + גרסת אנדרואיד + תיאור חופשי)
 // כדי שלצוות הפיקוח יהיה יותר קל להבין ולשחזר את הבעיה - הכל מתחבר למחרוזת "reason" אחת
 // שנשלחת לשרת, בלי צורך בשינוי סכימה במסד הנתונים.
-export default function ReportAppButton({ appId }: { appId: string }) {
-  const [open, setOpen] = useState(false);
+// כשמגיעים open/onClose מבחוץ (components/ReportsMenu.tsx) - אין כפתור משלו, רק החלונית.
+export default function ReportAppButton({ appId, open: openProp, onClose }: { appId: string; open?: boolean; onClose?: () => void }) {
+  const [openState, setOpenState] = useState(false);
+  const controlled = openProp !== undefined;
+  const open = controlled ? openProp : openState;
+  const setOpen = (v: boolean) => (controlled ? !v && onClose?.() : setOpenState(v));
   const [issueType, setIssueType] = useState(ISSUE_TYPES[0]);
   const [androidVersion, setAndroidVersion] = useState(ANDROID_VERSIONS[0]);
   const [description, setDescription] = useState("");
@@ -63,16 +67,18 @@ export default function ReportAppButton({ appId }: { appId: string }) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="btn-ghost text-sm hover:border-red-500/40 hover:text-red-400"
-      >
-        <Flag className="h-4 w-4" /> דיווח
-      </button>
+      {!controlled && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="btn-ghost text-sm hover:border-red-500/40 hover:text-red-400"
+        >
+          <Flag className="h-4 w-4" /> דיווח
+        </button>
+      )}
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4" dir="rtl">
           <div className="w-full max-w-md rounded-2xl border border-white/10 bg-surface p-6">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-lg font-bold text-white">

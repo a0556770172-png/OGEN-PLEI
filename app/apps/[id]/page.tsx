@@ -6,7 +6,7 @@ import { getCategoriesServer } from "@/lib/categories";
 import { formatFileSize } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
 import DownloadButton from "@/components/DownloadButton";
-import ReportAppButton from "@/components/ReportAppButton";
+import ReportsMenu from "@/components/ReportsMenu";
 import AppLikeButton from "@/components/AppLikeButton";
 import AppReviews from "@/components/AppReviews";
 import { createAdminSupabase } from "@/lib/supabase/admin";
@@ -16,7 +16,6 @@ import NotifyButton from "@/components/NotifyButton";
 import UpdateAppButton from "@/components/UpdateAppButton";
 import UpdatedBadge from "@/components/UpdatedBadge";
 import AppSourceTag from "@/components/AppSourceTag";
-import DuplicateReportButton from "@/components/DuplicateReportButton";
 import { Package, User, Calendar, HardDrive, Flag, Smartphone, Wifi, WifiOff, HelpCircle, Pencil } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -110,8 +109,7 @@ export default async function AppDetailPage({ params }: { params: { id: string }
                 isPaused={isPaused}
                 extra={
                   <>
-                    <ReportAppButton appId={app.id} />
-                    <DuplicateReportButton appId={app.id} />
+                    <ReportsMenu appId={app.id} />
                     <AppLikeButton appId={app.id} />
                   </>
                 }

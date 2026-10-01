@@ -8,14 +8,13 @@ import type { AppRow, Category } from "@/types/database";
 import { formatFileSize } from "@/lib/format";
 import StatusBadge from "./StatusBadge";
 import DownloadButton from "./DownloadButton";
-import ReportAppButton from "./ReportAppButton";
+import ReportsMenu from "./ReportsMenu";
 import AppLikeButton from "./AppLikeButton";
 import AppReviews from "./AppReviews";
 import NotifyButton from "./NotifyButton";
 import UpdateAppButton from "./UpdateAppButton";
 import UpdatedBadge from "./UpdatedBadge";
 import AppSourceTag from "./AppSourceTag";
-import DuplicateReportButton from "./DuplicateReportButton";
 
 // פיצ'ר 2a: עמוד האפליקציה נפתח בחלונית צפה מעל הדף הנוכחי (במקום ניווט מלא), כדי לשמור
 // על רצף הגלישה ומקום הגלילה. הנתונים כבר קיימים בכרטיס (מהעמוד הראשי), ורכיבי הלקוח
@@ -200,8 +199,7 @@ export default function AppModal({
                 isPaused={isPaused}
                 extra={
                   <>
-                    <ReportAppButton appId={app.id} />
-                    <DuplicateReportButton appId={app.id} />
+                    <ReportsMenu appId={app.id} />
                     <AppLikeButton appId={app.id} />
                   </>
                 }

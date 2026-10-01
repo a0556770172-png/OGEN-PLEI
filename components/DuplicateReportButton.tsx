@@ -4,8 +4,12 @@ import { Copy, Loader2, CheckCircle2, X, Link2 } from "lucide-react";
 
 // "דווח על כפילות" - משתמש שראה עוד אפליקציה זהה / שעושה את אותה פעולה מדווח עליה, עם קישור
 // חובה לאפליקציה השנייה. הדיווח נשלח ללשונית "כפילויות" של צוות הפיקוח והמנהל.
-export default function DuplicateReportButton({ appId }: { appId: string }) {
-  const [open, setOpen] = useState(false);
+// כשמגיעים open/onClose מבחוץ (components/ReportsMenu.tsx) - אין כפתור משלו, רק החלונית.
+export default function DuplicateReportButton({ appId, open: openProp, onClose }: { appId: string; open?: boolean; onClose?: () => void }) {
+  const [openState, setOpenState] = useState(false);
+  const controlled = openProp !== undefined;
+  const open = controlled ? openProp : openState;
+  const setOpen = (v: boolean) => (controlled ? !v && onClose?.() : setOpenState(v));
   const [otherUrl, setOtherUrl] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -45,9 +49,11 @@ export default function DuplicateReportButton({ appId }: { appId: string }) {
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="btn-ghost text-sm">
-        <Copy className="h-4 w-4" /> דווח על כפילות
-      </button>
+      {!controlled && (
+        <button type="button" onClick={() => setOpen(true)} className="btn-ghost text-sm">
+          <Copy className="h-4 w-4" /> דווח על כפילות
+        </button>
+      )}
 
       {open && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4" dir="rtl">
