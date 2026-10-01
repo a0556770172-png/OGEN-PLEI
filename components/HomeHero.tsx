@@ -76,7 +76,7 @@ export default function HomeHero({
             <Rocket className="h-4 w-4" /> הרשמה כמפתח
           </Link>
           <Link href="/suggest-app" className="btn-ghost min-w-[170px] justify-center">
-            <Gift className="h-4 w-4" /> הוספה למאגר וצבירת מוניטין
+            <Gift className="h-4 w-4" /> הוספה למאגר הציבורי
           </Link>
           <Link href="#apps" className="btn-ghost min-w-[170px] justify-center">
             <ShieldCheck className="h-4 w-4" /> עיון בחנות
@@ -84,7 +84,7 @@ export default function HomeHero({
         </div>
         <p className="max-w-xl text-center text-xs text-gray-500">
           "הרשמה כמפתח" - להעלאת אפליקציות/תוכנות שלך באופן פרטי, עם אפשרות לערוך פרטים ולהעלות גרסאות חדשות בכל עת.{" "}
-          "הוספה למאגר" - להצעת אפליקציה/תוכנה קיימת (לא שלך) לצוות, כדי שיבדוק ויפרסם אותה בעצמו - זה לא ניתן לעריכה
+          "הוספה למאגר הציבורי" - להצעת אפליקציה/תוכנה קיימת (לא שלך) לצוות, כדי שיבדוק ויפרסם אותה בעצמו - זה לא ניתן לעריכה
           אח"כ, וזה מזכה במוניטין.
         </p>
 

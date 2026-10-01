@@ -6,7 +6,7 @@ import { MAX_SUGGESTION_MB } from "@/lib/constants";
 import { consumeOversizeGrant } from "@/lib/uploadQuota";
 import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
 
-// כל משתמש מחובר (רגיל או מפתח) יכול להציע אפליקציה פופולרית להוספה למאגר
+// כל משתמש מחובר (רגיל או מפתח) יכול להציע אפליקציה פופולרית להוספה למאגר הציבורי
 export async function POST(request: Request) {
   const result = await requireProfile();
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });

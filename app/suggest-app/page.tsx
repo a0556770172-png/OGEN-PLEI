@@ -195,7 +195,7 @@ export default function SuggestAppPage() {
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-gold to-primary shadow-glow">
           <Gift className="h-6 w-6 text-[#fff]" />
         </div>
-        <h1 className="text-3xl font-black">הוספה למאגר וצבירת מוניטין</h1>
+        <h1 className="text-3xl font-black">הוספה למאגר הציבורי</h1>
         <p className="mx-auto mt-2 max-w-lg text-gray-400">
           מכירים אפליקציה או תוכנה פופולרית ומאושרת (כמו Waze, WhatsApp וכו') שכדאי שתהיה זמינה בחנות? הציעו אותה כאן.
           כשההצעה שלכם תאושר ותתפרסם, תקבלו 5 מוניטין. הגעה ל-300 מוניטין מזכה בשדרוג PRO אוטומטי.

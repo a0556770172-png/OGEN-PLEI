@@ -4,7 +4,7 @@ import { ShieldAlert, Globe, Lock, CheckCircle2 } from "lucide-react";
 
 type AskOptions = {
   appName: string;
-  // איזה סוג העלאה זו: פרטית (העלאה ישירה של מפתח) או ציבורית (הוספה למאגר / עדכון ציבורי)
+  // איזה סוג העלאה זו: פרטית (העלאה ישירה של מפתח) או ציבורית (הוספה למאגר הציבורי / עדכון ציבורי)
   kind: "private" | "public";
   extra?: string;
 };
@@ -46,7 +46,7 @@ export function useApprovalReminder() {
           {opts.kind === "private" ? (
             <span>
               זו העלאה <b className="text-white">פרטית</b> - מותרת רק למי שפיתח את האפליקציה בעצמו או שהזכויות עליה שלו. אפליקציה של מישהו אחר
-              צריכה לעלות כהצעה <b className="text-white">ציבורית</b> (הוספה למאגר).
+              צריכה לעלות כהצעה <b className="text-white">ציבורית</b> (הוספה למאגר הציבורי).
             </span>
           ) : (
             <span>

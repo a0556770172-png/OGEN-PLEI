@@ -302,7 +302,7 @@ export function toolDeclarations(ctx: ToolContext) {
     },
     {
       name: "propose_app_suggestion",
-      description: "מכין הצעת אפליקציה ציבורית להוספה למאגר (כשהמשתמש אמר 'חבל שאין את X'). לא שולח מיד; המשתמש יאשר.",
+      description: "מכין הצעת אפליקציה ציבורית להוספה למאגר הציבורי (כשהמשתמש אמר 'חבל שאין את X'). לא שולח מיד; המשתמש יאשר.",
       parameters: {
         type: "object",
         properties: {

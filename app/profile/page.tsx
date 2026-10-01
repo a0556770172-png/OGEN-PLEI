@@ -162,7 +162,7 @@ export default async function ProfilePage() {
             <p className="text-xs text-gray-500">
               רק רוצים להציע אפליקציה של מישהו אחר (כמו Waze) שכדאי שתהיה בחנות?{" "}
               <Link href="/suggest-app" className="font-bold text-primary-light hover:underline">
-                הוספה למאגר וצבירת מוניטין
+                הוספה למאגר הציבורי
               </Link>
             </p>
           </div>

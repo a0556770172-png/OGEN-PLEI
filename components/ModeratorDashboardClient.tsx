@@ -93,7 +93,7 @@ export default function ModeratorDashboardClient({
     { key: "review", label: "אפליקציות ממתינות לבדיקה", description: "אפליקציות חדשות וגרסאות חדשות שממתינות לאישור/דחייה שלך", count: apps.length + versionProposalsCount, icon: ClipboardList },
     { key: "community", label: "בקשות קהילה לאישור", description: "בקשות שסומנו \"בוצעה\" - אישור נותן למתנדב את המוניטין", count: communityReviewCount, icon: HandHelping },
     { key: "duplicates", label: "דיווחי כפילות", description: "משתמשים שדיווחו שאפליקציה מופיעה פעמיים / עושה את אותה פעולה", count: duplicatesCount, icon: Copy },
-    { key: "suggestions", label: "הצעות אפליקציות ממתינות", description: "משתמשים שהציעו אפליקציה להוספה למאגר", count: suggestionsPendingCount, icon: Gift },
+    { key: "suggestions", label: "הצעות אפליקציות ממתינות", description: "משתמשים שהציעו אפליקציה להוספה למאגר הציבורי", count: suggestionsPendingCount, icon: Gift },
     { key: "tickets", label: "הודעות ממתינות למענה", description: "הודעות שמשתמשים כתבו ועדיין לא קיבלו תגובה", count: ticketsNeedingReplyCount, icon: MessageCircle },
     { key: "banAppeals", label: "ערעורי חסימה ממתינים", description: "משתמשים חסומים שכתבו ערעור וממתינים לתגובת צוות", count: pendingBanAppealsCount, icon: MessageSquareWarning }
   ];

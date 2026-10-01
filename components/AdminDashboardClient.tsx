@@ -130,7 +130,7 @@ export default function AdminDashboardClient({
     { key: "community", label: "בקשות קהילה לאישור", description: "בקשות שסומנו \"בוצעה\" - אישור נותן למתנדב את המוניטין", count: communityReviewCount, icon: HandHelping },
     { key: "duplicates", label: "דיווחי כפילות", description: "משתמשים שדיווחו שאפליקציה מופיעה פעמיים / עושה את אותה פעולה", count: duplicatesCount, icon: Copy },
     { key: "pro", label: "בקשות PRO ממתינות", description: "מפתחים שביקשו שדרוג לחשבון PRO", count: proRequests.length, icon: Crown },
-    { key: "suggestions", label: "הצעות אפליקציות ממתינות", description: "משתמשים שהציעו אפליקציה להוספה למאגר", count: suggestionsPendingCount, icon: Gift },
+    { key: "suggestions", label: "הצעות אפליקציות ממתינות", description: "משתמשים שהציעו אפליקציה להוספה למאגר הציבורי", count: suggestionsPendingCount, icon: Gift },
     { key: "tickets", label: "הודעות ממתינות למענה", description: "הודעות שמשתמשים כתבו ועדיין לא קיבלו תגובה", count: ticketsNeedingReplyCount, icon: MessageCircle },
     { key: "deletionRequests", label: "בקשות מחיקת משתמשים מצוות פיקוח", description: "בקשות מחיקה שהגיש צוות הפיקוח וממתינות לאישורך", count: deletionRequests.length, icon: ShieldAlert },
     { key: "council", label: "ועדות שנפתחו אוטומטית ע\"י הצוות", description: "שני חברי צוות ביקשו לפתוח ועדה תוך 24 שעות - דורש תשומת לבך", count: councilAutoApprovedCount, icon: Siren },
