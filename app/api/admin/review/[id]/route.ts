@@ -4,6 +4,7 @@ import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 import { notifyForApprovedApp } from "@/lib/notifications";
+import { awardUploadPointsOnce } from "@/lib/points";
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const result = await requireProfile();
@@ -39,6 +40,12 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       updated_at: new Date().toISOString()
     })
     .eq("id", params.id);
+
+  // העלאה פרטית שאושרה - רק עכשיו המפתח מקבל את מוניטין ההעלאה (פעם אחת לכל אפליקציה).
+  // אפליקציה ציבורית מקבלת את המוניטין שלה באישור ההצעה (app/api/suggestions/[id]).
+  if (action === "approve" && app.source !== "public_suggestion") {
+    await awardUploadPointsOnce(params.id, app.developer_id).catch(() => {});
+  }
 
   // אפליקציה שאושרה (חדשה או גרסה חדשה) - שולחים התראות למנויים.
   if (action === "approve" && app.status !== "approved") {

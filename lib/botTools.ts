@@ -606,7 +606,7 @@ export async function executeTool(name: string, rawArgs: any, ctx: ToolContext):
       const rules = stripHtml(settings.site_rules_html || DEFAULT_SITE_RULES_HTML);
       const facts = [
         `מכסות מפתח רגיל: עד ${LIMITS.free.maxApps} אפליקציות, עד ${LIMITS.free.maxFileMb}MB. PRO: עד ${LIMITS.pro.maxApps} / ${LIMITS.pro.maxFileMb}MB. הצעה ציבורית: עד ${MAX_SUGGESTION_MB}MB.`,
-        `מוניטין: +5 אפליקציה שאושרה, +5 הצעה ציבורית שאושרה, +2 להורדה (עד 10/יום), +${REFERRAL.referrerPoints} הפניה מוצלחת. PRO אוטומטי ב-300.`,
+        `מוניטין: +10 אפליקציה פרטית שאושרה, +5 הצעה ציבורית שאושרה, +2 להורדה (עד 10/יום), +${REFERRAL.referrerPoints} הפניה מוצלחת. PRO אוטומטי ב-300.`,
         `הפניות: /?ref=שם-המשתמש. מפנה +${REFERRAL.referrerPoints} מוניטין + קרדיט ${REFERRAL.sizeOverrideMb}MB, מצטרף +${REFERRAL.joinerPoints}. עד ${REFERRAL.dailyRewardCap}/יום.`,
         `העלאה פרטית: דרך /profile (חשבון מפתח). הצעה ציבורית: דרך /suggest-app (כל משתמש). תמיכה: /support.`
       ].join("\n");
@@ -665,9 +665,9 @@ export async function executeTool(name: string, rawArgs: any, ctx: ToolContext):
       if (ctx.isDeveloper) opportunities.push(`כל הורדה של אפליקציה שלך ע"י משתמש אחר = +2 מוניטין (עד 10 ליום).`);
       const refLeft = Math.max(0, REFERRAL.dailyRewardCap - (refToday ?? 0));
       if (refLeft > 0) opportunities.push(`עוד ${refLeft} הזמנות חברים היום = עד +${refLeft * REFERRAL.referrerPoints} מוניטין (${REFERRAL.referrerPoints} כל אחת).`);
-      if (ctx.isDeveloper) opportunities.push(`כל אפליקציה/תוכנה חדשה שתעלה ותאושר = +5 מוניטין.`);
+      if (ctx.isDeveloper) opportunities.push(`כל אפליקציה/תוכנה חדשה שתעלה בהעלאה פרטית ותאושר = +10 מוניטין.`);
       opportunities.push(`כל הצעת אפליקציה ציבורית שתאושר = +5 מוניטין.`);
-      if ((pending ?? 0) > 0) opportunities.push(`יש לך ${pending} אפליקציות בתור בדיקה - כל אחת שתאושר = +5 מוניטין.`);
+      if ((pending ?? 0) > 0) opportunities.push(`יש לך ${pending} אפליקציות בתור בדיקה - כל אחת שתאושר = +10 מוניטין (אפליקציה פרטית).`);
       return {
         result: {
           current_points: p.points,

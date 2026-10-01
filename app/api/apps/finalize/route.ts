@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
-import { addPoints } from "@/lib/points";
+import { awardUploadPointsOnce } from "@/lib/points";
 import { LIMITS } from "@/lib/constants";
 import { effectiveMaxUploadMb, consumeOversizeGrant } from "@/lib/uploadQuota";
 import { notifyForApprovedApp } from "@/lib/notifications";
@@ -95,9 +95,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const UPLOAD_POINTS = 5;
-  await admin.from("points_log").insert({ profile_id: user.id, delta: UPLOAD_POINTS, reason: "upload", app_id: app.id });
-  await addPoints(user.id, UPLOAD_POINTS);
+  // מוניטין על ההעלאה ניתן רק באישור הצוות (app/api/admin/review) - לא כאן. מנהל שמעלה
+  // מאושר מיד, ולכן מקבל אותו כבר עכשיו.
+  if (initialStatus === "approved") await awardUploadPointsOnce(app.id, user.id);
 
   // אם הקובץ חרג מהמכסה הרגילה - "שורפים" הרשאה אחת (קודם קרדיט הפניה, ואז הרשאת אדמין).
   await consumeOversizeGrant(profile, fileSize, plan.maxFileMb);

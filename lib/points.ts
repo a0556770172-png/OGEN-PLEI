@@ -19,3 +19,22 @@ export async function addPoints(profileId: string, delta: number) {
 
   await admin.from("profiles").update(patch).eq("id", profileId);
 }
+
+// מוניטין על העלאה פרטית (10 - כפול מהצעה ציבורית, שמזכה ב-5) - ניתן רק כשהאפליקציה מאושרת
+// (לא בזמן ההעלאה), ופעם אחת לכל
+// אפליקציה: נבדק לפי שורת "upload" קיימת ב-points_log, כך שאישור חוזר (למשל אחרי ארכיון)
+// או אפליקציה ישנה שכבר קיבלה מוניטין בהעלאה (לפני השינוי) לא מקבלים שוב.
+export const UPLOAD_POINTS = 10;
+
+export async function awardUploadPointsOnce(appId: string, developerId: string): Promise<boolean> {
+  const admin = createAdminSupabase();
+  const { count } = await admin
+    .from("points_log")
+    .select("id", { count: "exact", head: true })
+    .eq("app_id", appId)
+    .eq("reason", "upload");
+  if ((count ?? 0) > 0) return false;
+  await admin.from("points_log").insert({ profile_id: developerId, delta: UPLOAD_POINTS, reason: "upload", app_id: appId });
+  await addPoints(developerId, UPLOAD_POINTS);
+  return true;
+}

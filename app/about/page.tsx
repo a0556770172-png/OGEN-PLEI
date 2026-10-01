@@ -56,8 +56,8 @@ export default function AboutPage() {
           <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-light"><UploadCloud className="h-4 w-4" /></div>
             <div>
-              <p className="font-bold text-white">העלאת אפליקציה או תוכנה חדשה — 5 מוניטין</p>
-              <p className="text-sm text-gray-400">כל אפליקציה או תוכנה חדשה שמפתח מעלה ונשמרת בהצלחה מזכה ב-5 מוניטין.</p>
+              <p className="font-bold text-white">העלאת אפליקציה או תוכנה פרטית — 10 מוניטין</p>
+              <p className="text-sm text-gray-400">כל אפליקציה או תוכנה חדשה שמפתח מעלה בהעלאה פרטית מזכה ב-10 מוניטין - ברגע שצוות הפיקוח מאשר אותה.</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
