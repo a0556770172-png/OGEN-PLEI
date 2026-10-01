@@ -8,7 +8,7 @@ const REDIRECT_SECONDS = 5;
 
 // מסך הצלחה אחרי העלאת אפליקציה (פרטית - dashboard/developer/upload, או הוספה ציבורית למאגר -
 // suggest-app): מבהיר שהאפליקציה הועלתה ונשלחה לבדיקה, וחוזר אוטומטית לדף הבית.
-export default function UploadSuccess({ kind, note }: { kind: "private" | "public"; note?: string }) {
+export default function UploadSuccess({ kind, note }: { kind: "private" | "public" | "update"; note?: string }) {
   const router = useRouter();
   const [left, setLeft] = useState(REDIRECT_SECONDS);
 
@@ -37,11 +37,13 @@ export default function UploadSuccess({ kind, note }: { kind: "private" | "publi
         <CheckCircle2 className="h-9 w-9" />
       </motion.div>
       <h2 className="text-2xl font-black text-white">
-        {kind === "private" ? "האפליקציה הועלתה בהצלחה!" : "ההצעה נשלחה בהצלחה!"}
+        {kind === "private" ? "האפליקציה הועלתה בהצלחה!" : kind === "update" ? "העדכון נשלח בהצלחה!" : "ההצעה נשלחה בהצלחה!"}
       </h2>
       <p className="max-w-md text-sm leading-relaxed text-gray-300">
         {kind === "private"
           ? "היא נשלחה לבדיקה ידנית של צוות הפיקוח. ברגע שתאושר היא תתפרסם בחנות, ותקבלו על כך התראה."
+          : kind === "update"
+          ? "הגרסה החדשה נשלחה לבדיקה של צוות הפיקוח. ברגע שתאושר היא תחליף את הגרסה הקיימת, האפליקציה תעבור לבעלותכם ותקבלו על כך התראה."
           : "היא נשלחה לבדיקה של צוות הפיקוח. ברגע שתאושר היא תתפרסם בחנות ותקבלו מוניטין."}
       </p>
       {note && <p className="max-w-md text-xs text-gold">{note}</p>}

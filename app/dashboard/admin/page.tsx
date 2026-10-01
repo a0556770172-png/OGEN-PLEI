@@ -10,7 +10,8 @@ import {
   getPendingDeletionRequests,
   getOpenAutoApprovedCouncilCount,
   getBanAppeals,
-  getReferralEvents
+  getReferralEvents,
+  getPendingVersionProposalsCount
 } from "@/lib/admin-data";
 import { getSiteSettingsServer } from "@/lib/settings";
 import { getSiteReviews } from "@/lib/siteReviews";
@@ -24,7 +25,7 @@ export default async function AdminDashboard() {
   if (!user || !profile) redirect("/login");
   if (profile.role !== "admin") redirect("/");
 
-  const [apps, allApps, profiles, proRequests, suggestionsPendingCount, ticketsNeedingReplyCount, deletionRequests, councilAutoApprovedCount, siteSettings, banAppeals, referralEvents] =
+  const [apps, allApps, profiles, proRequests, suggestionsPendingCount, ticketsNeedingReplyCount, deletionRequests, councilAutoApprovedCount, siteSettings, banAppeals, referralEvents, versionProposalsCount] =
     await Promise.all([
       getReviewQueueApps(),
       getAllAppsForAdmin(),
@@ -36,7 +37,8 @@ export default async function AdminDashboard() {
       getOpenAutoApprovedCouncilCount(),
       getSiteSettingsServer(),
       getBanAppeals(),
-      getReferralEvents()
+      getReferralEvents(),
+      getPendingVersionProposalsCount()
     ]);
 
   const siteReviewsData = await getSiteReviews({ includeHidden: true });
@@ -50,6 +52,7 @@ export default async function AdminDashboard() {
       </div>
       <AdminDashboardClient
         apps={apps}
+        versionProposalsCount={versionProposalsCount}
         allApps={allApps}
         profiles={profiles}
         proRequests={proRequests}

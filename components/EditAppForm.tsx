@@ -8,6 +8,7 @@ import StatusBadge from "@/components/StatusBadge";
 import { LIMITS } from "@/lib/constants";
 import { putToR2 } from "@/lib/uploadHelpers";
 import type { AppRow, Category } from "@/types/database";
+import FileKindNotice from "./FileKindNotice";
 
 export default function EditAppForm({
   app,
@@ -69,6 +70,8 @@ export default function EditAppForm({
   const [versionNumber, setVersionNumber] = useState(app.version);
   const [versionStatus, setVersionStatus] = useState<"idle" | "uploading" | "done">("idle");
   const [versionErr, setVersionErr] = useState("");
+  const [versionZipTarget, setVersionZipTarget] = useState<"apk" | "software">("apk");
+  const [versionPendingReview, setVersionPendingReview] = useState(false);
 
   async function uploadNewVersion(e: React.FormEvent) {
     e.preventDefault();
@@ -97,12 +100,14 @@ export default function EditAppForm({
           fileKey: initJson.fileKey,
           fileName: versionFile.name,
           fileSize: versionFile.size,
-          version: versionNumber
+          version: versionNumber,
+          zipTarget: versionZipTarget
         })
       });
       const finalizeJson = await finalizeRes.json();
       if (!finalizeRes.ok) throw new Error(finalizeJson.error || "שגיאה בשמירת הגרסה");
 
+      setVersionPendingReview(!!finalizeJson.pendingProposal);
       setVersionStatus("done");
       setVersionFile(null);
       router.refresh();
@@ -181,7 +186,7 @@ export default function EditAppForm({
         <div>
           <h2 className="font-bold text-white">העלאת גרסה חדשה</h2>
           <p className="text-xs text-gray-500">
-            העלאת קובץ חדש תשלח את האפליקציה שוב לבדיקה ידנית לפני שהגרסה החדשה תתפרסם. הגרסה הנוכחית תישאר זמינה עד לאישור.
+            הגרסה החדשה תישלח לבדיקה ידנית של הצוות. עד האישור הגרסה הנוכחית ממשיכה להופיע בחנות ולהיות זמינה להורדה, ואחרי האישור היא נמחקת לגמרי כדי לחסוך מקום.
           </p>
         </div>
 
@@ -192,7 +197,7 @@ export default function EditAppForm({
         )}
         {versionStatus === "done" && (
           <div className="flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent">
-            <CheckCircle2 className="h-4 w-4 shrink-0" /> הגרסה החדשה הועלתה וממתינה לבדיקה!
+            <CheckCircle2 className="h-4 w-4 shrink-0" /> {versionPendingReview ? "הגרסה החדשה הועלתה וממתינה לבדיקה! עד האישור הגרסה הנוכחית נשארת בחנות." : "הגרסה החדשה הועלתה!"}
           </div>
         )}
 
@@ -204,6 +209,7 @@ export default function EditAppForm({
           <div>
             <label className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-400"><FileArchive className="h-4 w-4" /> קובץ חדש (עד {plan.maxFileMb}MB)</label>
             <input type="file" onChange={(e) => setVersionFile(e.target.files?.[0] ?? null)} className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[#fff]" />
+            <FileKindNotice file={versionFile} zipTarget={versionZipTarget} onZipTargetChange={setVersionZipTarget} />
           </div>
         </div>
 

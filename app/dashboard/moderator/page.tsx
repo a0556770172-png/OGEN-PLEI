@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/profile";
-import { getReviewQueueApps, getAllAppsForAdmin, getPendingSuggestionsCount, getTicketsNeedingReplyCount, getAllProfiles, getBanAppeals } from "@/lib/admin-data";
+import { getReviewQueueApps, getAllAppsForAdmin, getPendingSuggestionsCount, getTicketsNeedingReplyCount, getAllProfiles, getBanAppeals, getPendingVersionProposalsCount } from "@/lib/admin-data";
 import { getSiteReviews } from "@/lib/siteReviews";
 import { getForumModerationFeed } from "@/lib/forum";
 import ModeratorDashboardClient from "@/components/ModeratorDashboardClient";
@@ -14,7 +14,7 @@ export default async function ModeratorDashboard() {
   // לפיקוח מגיע לכאן, ולא מאבד את הגישה לאזור המפתח שלו אם יש לו כזה.
   if (!profile.is_moderator && profile.role !== "admin") redirect("/");
 
-  const [apps, allApps, suggestionsPendingCount, ticketsNeedingReplyCount, profiles, banAppeals, siteReviews, forumPosts] =
+  const [apps, allApps, suggestionsPendingCount, ticketsNeedingReplyCount, profiles, banAppeals, siteReviews, forumPosts, versionProposalsCount] =
     await Promise.all([
       getReviewQueueApps(),
       getAllAppsForAdmin(),
@@ -23,7 +23,8 @@ export default async function ModeratorDashboard() {
       getAllProfiles(),
       getBanAppeals(),
       getSiteReviews({ includeHidden: true }),
-      getForumModerationFeed()
+      getForumModerationFeed(),
+      getPendingVersionProposalsCount()
     ]);
 
   return (
@@ -34,6 +35,7 @@ export default async function ModeratorDashboard() {
       </div>
       <ModeratorDashboardClient
         apps={apps}
+        versionProposalsCount={versionProposalsCount}
         allApps={allApps}
         suggestionsPendingCount={suggestionsPendingCount}
         ticketsNeedingReplyCount={ticketsNeedingReplyCount}

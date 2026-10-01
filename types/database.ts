@@ -115,6 +115,8 @@ export interface AppRow {
   // נעיצה/קידום ע"י מנהל - אפליקציות נעוצות מוצגות תמיד בראש העמוד הראשי (ראו lib/apps-data.ts).
   pinned: boolean;
   pinned_at: string | null;
+  // מתי אושרה הגרסה החדשה האחרונה - תווית "עודכן" לכמה ימים (lib/updatedBadge.ts, מיגרציה 0066).
+  last_updated_at?: string | null;
   created_at: string;
   updated_at: string;
   developer?: Profile;

@@ -6,9 +6,15 @@ import { deleteObject, BUCKETS } from "@/lib/r2";
 import { LIMITS } from "@/lib/constants";
 import { consumeOversizeGrant } from "@/lib/uploadQuota";
 import { notifyForApprovedApp } from "@/lib/notifications";
+import { platformOverrideFor } from "@/lib/fileKind";
+import { createVersionProposal } from "@/lib/versionProposals";
 
-// שלב 2: אחרי שהקובץ החדש עלה ל-R2 בהצלחה, מעדכנים את רשומת האפליקציה ומחזירים אותה לבדיקה מחדש -
-// זו גרסה חדשה, וכל גרסה חדשה (בדיוק כמו אפליקציה חדשה) עוברת בדיקה ידנית לפני שהיא מתפרסמת.
+// שלב 2: אחרי שהקובץ החדש עלה ל-R2 בהצלחה. כל גרסה חדשה (בדיוק כמו אפליקציה חדשה) עוברת
+// בדיקה ידנית לפני שהיא מתפרסמת:
+//   * אפליקציה שכבר מפורסמת - הגרסה נשמרת כהצעה ממתינה (app_version_proposals). האפליקציה
+//     ממשיכה להופיע בחנות עם הגרסה הקודמת, והקובץ הישן נמחק רק אחרי שהצוות מאשר.
+//   * אפליקציה שעוד לא פורסמה (ממתינה/נדחתה) - מעדכנים אותה ישירות, כמו קודם.
+//   * מנהל בפועל - מתפרסם מיד.
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const result = await requireProfile();
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
@@ -28,9 +34,13 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ error: "אפליקציה שפורסמה מהצעה ציבורית אינה ניתנת לעריכה/עדכון גרסה." }, { status: 403 });
   }
 
-  const { fileKey, fileName, fileSize, version } = await request.json().catch(() => ({}));
+  const { fileKey, fileName, fileSize, version, zipTarget } = await request.json().catch(() => ({}));
   if (!fileKey || !fileName || !fileSize) {
     return NextResponse.json({ error: "חסרים פרטי קובץ" }, { status: 400 });
+  }
+  // אבטחה: הקובץ חייב להיות כזה שנוצר ב-version-upload-init לאפליקציה הזו (בתיקיית הבעלים)
+  if (typeof fileKey !== "string" || !fileKey.startsWith(`apps/${app.developer_id}/`)) {
+    return NextResponse.json({ error: "אין הרשאה לקובץ הזה" }, { status: 403 });
   }
 
   const previousFileKey = app.file_key as string;
@@ -38,6 +48,41 @@ export async function POST(request: Request, { params }: { params: { id: string 
   // מנהל בפועל שמעדכן גרסה לא צריך שהאפליקציה תחזור לתור בדיקה - כמו בהעלאה ראשונית.
   // כל שאר המקרים (מפתח רגיל, וגם צוות פיקוח שאינו מנהל) - חוזרים לתור בדיקה כרגיל.
   const isAdminUpload = profile.role === "admin";
+  const platformOverride = platformOverrideFor(String(fileName), zipTarget);
+
+  // מכסת הגודל וההרשאות נגזרות מבעל האפליקציה, לא מהעורך (למקרה שצוות עורך של מישהו אחר).
+  let quotaProfile: any = profile;
+  if (!isOwner) {
+    const { data: owner } = await admin.from("profiles").select("*").eq("id", app.developer_id).single();
+    if (owner) quotaProfile = owner;
+  }
+  const plan = quotaProfile.is_pro ? LIMITS.pro : LIMITS.free;
+
+  if (app.status === "approved" && !isAdminUpload) {
+    try {
+      await createVersionProposal({
+        app_id: app.id,
+        uploader_id: user.id,
+        kind: "owner",
+        version: version?.trim() || app.version,
+        file_key: fileKey,
+        file_name: String(fileName),
+        file_size_bytes: Number(fileSize),
+        icon_key: null,
+        name: null,
+        short_description: null,
+        description_html: null,
+        category: null,
+        min_android_version: null,
+        offline_support: null,
+        platform_override: platformOverride
+      });
+    } catch (e: any) {
+      return NextResponse.json({ error: e?.message || "שגיאה בשמירת הגרסה החדשה" }, { status: 500 });
+    }
+    await consumeOversizeGrant(quotaProfile, Number(fileSize), plan.maxFileMb);
+    return NextResponse.json({ ok: true, pendingProposal: true });
+  }
 
   const { error } = await admin
     .from("apps")
@@ -46,11 +91,13 @@ export async function POST(request: Request, { params }: { params: { id: string 
       file_name: fileName,
       file_size_bytes: fileSize,
       version: version?.trim() || app.version,
+      platform_override: platformOverride,
       status: isAdminUpload ? "approved" : "pending",
       review_note: null,
       reviewed_by: isAdminUpload ? user.id : null,
       reviewed_at: isAdminUpload ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      ...(isAdminUpload && app.status === "approved" ? { last_updated_at: new Date().toISOString() } : {})
     })
     .eq("id", app.id);
 
@@ -59,13 +106,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
   }
 
   // אם הקובץ החדש חרג מהמכסה הרגילה - "שורפים" הרשאה אחת (קודם קרדיט הפניה, ואז הרשאת אדמין).
-  // המכסה וההרשאות נגזרות מבעל האפליקציה, לא מהעורך (למקרה שצוות עורך של מישהו אחר).
-  let quotaProfile: any = profile;
-  if (!isOwner) {
-    const { data: owner } = await admin.from("profiles").select("*").eq("id", app.developer_id).single();
-    if (owner) quotaProfile = owner;
-  }
-  const plan = quotaProfile.is_pro ? LIMITS.pro : LIMITS.free;
   await consumeOversizeGrant(quotaProfile, Number(fileSize), plan.maxFileMb);
 
   // מנקים את קובץ הגרסה הקודמת מהאחסון כדי לא לצבור קבצים מיותרים (לא קריטי אם נכשל)

@@ -7,6 +7,7 @@ import { LIMITS } from "@/lib/constants";
 import { effectiveMaxUploadMb, consumeOversizeGrant } from "@/lib/uploadQuota";
 import { notifyForApprovedApp } from "@/lib/notifications";
 import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
+import { platformOverrideFor } from "@/lib/fileKind";
 
 export async function POST(request: Request) {
   const result = await requireProfile();
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { name, shortDescription, descriptionHtml, version, category, fileKey, fileName, fileSize, iconKey, minAndroidVersion, offlineSupport } = body;
+  const { name, shortDescription, descriptionHtml, version, category, fileKey, fileName, fileSize, iconKey, minAndroidVersion, offlineSupport, zipTarget } = body;
   // "אופליין / אונליין / לא ידוע" - נשאל תמיד באותה חלונית אישור כמו שאלת הנטפרי; אם משום
   // מה לא הגיע ערך תקין (למשל מטופס ישן שעוד לא עודכן), נופלים חזרה ל"לא ידוע" בלי להכשיל
   // את ההעלאה כולה בגלל זה.
@@ -77,6 +78,8 @@ export async function POST(request: Request) {
       file_size_bytes: fileSize,
       min_android_version: String(minAndroidVersion).trim(),
       offline_support: validOfflineSupport,
+      // סידור אוטומטי: APK -> אפליקציות, תוכנה -> תוכנות, ZIP -> לפי בחירת המשתמש (lib/fileKind.ts)
+      platform_override: platformOverrideFor(String(fileName), zipTarget),
       status: initialStatus,
       ...(initialStatus === "approved" ? { reviewed_by: user.id, reviewed_at: new Date().toISOString() } : {})
     })

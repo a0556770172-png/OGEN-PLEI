@@ -13,6 +13,8 @@ import { createAdminSupabase } from "@/lib/supabase/admin";
 import { getCurrentProfile } from "@/lib/profile";
 import { isStaff } from "@/lib/auth-helpers";
 import NotifyButton from "@/components/NotifyButton";
+import UpdateAppButton from "@/components/UpdateAppButton";
+import UpdatedBadge from "@/components/UpdatedBadge";
 import { Package, User, Calendar, HardDrive, Flag, Smartphone, Wifi, WifiOff, HelpCircle, Pencil } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -73,6 +75,7 @@ export default async function AppDetailPage({ params }: { params: { id: string }
             <div className="mb-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               <h1 className="text-2xl font-black text-white sm:text-3xl">{app.name}</h1>
               <StatusBadge status={app.status} />
+              <UpdatedBadge lastUpdatedAt={app.last_updated_at} />
             </div>
             <p className="mb-4 text-gray-400">{app.short_description}</p>
             <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-500 sm:justify-start">
@@ -111,6 +114,7 @@ export default async function AppDetailPage({ params }: { params: { id: string }
               />
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+              {app.status === "approved" && app.source === "public_suggestion" && <UpdateAppButton appId={app.id} />}
               {canNotify && (
                 <NotifyButton
                   type="app"

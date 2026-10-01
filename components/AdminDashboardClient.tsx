@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeftRight, ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2, Archive, Bot, Star, Lightbulb, KeyRound, BarChart3, Megaphone } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
+import VersionProposalsQueue from "./VersionProposalsQueue";
 import UserManagementTable from "./UserManagementTable";
 import ProRequestsQueue from "./ProRequestsQueue";
 import TicketsPanel from "./TicketsPanel";
@@ -35,6 +36,7 @@ type TabKey = "notifications" | "review" | "allApps" | "ownership" | "archive" |
 
 export default function AdminDashboardClient({
   apps,
+  versionProposalsCount = 0,
   allApps,
   profiles,
   proRequests,
@@ -51,6 +53,7 @@ export default function AdminDashboardClient({
   forumPosts
 }: {
   apps: AppRow[];
+  versionProposalsCount?: number;
   allApps: AppRow[];
   profiles: Profile[];
   proRequests: ProRequest[];
@@ -89,7 +92,7 @@ export default function AdminDashboardClient({
     { key: "notifications", label: `התראות${notificationCount ? ` (${notificationCount})` : ""}`, icon: BellRing },
     { key: "stats", label: "סטטיסטיקה", icon: BarChart3 },
     { key: "ads", label: "פרסומות", icon: Megaphone },
-    { key: "review", label: `בדיקת פרסום (${apps.length})`, icon: ClipboardList },
+    { key: "review", label: `בדיקת פרסום (${apps.length + versionProposalsCount})`, icon: ClipboardList },
     { key: "allApps", label: `כל האפליקציות (${activeApps.length})`, icon: LayoutGrid },
     { key: "ownership", label: "ציבורי ופרטי", icon: ArrowLeftRight },
     { key: "archive", label: `ארכיון (${archivedApps.length})`, icon: Archive },
@@ -115,7 +118,7 @@ export default function AdminDashboardClient({
   ] as const;
 
   const notificationItems = [
-    { key: "review", label: "אפליקציות ממתינות לבדיקה", description: "אפליקציות חדשות שממתינות לאישור/דחייה שלך", count: apps.length, icon: ClipboardList },
+    { key: "review", label: "אפליקציות ממתינות לבדיקה", description: "אפליקציות חדשות וגרסאות חדשות שממתינות לאישור/דחייה שלך", count: apps.length + versionProposalsCount, icon: ClipboardList },
     { key: "pro", label: "בקשות PRO ממתינות", description: "מפתחים שביקשו שדרוג לחשבון PRO", count: proRequests.length, icon: Crown },
     { key: "suggestions", label: "הצעות אפליקציות ממתינות", description: "משתמשים שהציעו אפליקציה להוספה למאגר", count: suggestionsPendingCount, icon: Gift },
     { key: "tickets", label: "הודעות ממתינות למענה", description: "הודעות שמשתמשים כתבו ועדיין לא קיבלו תגובה", count: ticketsNeedingReplyCount, icon: MessageCircle },
@@ -143,7 +146,12 @@ export default function AdminDashboardClient({
       {tab === "notifications" && <NotificationsPanel items={notificationItems} onNavigate={(key) => setTab(key as TabKey)} />}
       {tab === "stats" && <StatsPanel />}
       {tab === "ads" && <AdManagementPanel />}
-      {tab === "review" && <ReviewQueue apps={apps} canDelete={true} />}
+      {tab === "review" && (
+        <div className="flex flex-col gap-6">
+          <VersionProposalsQueue />
+          <ReviewQueue apps={apps} canDelete={true} />
+        </div>
+      )}
       {tab === "ownership" && <AppOwnershipPanel />}
       {tab === "allApps" && (
         <div className="flex flex-col gap-4">

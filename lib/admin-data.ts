@@ -138,7 +138,8 @@ export async function getPendingReviewCount(): Promise<number> {
     .from("apps")
     .select("id", { count: "exact", head: true })
     .eq("status", "pending");
-  return count ?? 0;
+  // כולל גרסאות חדשות שממתינות לאישור (הן מופיעות באותה לשונית "בדיקת פרסום")
+  return (count ?? 0) + (await getPendingVersionProposalsCount());
 }
 
 export async function getPendingProRequestsCount(): Promise<number> {
@@ -200,4 +201,15 @@ export async function getReferralEvents(): Promise<ReferralEvent[]> {
     .order("created_at", { ascending: false })
     .limit(500);
   return (data as unknown as ReferralEvent[]) ?? [];
+}
+
+// גרסאות חדשות שממתינות לאישור (עדכון פרטי של בעלים, או "עדכן את האפליקציה" ציבורי).
+// אם מיגרציה 0066 עוד לא רצה - הטבלה לא קיימת, ופשוט מחזירים 0.
+export async function getPendingVersionProposalsCount(): Promise<number> {
+  const admin = createAdminSupabase();
+  const { count, error } = await admin
+    .from("app_version_proposals")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending");
+  return error ? 0 : count ?? 0;
 }

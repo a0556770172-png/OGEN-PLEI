@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import { Download, Package, User, Pin, ArrowUpCircle } from "lucide-react";
 import type { AppRow, Category } from "@/types/database";
 import { formatFileSize } from "@/lib/format";
+import { isRecentlyUpdated } from "@/lib/updatedBadge";
+import UpdatedBadge from "./UpdatedBadge";
 
 // הכרטיס נפתח בחלונית צפה (Modal) במקום ניווט לעמוד נפרד, כדי לשמור על מקום הגלילה
 // (פיצ'ר 2a). לחיצה על שם המעלה מובילה לעמוד המשתמש שלו (פיצ'ר 3b) - עם עצירת ההתפשטות
@@ -23,6 +25,7 @@ export default function AppCard({
   onOpen?: () => void;
 }) {
   const category = categories?.find((c) => c.value === app.category)?.label ?? app.category;
+  const recentlyUpdated = isRecentlyUpdated(app.last_updated_at);
 
   return (
     <motion.div
@@ -47,14 +50,15 @@ export default function AppCard({
     >
       <div className="absolute inset-x-0 top-0 h-px shimmer-border opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
-      {/* סימונים עדינים בפינה - נעוץ ע"י מנהל / עדכון גרסה זמין (לא מעמיסים על הכרטיס) */}
-      {(app.pinned || hasUpdate) && (
+      {/* סימונים עדינים בפינה - נעוץ ע"י מנהל / עדכון גרסה זמין / עודכן לאחרונה (לא מעמיסים על הכרטיס) */}
+      {(app.pinned || hasUpdate || recentlyUpdated) && (
         <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5">
           {hasUpdate && (
             <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-bold text-accent ring-1 ring-accent/30">
               <ArrowUpCircle className="h-3 w-3" /> עדכון
             </span>
           )}
+          {!hasUpdate && <UpdatedBadge lastUpdatedAt={app.last_updated_at} size="sm" />}
           {app.pinned && (
             <span className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-bold text-gold ring-1 ring-gold/30">
               <Pin className="h-3 w-3" /> נעוץ
