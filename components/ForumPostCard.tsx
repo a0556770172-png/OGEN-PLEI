@@ -18,8 +18,13 @@ import {
   Loader2,
   X,
   Check,
-  Ban
+  Ban,
+  Reply,
+  Quote,
+  Link2
 } from "lucide-react";
+import ForumBody from "./ForumBody";
+import { forumSnippet } from "@/lib/forumText";
 import ForumLikeButton from "./ForumLikeButton";
 import type { ForumPost } from "@/lib/forum";
 
@@ -56,6 +61,34 @@ export default function ForumPostCard({
   const canDelete = post.isMine || isStaff;
   const showMenu = canEdit || canDelete || isStaff;
   const isRoot = post.parentId === null;
+  const [linkCopied, setLinkCopied] = useState(false);
+  const threadId = post.parentId ?? post.id;
+
+  // "הגב" / "ציטוט": מעבירים לטופס התגובה שבתחתית הדיון (ForumComposer מקשיב לאירוע)
+  function compose(withQuote: boolean) {
+    const quote = withQuote
+      ? `> @${post.author.username} כתב:\n${forumSnippet(post.body, 400)
+          .split("\n")
+          .map((l) => `> ${l}`)
+          .join("\n")}\n\n`
+      : undefined;
+    window.dispatchEvent(
+      new CustomEvent("forum-compose", {
+        detail: { replyToId: isRoot ? null : post.id, username: post.author.username, quote }
+      })
+    );
+  }
+
+  async function copyLink() {
+    const url = `${window.location.origin}/forum/${threadId}#post-${post.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 1800);
+    } catch {
+      window.prompt("העתיקו את הקישור:", url);
+    }
+  }
 
   async function act(payload: any) {
     setBusy(true);
@@ -111,12 +144,12 @@ export default function ForumPostCard({
   }
 
   const Wrapper: any = variant === "list" ? Link : "div";
-  const wrapperProps = variant === "list" ? { href: `/forum/${post.id}` } : {};
+  const wrapperProps = variant === "list" ? { href: `/forum/${post.id}` } : { id: `post-${post.id}` };
 
   return (
     <Wrapper
       {...wrapperProps}
-      className={`card block p-4 ${variant === "list" ? "transition hover:border-primary/40" : ""} ${
+      className={`card forum-post block p-4 ${variant === "list" ? "transition hover:border-primary/40" : ""} ${
         post.hidden ? "opacity-50" : ""
       } ${post.pinned && variant === "list" ? "border-gold/40" : ""}`}
     >
@@ -151,6 +184,7 @@ export default function ForumPostCard({
             )}
             {post.author.isPro && <Crown className="h-3 w-3 text-gold" />}
             <span className="text-gray-600">· {timeAgo(post.createdAt)}</span>
+            {post.editedAt && <span className="text-[10px] text-gray-600" title={new Date(post.editedAt).toLocaleString("he-IL")}>(נערך)</span>}
             {post.pinned && (
               <span className="inline-flex items-center gap-0.5 text-gold">
                 <Pin className="h-3 w-3" /> נעוץ
@@ -197,13 +231,21 @@ export default function ForumPostCard({
                   {post.title}
                 </p>
               )}
-              <p
-                className={`mt-1 whitespace-pre-wrap text-sm text-gray-300 ${
-                  variant === "list" ? "line-clamp-3" : ""
-                }`}
-              >
-                {post.body}
-              </p>
+              {post.replyTo && variant !== "list" && (
+                <a
+                  href={`#post-${post.replyTo.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-1.5 block truncate rounded-lg border border-border bg-surface2/50 px-2.5 py-1 text-[11px] text-gray-400 transition hover:border-primary/40 hover:text-gray-200"
+                >
+                  <Reply className="me-1 inline h-3 w-3 -scale-x-100" />
+                  בתגובה ל-<b className="text-gray-300">{post.replyTo.username}</b>
+                  {post.replyTo.snippet ? `: ${post.replyTo.snippet}` : ""}
+                </a>
+              )}
+              <ForumBody
+                text={post.body}
+                className={`mt-1 text-sm text-gray-300 ${variant === "list" ? "line-clamp-3" : ""}`}
+              />
             </>
           )}
 
@@ -223,6 +265,23 @@ export default function ForumPostCard({
               )}
               {isRoot && post.likeCount > 0 && (
                 <span className="text-[11px] text-gray-600">כל לייק = מוניטין לכותב</span>
+              )}
+              {variant !== "list" && (
+                <div className="ms-auto flex items-center gap-1 text-xs text-gray-500">
+                  {loggedIn && (
+                    <>
+                      <button type="button" onClick={() => compose(false)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 transition hover:bg-surface2 hover:text-white">
+                        <Reply className="h-3.5 w-3.5 -scale-x-100" /> הגב
+                      </button>
+                      <button type="button" onClick={() => compose(true)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 transition hover:bg-surface2 hover:text-white">
+                        <Quote className="h-3.5 w-3.5" /> ציטוט
+                      </button>
+                    </>
+                  )}
+                  <button type="button" onClick={copyLink} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 transition hover:bg-surface2 hover:text-white">
+                    {linkCopied ? <Check className="h-3.5 w-3.5 text-accent" /> : <Link2 className="h-3.5 w-3.5" />} {linkCopied ? "הועתק" : "קישור"}
+                  </button>
+                </div>
               )}
             </div>
           )}

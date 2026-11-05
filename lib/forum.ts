@@ -1,6 +1,7 @@
 import { createAdminSupabase } from "./supabase/admin";
 import { getAvatarUrl } from "./avatar";
 import { memo } from "./memo";
+import { forumSnippet } from "./forumText";
 
 // כל לייק על פוסט ראשי בפורום מזכה את הכותב במוניטין אחד (פעם אחת לכל נותן-לייק).
 export const FORUM_LIKE_POINTS = 1;
@@ -29,6 +30,10 @@ export interface ForumPost {
   likedByMe: boolean;
   replyCount: number;
   isMine: boolean;
+  // מתי הכותב ערך את הטקסט (null = לא נערך)
+  editedAt: string | null;
+  // אם זו תגובה לתגובה מסוימת - מי ומה (קטע קצר), לתצוגת "בתגובה ל..."
+  replyTo: { id: string; username: string; snippet: string } | null;
 }
 
 export type ForumSort = "new" | "top";
@@ -37,7 +42,12 @@ async function enrich(rows: any[], viewerId: string | null): Promise<ForumPost[]
   if (rows.length === 0) return [];
   const admin = createAdminSupabase();
   const ids = rows.map((r) => r.id);
-  const authorIds = [...new Set(rows.map((r) => r.user_id))];
+  // תגובות שעונות לתגובה מסוימת - שולפים את ההודעה שהן עונות לה (לתצוגת "בתגובה ל...")
+  const replyToIds = [...new Set(rows.map((r) => r.reply_to_id).filter(Boolean))] as string[];
+  const { data: replyTargets } = replyToIds.length
+    ? await admin.from("forum_posts").select("id, user_id, body, hidden").in("id", replyToIds)
+    : { data: [] as any[] };
+  const authorIds = [...new Set([...rows.map((r) => r.user_id), ...(replyTargets ?? []).map((t: any) => t.user_id)])];
 
   const [{ data: authors }, { data: likes }, { data: replyCounts }] = await Promise.all([
     admin.from("profiles").select("id, username, avatar_key, role, is_moderator, is_pro, forum_banned").in("id", authorIds),
@@ -84,6 +94,15 @@ async function enrich(rows: any[], viewerId: string | null): Promise<ForumPost[]
     forumBanned: false
   };
 
+  const targetMap = new Map<string, { id: string; username: string; snippet: string }>();
+  for (const t of replyTargets ?? []) {
+    targetMap.set(t.id, {
+      id: t.id,
+      username: authorMap.get(t.user_id)?.username ?? "משתמש",
+      snippet: t.hidden ? "(הודעה מוסתרת)" : forumSnippet(t.body)
+    });
+  }
+
   return rows.map((r) => ({
     id: r.id,
     parentId: r.parent_id ?? null,
@@ -97,7 +116,9 @@ async function enrich(rows: any[], viewerId: string | null): Promise<ForumPost[]
     likeCount: likeCount.get(r.id) ?? 0,
     likedByMe: likedByMe.has(r.id),
     replyCount: replyCount.get(r.id) ?? 0,
-    isMine: !!viewerId && r.user_id === viewerId
+    isMine: !!viewerId && r.user_id === viewerId,
+    editedAt: r.edited_at ?? null,
+    replyTo: r.reply_to_id ? targetMap.get(r.reply_to_id) ?? null : null
   }));
 }
 

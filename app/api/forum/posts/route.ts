@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { title, body, parentId } = await request.json().catch(() => ({}));
+  const { title, body, parentId, replyToId } = await request.json().catch(() => ({}));
   const cleanBody = typeof body === "string" ? body.trim() : "";
   if (cleanBody.length < 2) return NextResponse.json({ error: "צריך לכתוב משהו" }, { status: 400 });
   if (cleanBody.length > MAX_BODY) return NextResponse.json({ error: "הטקסט ארוך מדי" }, { status: 400 });
@@ -39,6 +39,7 @@ export async function POST(request: Request) {
   }
 
   let parent: string | null = null;
+  let replyTo: string | null = null;
   let cleanTitle: string | null = null;
   if (typeof parentId === "string" && parentId) {
     const { data: p } = await admin
@@ -48,13 +49,22 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (!p || p.parent_id || p.hidden) return NextResponse.json({ error: "הפוסט לא נמצא" }, { status: 404 });
     parent = p.id;
+    // תגובה לתגובה מסוימת באותו דיון (ציטוט/"הגב"). אם מדובר בפוסט הראשי עצמו - זו תגובה רגילה.
+    if (typeof replyToId === "string" && replyToId && replyToId !== p.id) {
+      const { data: target } = await admin
+        .from("forum_posts")
+        .select("id, parent_id, hidden")
+        .eq("id", replyToId)
+        .maybeSingle();
+      if (target && target.parent_id === p.id && !target.hidden) replyTo = target.id;
+    }
   } else {
     cleanTitle = typeof title === "string" && title.trim() ? title.trim().slice(0, MAX_TITLE) : null;
   }
 
   const { data: created, error } = await admin
     .from("forum_posts")
-    .insert({ user_id: user.id, parent_id: parent, title: cleanTitle, body: cleanBody })
+    .insert({ user_id: user.id, parent_id: parent, reply_to_id: replyTo, title: cleanTitle, body: cleanBody })
     .select("id")
     .single();
   if (error || !created) return NextResponse.json({ error: "שגיאה בשמירה" }, { status: 500 });

@@ -154,7 +154,7 @@ export async function notifyForForumReply(replyId: string): Promise<void> {
   const admin = createAdminSupabase();
   const { data: reply } = await admin
     .from("forum_posts")
-    .select("id, user_id, parent_id, body, hidden, author:profiles!forum_posts_user_id_fkey(username)")
+    .select("id, user_id, parent_id, reply_to_id, body, hidden, author:profiles!forum_posts_user_id_fkey(username)")
     .eq("id", replyId)
     .maybeSingle();
   if (!reply || reply.hidden || !reply.parent_id) return;
@@ -167,7 +167,13 @@ export async function notifyForForumReply(replyId: string): Promise<void> {
     .select("user_id")
     .eq("type", "forum_thread")
     .eq("target_id", reply.parent_id);
-  const targets = [...new Set((subs ?? []).map((r) => r.user_id))].filter((id) => id !== reply.user_id);
+  // מי שהתגובה עונה לו ישירות מקבל התראה ייעודית ("ענה לך"), ולא עוד אחת כעוקב של הדיון
+  let directTarget: string | null = null;
+  if ((reply as any).reply_to_id) {
+    const { data: replied } = await admin.from("forum_posts").select("user_id").eq("id", (reply as any).reply_to_id).maybeSingle();
+    if (replied && replied.user_id !== reply.user_id) directTarget = replied.user_id;
+  }
+  const targets = [...new Set((subs ?? []).map((r) => r.user_id))].filter((id) => id !== reply.user_id && id !== directTarget);
 
   const name = (reply as any).author?.username ?? "משתמש";
   const threadTitle = (root.title || root.body).slice(0, 60);
@@ -175,8 +181,16 @@ export async function notifyForForumReply(replyId: string): Promise<void> {
     kind: "forum_reply",
     title: `${name} הגיב ל: ${threadTitle}`,
     body: reply.body.slice(0, 90),
-    url: `/forum/${reply.parent_id}`
+    url: `/forum/${reply.parent_id}#post-${reply.id}`
   };
+  if (directTarget) {
+    await deliver([directTarget], {
+      kind: "forum_reply",
+      title: `${name} ענה לך בפורום`,
+      body: reply.body.slice(0, 90),
+      url: `/forum/${reply.parent_id}#post-${reply.id}`
+    });
+  }
   if (targets.length > 0) await deliver(targets, notif);
 
   // הצוות רואה בפעמון ההתראות כל תגובה חדשה בפורום, גם אם לא עוקב אחרי הדיון.

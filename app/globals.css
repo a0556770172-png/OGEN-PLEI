@@ -252,3 +252,8 @@ html[dir="ltr"] select {
 @media (prefers-reduced-motion: reduce) {
   .fire-btn, .fire-btn::before, .fire-flame { animation: none; }
 }
+
+/* ---- פורום: קישור ישיר להודעה (#post-...) מדגיש אותה ולא נקבר מתחת לתפריט העליון ---- */
+.forum-post { scroll-margin-top: 5.5rem; }
+.forum-post:target { box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.75); animation: forum-target-flash 2.2s ease-out 1; }
+@keyframes forum-target-flash { 0% { background-color: rgba(139, 92, 246, 0.25); } 100% { background-color: transparent; } }

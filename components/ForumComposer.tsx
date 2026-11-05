@@ -1,7 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Send, Loader2, PenLine } from "lucide-react";
+import { Send, Loader2, PenLine, Reply, X } from "lucide-react";
 
 // כתיבת פוסט חדש (parentId ריק) או תגובה. loggedIn=false -> מציג הזמנה להתחבר.
 export default function ForumComposer({
@@ -19,6 +19,22 @@ export default function ForumComposer({
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // תגובה לתגובה מסוימת (כפתורי "הגב"/"ציטוט" בכרטיסי הדיון שולחים אירוע forum-compose)
+  const [replyTo, setReplyTo] = useState<{ id: string; username: string } | null>(null);
+  const areaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (variant !== "reply") return;
+    function onCompose(e: Event) {
+      const d = (e as CustomEvent).detail as { replyToId: string | null; username: string; quote?: string };
+      setReplyTo(d.replyToId ? { id: d.replyToId, username: d.username } : null);
+      if (d.quote) setBody((prev) => (prev.trim() ? `${prev.replace(/\s+$/, "")}\n\n` : "") + d.quote);
+      document.getElementById("forum-composer")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => areaRef.current?.focus(), 350);
+    }
+    window.addEventListener("forum-compose", onCompose);
+    return () => window.removeEventListener("forum-compose", onCompose);
+  }, [variant]);
 
   if (!loggedIn) {
     return (
@@ -43,7 +59,7 @@ export default function ForumComposer({
       const res = await fetch("/api/forum/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: t, title: title.trim() || undefined, parentId: parentId || undefined })
+        body: JSON.stringify({ body: t, title: title.trim() || undefined, parentId: parentId || undefined, replyToId: replyTo?.id })
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -52,6 +68,7 @@ export default function ForumComposer({
       }
       setTitle("");
       setBody("");
+      setReplyTo(null);
       if (variant === "post") setOpen(false);
       if (parentId) router.refresh();
       else router.push(`/forum/${json.id}`);
@@ -75,7 +92,17 @@ export default function ForumComposer({
   }
 
   return (
-    <div className="card flex flex-col gap-3 p-4">
+    <div id={variant === "reply" ? "forum-composer" : undefined} className="card flex flex-col gap-3 p-4">
+      {replyTo && (
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs text-primary-light">
+          <span className="inline-flex items-center gap-1.5">
+            <Reply className="h-3.5 w-3.5 -scale-x-100" /> מגיבים ל-<b>{replyTo.username}</b>
+          </span>
+          <button type="button" onClick={() => setReplyTo(null)} aria-label="ביטול תגובה ישירה" className="rounded p-0.5 hover:bg-white/10">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
       {variant === "post" && (
         <input
           value={title}
@@ -86,6 +113,7 @@ export default function ForumComposer({
         />
       )}
       <textarea
+        ref={areaRef}
         value={body}
         onChange={(e) => setBody(e.target.value)}
         rows={variant === "reply" ? 3 : 5}

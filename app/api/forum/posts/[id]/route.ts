@@ -23,6 +23,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     if (t.length < 2 || t.length > 5000) return NextResponse.json({ error: "אורך טקסט לא תקין" }, { status: 400 });
     patch.body = t;
     patch.updated_at = new Date().toISOString();
+    if (t !== post.body) patch.edited_at = patch.updated_at;
     if (post.parent_id === null && typeof body.title === "string") {
       patch.title = body.title.trim().slice(0, 140) || null;
     }
