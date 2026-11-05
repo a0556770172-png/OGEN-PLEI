@@ -2,7 +2,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Download, Package, User, Pin, ArrowUpCircle } from "lucide-react";
+import { Download, Package, User, Pin, ArrowUpCircle, Flame } from "lucide-react";
 import type { AppRow, Category } from "@/types/database";
 import { formatFileSize } from "@/lib/format";
 import { isRecentlyUpdated } from "@/lib/updatedBadge";
@@ -18,6 +18,7 @@ export default function AppCard({
   iconUrl,
   categories,
   hasUpdate = false,
+  heat,
   viewerIsStaff = false,
   onOpen
 }: {
@@ -25,6 +26,8 @@ export default function AppCard({
   iconUrl?: string | null;
   categories?: Category[];
   hasUpdate?: boolean;
+  // "החמים שלנו": הורדות בשבוע האחרון (מוצג רק במצב החמים)
+  heat?: number;
   // צוות פיקוח/מנהל - האות פ/צ היא כפתור להעברה בין פרטית לציבורית
   viewerIsStaff?: boolean;
   onOpen?: () => void;
@@ -56,8 +59,13 @@ export default function AppCard({
       <div className="absolute inset-x-0 top-0 h-px shimmer-border opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
       {/* סימונים עדינים בפינה - נעוץ ע"י מנהל / עדכון גרסה זמין / עודכן לאחרונה (לא מעמיסים על הכרטיס) */}
-      {(app.pinned || hasUpdate || recentlyUpdated) && (
+      {(app.pinned || hasUpdate || recentlyUpdated || heat !== undefined) && (
         <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5">
+          {heat !== undefined && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/20 px-2 py-0.5 text-[10px] font-bold text-orange-300 ring-1 ring-orange-400/40">
+              <Flame className="h-3 w-3" /> {heat > 0 ? `${heat.toLocaleString("he-IL")} השבוע` : "מבוקש"}
+            </span>
+          )}
           {hasUpdate && (
             <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-bold text-accent ring-1 ring-accent/30">
               <ArrowUpCircle className="h-3 w-3" /> עדכון

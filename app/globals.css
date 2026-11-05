@@ -195,3 +195,60 @@ html[dir="ltr"] select {
   direction: ltr;
   text-align: left;
 }
+
+/* ---- כפתור "החמים שלנו" (אש) ---- */
+.fire-btn {
+  position: relative;
+  display: inline-flex;
+  height: 2.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  overflow: hidden;
+  white-space: nowrap;
+  border-radius: 0.75rem;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  font-weight: 900;
+  color: #fff;
+  background: linear-gradient(135deg, #ff7a18 0%, #ff3d2e 50%, #ff1f5a 100%);
+  box-shadow: 0 0 14px rgba(255, 90, 30, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  animation: fire-glow 2.2s ease-in-out infinite;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.fire-btn::before {
+  content: "";
+  position: absolute;
+  inset: auto -20% -60% -20%;
+  height: 120%;
+  background: radial-gradient(ellipse at 50% 100%, rgba(255, 220, 80, 0.85), rgba(255, 140, 20, 0) 65%);
+  animation: fire-rise 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+.fire-btn > * { position: relative; z-index: 1; }
+.fire-btn:hover { transform: translateY(-1px) scale(1.03); filter: brightness(1.08); }
+.fire-btn:active { transform: scale(0.97); }
+.fire-btn-on { outline: 2px solid rgba(255, 210, 90, 0.9); outline-offset: 2px; }
+.fire-flame { filter: drop-shadow(0 0 4px rgba(255, 230, 120, 0.9)); animation: fire-flicker 0.9s ease-in-out infinite; transform-origin: 50% 90%; }
+@keyframes fire-glow {
+  0%, 100% { box-shadow: 0 0 12px rgba(255, 90, 30, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+  50% { box-shadow: 0 0 22px rgba(255, 140, 30, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+}
+@keyframes fire-rise {
+  0%, 100% { transform: translateY(6%) scaleY(0.9); opacity: 0.75; }
+  50% { transform: translateY(-4%) scaleY(1.1); opacity: 1; }
+}
+@keyframes fire-flicker {
+  0%, 100% { transform: scale(1) rotate(-3deg); }
+  25% { transform: scale(1.12, 1.2) rotate(3deg); }
+  50% { transform: scale(0.95, 1.08) rotate(-2deg); }
+  75% { transform: scale(1.08, 1.15) rotate(2deg); }
+}
+.fire-banner {
+  border: 1px solid rgba(255, 120, 40, 0.45);
+  background: linear-gradient(135deg, rgba(255, 120, 24, 0.16), rgba(255, 40, 80, 0.12));
+}
+@media (prefers-reduced-motion: reduce) {
+  .fire-btn, .fire-btn::before, .fire-flame { animation: none; }
+}

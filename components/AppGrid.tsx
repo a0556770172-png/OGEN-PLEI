@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Smartphone, Monitor, SlidersHorizontal, ArrowDownWideNarrow, ArrowDownAZ, HardDrive, Check, Bell, BellRing, Clock } from "lucide-react";
+import { Search, Smartphone, Monitor, SlidersHorizontal, ArrowDownWideNarrow, ArrowDownAZ, HardDrive, Check, Bell, BellRing, Clock, Flame, X } from "lucide-react";
 import AppCard from "./AppCard";
 import AppModal from "./AppModal";
 import type { AppRow, Category } from "@/types/database";
@@ -128,6 +128,33 @@ export default function AppGrid({
     };
   }, [initialItems.length, total]);
 
+  // "החמים שלנו": האפליקציות והתוכנות הכי מורדות בשבוע האחרון (api/apps/hot)
+  const [hotOpen, setHotOpen] = useState(false);
+  const [hotData, setHotData] = useState<{ id: string; week: number }[] | null>(null);
+  const [hotLoading, setHotLoading] = useState(false);
+  const hotOrder = useMemo(() => (hotOpen && hotData ? new Map(hotData.map((h, i) => [h.id, i])) : null), [hotOpen, hotData]);
+  const hotWeek = useMemo(() => new Map((hotData ?? []).map((h) => [h.id, h.week])), [hotData]);
+  async function toggleHot() {
+    if (hotOpen) {
+      setHotOpen(false);
+      return;
+    }
+    setHotOpen(true);
+    if (!hotData) {
+      setHotLoading(true);
+      try {
+        const res = await fetch("/api/apps/hot");
+        const json = await res.json();
+        if (Array.isArray(json.items)) setHotData(json.items);
+      } catch {
+        // תקלה זמנית - לוחצים שוב לניסיון נוסף
+        setHotOpen(false);
+      } finally {
+        setHotLoading(false);
+      }
+    }
+  }
+
   const updates = useMemo(() => new Set(updateAppIds), [updateAppIds]);
 
   const loadedAppsCount = useMemo(() => items.filter(({ app }) => isApk(app)).length, [items]);
@@ -150,7 +177,8 @@ export default function AppGrid({
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
     const list = items.filter(({ app }) => {
-      const matchesTab = mainTab === "apps" ? isApk(app) : !isApk(app);
+      // במצב "החמים" מציגים את הרשימה החמה מכל הסוגים (אפליקציות ותוכנות יחד)
+      const matchesTab = hotOrder ? hotOrder.has(app.id) : mainTab === "apps" ? isApk(app) : !isApk(app);
       const matchesQuery =
         !q ||
         (searchIndex.get(app.id) ?? app.name.toLowerCase()).includes(q) ||
@@ -159,6 +187,7 @@ export default function AppGrid({
       return matchesTab && matchesQuery && matchesCategory;
     });
 
+    if (hotOrder) return [...list].sort((a, b) => hotOrder.get(a.app.id)! - hotOrder.get(b.app.id)!);
     if (sort === "default") return list;
     const sorted = [...list];
     if (sort === "newest") sorted.sort((a, b) => new Date(b.app.created_at).getTime() - new Date(a.app.created_at).getTime());
@@ -166,7 +195,7 @@ export default function AppGrid({
     else if (sort === "name") sorted.sort((a, b) => a.app.name.localeCompare(b.app.name, "he"));
     else if (sort === "size") sorted.sort((a, b) => (b.app.file_size_bytes ?? 0) - (a.app.file_size_bytes ?? 0));
     return sorted;
-  }, [items, query, category, mainTab, sort, searchIndex, remote]);
+  }, [items, query, category, mainTab, sort, searchIndex, remote, hotOrder]);
 
   const activeItem = activeId ? items.find(({ app }) => app.id === activeId) ?? null : null;
   const closeModal = useCallback(() => setActiveId(null), []);
@@ -176,7 +205,7 @@ export default function AppGrid({
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [query, category, mainTab, sort]);
+  }, [query, category, mainTab, sort, hotOpen]);
 
   const visibleItems = filtered.slice(0, visibleCount);
   const hasMore = visibleCount < filtered.length;
@@ -254,6 +283,11 @@ export default function AppGrid({
           >
             <SlidersHorizontal className="h-4 w-4" />
           </button>
+          {/* "החמים שלנו" - האפליקציות והתוכנות הכי מבוקשות עכשיו */}
+          <button type="button" onClick={toggleHot} aria-pressed={hotOpen} className={`fire-btn ${hotOpen ? "fire-btn-on" : ""}`}>
+            <Flame className="fire-flame h-4 w-4" />
+            <span>החמים שלנו</span>
+          </button>
         </div>
 
         {/* סרגל המיון - מוסתר כברירת מחדל, מופיע רק בלחיצה על האייקון. */}
@@ -318,6 +352,19 @@ export default function AppGrid({
         )}
       </div>
 
+      {hotOpen && (
+        <div className="fire-banner flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm">
+          <span className="flex items-center gap-2 font-bold text-orange-200">
+            <Flame className="h-4 w-4 shrink-0 text-orange-400" />
+            החמים שלנו - האפליקציות והתוכנות הכי מבוקשות ב-7 הימים האחרונים
+            {hotLoading && <span className="text-xs font-normal text-orange-300/80">(טוען...)</span>}
+          </span>
+          <button type="button" onClick={() => setHotOpen(false)} aria-label="סגירה" className="rounded-full p-1 text-orange-200 hover:bg-white/10">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border p-16 text-center text-gray-500">
           לא נמצאו {mainTab === "apps" ? "אפליקציות" : "תוכנות"} התואמות לחיפוש.
@@ -337,6 +384,7 @@ export default function AppGrid({
                   iconUrl={iconUrl}
                   categories={categories}
                   hasUpdate={updates.has(app.id)}
+                  heat={hotOrder ? hotWeek.get(app.id) ?? 0 : undefined}
                   viewerIsStaff={viewerIsStaff}
                   onOpen={() => setActiveId(app.id)}
                 />
