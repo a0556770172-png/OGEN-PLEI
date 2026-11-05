@@ -5,27 +5,10 @@ import { Search, Smartphone, Monitor, SlidersHorizontal, ArrowDownWideNarrow, Ar
 import AppCard from "./AppCard";
 import AppModal from "./AppModal";
 import type { AppRow, Category } from "@/types/database";
+import { isApk } from "@/lib/appKind";
 
-// אפליקציות מובייל (APK/APKS) לעומת תוכנות מחשב (כל שאר סוגי הקבצים - EXE, MSI, ZIP וכו') -
-// השיוך נקבע לפי סיומת הקובץ בפועל שהמפתח העלה, לא לפי הקטגוריה שנבחרה, כדי שהחלוקה
-// תמיד תהיה מדויקת בלי תלות בבחירת קטגוריה שגויה. בודקים גם file_name וגם file_key (מפתח
-// האחסון ב-R2) - כדי שקובץ יסווג נכון גם אם אחד מהשדות חסר/לא מעודכן מסיבה כלשהי.
-// באג שתוקן: קבצי .apks (חבילת APK מפוצלת) לא זוהו כי הבדיקה חיפשה ".apk" בלבד -
-// הם נפלו בטעות ל"תוכנות" והנפיחו את הספירה שם.
-const APK_EXTENSIONS = [".apk", ".apks", ".xapk"];
-
-function endsWithAny(value: string | null | undefined, suffixes: string[]) {
-  const v = value?.toLowerCase().trim();
-  if (!v) return false;
-  return suffixes.some((s) => v.endsWith(s));
-}
-
-export function isApk(app: AppRow) {
-  // שיוך ידני (צוות פיקוח/מנהל, ראו ReviewQueue.tsx) גובר תמיד על הסיווג האוטומטי.
-  if (app.platform_override === "apk") return true;
-  if (app.platform_override === "software") return false;
-  return endsWithAny(app.file_name, APK_EXTENSIONS) || endsWithAny(app.file_key, APK_EXTENSIONS);
-}
+// ReviewQueue ועוד מייבאים את isApk מכאן
+export { isApk };
 
 // אפשרויות המיון (פיצ'ר 3) - "ברירת מחדל" שומרת על הסדר מהשרת (נעוצים קודם, ואז לפי חדשים).
 type SortKey = "default" | "newest" | "downloads" | "name" | "size";
@@ -45,13 +28,19 @@ const SORT_OPTIONS: { key: SortKey; label: string; icon: typeof ArrowDownAZ }[] 
 const PAGE_SIZE = 40;
 
 export default function AppGrid({
-  items,
+  items: initialItems,
+  totalCount,
+  totals,
   categories,
   updateAppIds = [],
   viewerIsStaff = false,
   loggedIn = false
 }: {
+  // הכרטיסים הראשונים בלבד (נשלחים בדף עצמו - טעינה ראשונה קלה); השאר נטענים ברקע מיד אחרי שהעמוד מוצג
   items: { app: AppRow; iconUrl: string | null }[];
+  // כמה אפליקציות יש בסך הכול (כולל אלה שעוד לא נטענו) וחלוקה לאפליקציות/תוכנות - למונים ולטעינת השאר
+  totalCount?: number;
+  totals?: { apps: number; software: number };
   categories: Category[];
   updateAppIds?: string[];
   viewerIsStaff?: boolean;
@@ -110,10 +99,40 @@ export default function AppGrid({
     setCatBusy(false);
   }
 
+  // טעינת שאר האפליקציות ברקע (אחרי הציור הראשון), כדי שחיפוש/מיון/סינון יעבדו על הרשימה המלאה
+  const total = totalCount ?? initialItems.length;
+  const [extra, setExtra] = useState<{ app: AppRow; iconUrl: string | null }[]>([]);
+  const items = useMemo(() => (extra.length ? [...initialItems, ...extra] : initialItems), [initialItems, extra]);
+  const allLoaded = items.length >= total;
+  useEffect(() => {
+    if (initialItems.length >= total) return;
+    let cancelled = false;
+    function load(attempt = 0) {
+      fetch(`/api/apps/rest?skip=${initialItems.length}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          if (cancelled) return;
+          if (j && Array.isArray(j.items)) setExtra(j.items);
+          else if (attempt < 2) setTimeout(() => load(attempt + 1), 3000);
+        })
+        .catch(() => {
+          if (!cancelled && attempt < 2) setTimeout(() => load(attempt + 1), 3000);
+        });
+    }
+    const w = window as any;
+    const handle = w.requestIdleCallback ? w.requestIdleCallback(() => load(), { timeout: 2500 }) : setTimeout(() => load(), 800);
+    return () => {
+      cancelled = true;
+      if (w.requestIdleCallback && w.cancelIdleCallback) w.cancelIdleCallback(handle);
+      else clearTimeout(handle);
+    };
+  }, [initialItems.length, total]);
+
   const updates = useMemo(() => new Set(updateAppIds), [updateAppIds]);
 
-  const appsCount = useMemo(() => items.filter(({ app }) => isApk(app)).length, [items]);
-  const softwareCount = items.length - appsCount;
+  const loadedAppsCount = useMemo(() => items.filter(({ app }) => isApk(app)).length, [items]);
+  const appsCount = allLoaded || !totals ? loadedAppsCount : totals.apps;
+  const softwareCount = allLoaded || !totals ? items.length - loadedAppsCount : totals.software;
 
   // אינדקס חיפוש: לא רק שם - גם התיאור הקצר וכל הטקסט בפוסט הפרסום (description_html מנוקה מתגיות).
   const searchIndex = useMemo(() => {

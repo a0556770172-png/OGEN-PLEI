@@ -4,6 +4,7 @@ import UpdatesPopup from "@/components/UpdatesPopup";
 import ReferralHomeBanner from "@/components/ReferralHomeBanner";
 import ForumMoveTour from "@/components/ForumMoveTour";
 import { getApprovedAppsLite, getIconUrl, slimForCard } from "@/lib/apps-data";
+import { isApk } from "@/lib/appKind";
 import { getCategoriesServer } from "@/lib/categories";
 import { getUsersStats } from "@/lib/users-data";
 import { getTotalSiteVisits } from "@/lib/site-stats";
@@ -13,6 +14,9 @@ import { getUserAppUpdates } from "@/lib/updates";
 import { getSiteSettingsServer } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
+
+// כמה כרטיסים נשלחים בדף עצמו; כל השאר נטענים ברקע (api/apps/rest) מיד אחרי שהעמוד מוצג - טעינה ראשונה קטנה בהרבה
+const INITIAL_CARDS = 60;
 
 export default async function HomePage() {
   const [apps, categories, usersStats, totalVisits, siteSettings] = await Promise.all([
@@ -26,6 +30,7 @@ export default async function HomePage() {
     apps.map(async (app) => ({ app: slimForCard(app), iconUrl: await getIconUrl(app.icon_key) }))
   );
 
+  const apkCount = apps.filter((a) => isApk(a)).length;
   const totalDownloads = apps.reduce((sum, app) => sum + (app.downloads_count ?? 0), 0);
 
   // פיצ'ר 5: למשתמש מחובר - אילו אפליקציות שהוריד קיבלו עדכון גרסה (ל-Badge בכרטיס
@@ -48,7 +53,7 @@ export default async function HomePage() {
         totalVisits={totalVisits}
         forumButtonVisible={siteSettings.forum_button_visible}
       />
-      <AppGrid items={withIcons} categories={categories} updateAppIds={updateAppIds} viewerIsStaff={viewerIsStaff} loggedIn={!!user} />
+      <AppGrid items={withIcons.slice(0, INITIAL_CARDS)} totalCount={apps.length} totals={{ apps: apkCount, software: apps.length - apkCount }} categories={categories} updateAppIds={updateAppIds} viewerIsStaff={viewerIsStaff} loggedIn={!!user} />
     </div>
   );
 }
