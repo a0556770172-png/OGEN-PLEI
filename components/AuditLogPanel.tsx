@@ -52,6 +52,9 @@ const ACTION_LABELS: Record<string, string> = {
   reset_password_by_question: "איפוס סיסמה בשאלת אבטחה",
   close_all_tickets: "סגירת כל הפניות הפתוחות",
   bot_ban_user: "חסימת משתמש מהבוט",
+  ban_images: "חסימת משתמש מהעלאת תמונות",
+  unban_images: "ביטול חסימת העלאת תמונות",
+  view_dm_thread: "צפייה בשיחה פרטית (ניהול צ'אטים)",
   bot_unban_user: "ביטול חסימת משתמש מהבוט"
 };
 

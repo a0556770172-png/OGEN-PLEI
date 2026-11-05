@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createUploadUrl, BUCKETS } from "@/lib/r2";
+import { isImagesBanned, IMAGES_BANNED_MESSAGE } from "@/lib/imageBan";
 
 function sanitize(name: string) {
   return name.replace(/[^a-zA-Z0-9.\-_]/g, "_").slice(-80);
@@ -12,7 +13,8 @@ const MAX_AVATAR_MB = 5;
 export async function POST(request: Request) {
   const result = await requireProfile();
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
-  const { user } = result;
+  const { user, profile } = result;
+  if (isImagesBanned(profile)) return NextResponse.json({ error: IMAGES_BANNED_MESSAGE }, { status: 403 });
 
   const { fileName, fileSize, contentType } = await request.json().catch(() => ({}));
   if (!fileName || !fileSize || !contentType) {

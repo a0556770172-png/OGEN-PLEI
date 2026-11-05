@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning, ScrollText, History, Star, Lightbulb, Archive, BarChart3, Copy, HandHelping } from "lucide-react";
+import { ArrowLeftRight, ClipboardList, MessageCircle, Gift, BellRing, Tag, Users, LayoutGrid, Siren, Flag, HardDrive, MessageSquareWarning, ScrollText, History, Star, Lightbulb, Archive, BarChart3, Copy, HandHelping, Images } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import VersionProposalsQueue from "./VersionProposalsQueue";
 import DuplicatesQueue from "./DuplicatesQueue";
@@ -21,11 +21,12 @@ import SiteReviewsPanel from "./SiteReviewsPanel";
 import ForumModerationPanel from "./ForumModerationPanel";
 import StatsPanel from "./StatsPanel";
 import AppOwnershipPanel from "./AppOwnershipPanel";
+import ImagesManagerPanel from "./ImagesManagerPanel";
 import type { SiteReviewRow } from "@/lib/siteReviews";
 import type { ForumPost } from "@/lib/forum";
 import type { AppRow, Profile, BanAppeal } from "@/types/database";
 
-type TabKey = "notifications" | "review" | "duplicates" | "community" | "allApps" | "ownership" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals" | "teamTracking" | "siteRules" | "siteReviews" | "forum" | "stats";
+type TabKey = "notifications" | "review" | "duplicates" | "community" | "allApps" | "ownership" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "users" | "council" | "reports" | "sizeOverrides" | "banAppeals" | "teamTracking" | "siteRules" | "siteReviews" | "forum" | "stats" | "images";
 
 export default function ModeratorDashboardClient({
   apps,
@@ -72,6 +73,7 @@ export default function ModeratorDashboardClient({
     { key: "review", label: `בדיקת פרסום (${apps.length + versionProposalsCount})`, icon: ClipboardList },
     { key: "allApps", label: `כל האפליקציות (${allApps.length})`, icon: LayoutGrid },
     { key: "ownership", label: "ציבורי ופרטי", icon: ArrowLeftRight },
+    { key: "images", label: "תמונות", icon: Images },
     { key: "suggestions", label: "הצעות אפליקציות", icon: Gift },
     { key: "tickets", label: "הודעות", icon: MessageCircle },
     { key: "ticketsArchive", label: "ארכיון שיחות", icon: Archive },
@@ -124,6 +126,7 @@ export default function ModeratorDashboardClient({
         </div>
       )}
       {tab === "ownership" && <AppOwnershipPanel />}
+      {tab === "images" && <ImagesManagerPanel apps={allApps} />}
       {tab === "allApps" && (
         <div className="flex flex-col gap-4">
           <IconBackfillPanel />

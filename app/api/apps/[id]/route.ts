@@ -5,6 +5,7 @@ import { createAdminSupabase } from "@/lib/supabase/admin";
 import { deleteObject, createUploadUrl, BUCKETS } from "@/lib/r2";
 import { logAudit } from "@/lib/audit";
 import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
+import { isImagesBanned, IMAGES_BANNED_MESSAGE } from "@/lib/imageBan";
 
 // עריכת פרטי הפרסום (שם/תיאור/קטגוריה/אייקון) - הבעלים של האפליקציה בלבד, או צוות.
 // שינוי פרטים בלבד (לא קובץ) לא מאפס את הבדיקה - זה נשאר כפי שהיה (מאושר/ממתין/וכו').
@@ -33,6 +34,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   const body = await request.json().catch(() => ({}));
   const { name, shortDescription, descriptionHtml, category, iconFileName, iconContentType, adminNote } = body;
+
+  if (isImagesBanned(profile) && ((iconFileName && iconContentType) || Array.isArray(body.screenshotUploadRequests))) {
+    return NextResponse.json({ error: IMAGES_BANNED_MESSAGE }, { status: 403 });
+  }
 
   const updates: Record<string, any> = {};
   if (typeof name === "string" && name.trim()) updates.name = name.trim();
@@ -66,10 +71,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   let iconUploadUrl: string | undefined;
   let iconKey: string | undefined;
+  let removedIconKey: string | null = null;
   if (iconFileName && iconContentType) {
     iconKey = `icons/${app.developer_id}/${crypto.randomUUID()}-${iconFileName.replace(/[^a-zA-Z0-9.\-_]/g, "_").slice(-80)}`;
     iconUploadUrl = await createUploadUrl(BUCKETS.assets, iconKey, iconContentType);
     updates.icon_key = iconKey;
+  } else if (body.removeIcon === true && isStaff(profile) && app.icon_key) {
+    // מחיקת אייקון - צוות בלבד (טאב "תמונות")
+    updates.icon_key = null;
+    removedIconKey = app.icon_key;
   }
 
   // צילומי מסך (עד 8): שלב 1 - בקשת כתובות העלאה (לא נשמר כלום עדיין);
@@ -108,6 +118,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 
   for (const k of removedShots) await deleteObject(BUCKETS.assets, k).catch(() => {});
+  if (removedIconKey) await deleteObject(BUCKETS.assets, removedIconKey).catch(() => {});
 
   if (typeof updates.category === "string" && updates.category !== app.category && isStaff(profile)) {
     await logAudit({

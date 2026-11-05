@@ -61,6 +61,10 @@ export interface Profile {
   // כשהצוות מפרסם עדכון לחוקים (app/api/admin/site-rules/route.ts, action "publish"),
   // הגרסה הגלובלית עולה וכל מי שהמספר שלו נמוך יותר רואה את השער שוב.
   site_rules_seen_version: number;
+  // נחסם ע"י הצוות מהעלאת תמונות (אייקון, צילומי מסך, תמונת פרופיל, תמונות בפניות) - lib/imageBan.ts.
+  images_banned?: boolean;
+  images_ban_reason?: string | null;
+  images_banned_at?: string | null;
   created_at: string;
 }
 
@@ -208,6 +212,7 @@ export interface AppSuggestion {
   app_link: string | null;
   version: string | null;
   note: string | null;
+  screenshot_keys?: string[] | null;
   file_key: string | null;
   file_name: string | null;
   file_size_bytes: number | null;

@@ -8,6 +8,7 @@ import Image from "next/image";
 import { Rocket, MessageSquareText, History, Star, User as UserIcon, ExternalLink, Coins } from "lucide-react";
 import AvatarUploadForm from "@/components/AvatarUploadForm";
 import DeveloperAppsPanel from "@/components/DeveloperAppsPanel";
+import DeveloperStatsPanel from "@/components/DeveloperStatsPanel";
 import ProfileTagsEditor from "@/components/ProfileTagsEditor";
 import MitmachimConnect from "@/components/MitmachimConnect";
 import NotificationsManager from "@/components/NotificationsManager";
@@ -166,6 +167,15 @@ export default async function ProfilePage() {
               </Link>
             </p>
           </div>
+        </section>
+      )}
+
+      {isDeveloper && (
+        <section className="flex flex-col gap-3">
+          <SectionHeader title="סטטיסטיקות הורדות" hint="הורדות לפי גרסה, משתמשים ייחודיים ומגמה ב-30 הימים האחרונים" />
+          <DeveloperStatsPanel
+            apps={apps.map((a) => ({ id: a.id, name: a.name, version: a.version, downloads_count: a.downloads_count, status: a.status, icon_key: a.icon_key }))}
+          />
         </section>
       )}
 

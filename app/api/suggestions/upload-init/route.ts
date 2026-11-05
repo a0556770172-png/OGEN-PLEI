@@ -3,6 +3,7 @@ import { requireProfile } from "@/lib/auth-helpers";
 import { createUploadUrl, BUCKETS } from "@/lib/r2";
 import { MAX_SUGGESTION_MB } from "@/lib/constants";
 import { effectiveMaxUploadMb } from "@/lib/uploadQuota";
+import { isImagesBanned, IMAGES_BANNED_MESSAGE } from "@/lib/imageBan";
 
 function sanitize(name: string) {
   return name.replace(/[^a-zA-Z0-9.\-_]/g, "_").slice(-80);
@@ -16,7 +17,10 @@ export async function POST(request: Request) {
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
   const { user, profile } = result;
 
-  const { fileName, fileSize, contentType, iconFileName, iconContentType } = await request.json().catch(() => ({}));
+  const { fileName, fileSize, contentType, iconFileName, iconContentType, screenshots } = await request.json().catch(() => ({}));
+  if ((iconFileName || (Array.isArray(screenshots) && screenshots.length)) && isImagesBanned(profile)) {
+    return NextResponse.json({ error: IMAGES_BANNED_MESSAGE }, { status: 403 });
+  }
   if (!fileName || !fileSize) {
     return NextResponse.json({ error: "חסרים פרטי קובץ" }, { status: 400 });
   }
@@ -48,5 +52,15 @@ export async function POST(request: Request) {
     iconUploadUrl = await createUploadUrl(BUCKETS.assets, iconKey, iconContentType);
   }
 
-  return NextResponse.json({ uploadUrl, fileKey, iconUploadUrl, iconKey });
+  // צילומי מסך (עד 8) - נשמרים בדלי ה-assets ועוברים לאפליקציה באישור הצוות.
+  const screenshotUploads: { key: string; uploadUrl: string }[] = [];
+  if (Array.isArray(screenshots)) {
+    for (const s of screenshots.slice(0, 8)) {
+      if (!s?.fileName || !String(s?.contentType).startsWith("image/")) continue;
+      const key = `screenshots/${user.id}/${crypto.randomUUID()}-${sanitize(String(s.fileName))}`;
+      screenshotUploads.push({ key, uploadUrl: await createUploadUrl(BUCKETS.assets, key, s.contentType) });
+    }
+  }
+
+  return NextResponse.json({ uploadUrl, fileKey, iconUploadUrl, iconKey, screenshotUploads });
 }

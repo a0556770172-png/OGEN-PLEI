@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { lookup } from "dns/promises";
 import net from "net";
 import { requireProfile } from "@/lib/auth-helpers";
+import { isImagesBanned, IMAGES_BANNED_MESSAGE } from "@/lib/imageBan";
 
 export const runtime = "nodejs";
 
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
   const result = await requireProfile();
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
   const { profile } = result;
+  if (isImagesBanned(profile)) return NextResponse.json({ error: IMAGES_BANNED_MESSAGE }, { status: 403 });
   if (profile.role !== "developer" && profile.role !== "admin") {
     return NextResponse.json({ error: "רק חשבון מפתח יכול להעלות אפליקציות" }, { status: 403 });
   }

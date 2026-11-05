@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2, Archive, Bot, Star, Lightbulb, KeyRound, BarChart3, Megaphone, Copy, HandHelping } from "lucide-react";
+import { ArrowLeftRight, ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2, Archive, Bot, Star, Lightbulb, KeyRound, BarChart3, Megaphone, Copy, HandHelping, Images, MessagesSquare } from "lucide-react";
 import ReviewQueue from "./ReviewQueue";
 import VersionProposalsQueue from "./VersionProposalsQueue";
 import DuplicatesQueue from "./DuplicatesQueue";
@@ -30,11 +30,13 @@ import PasswordResetsPanel from "./PasswordResetsPanel";
 import StatsPanel from "./StatsPanel";
 import AdManagementPanel from "./AdManagementPanel";
 import AppOwnershipPanel from "./AppOwnershipPanel";
+import ImagesManagerPanel from "./ImagesManagerPanel";
+import ChatMonitorPanel from "./ChatMonitorPanel";
 import type { ForumPost } from "@/lib/forum";
 import type { AppRow, Profile, ProRequest, UserDeletionRequest, BanAppeal, ReferralEvent } from "@/types/database";
 import type { SiteReviewRow } from "@/lib/siteReviews";
 
-type TabKey = "notifications" | "review" | "duplicates" | "community" | "allApps" | "ownership" | "archive" | "users" | "pro" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteReviews" | "forum" | "passwordResets" | "bot" | "siteRules" | "settings" | "stats" | "ads";
+type TabKey = "notifications" | "review" | "duplicates" | "community" | "allApps" | "ownership" | "archive" | "users" | "pro" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteReviews" | "forum" | "passwordResets" | "bot" | "siteRules" | "settings" | "stats" | "ads" | "images" | "chatMonitor";
 
 export default function AdminDashboardClient({
   apps,
@@ -101,6 +103,7 @@ export default function AdminDashboardClient({
     { key: "review", label: `בדיקת פרסום (${apps.length + versionProposalsCount})`, icon: ClipboardList },
     { key: "allApps", label: `כל האפליקציות (${activeApps.length})`, icon: LayoutGrid },
     { key: "ownership", label: "ציבורי ופרטי", icon: ArrowLeftRight },
+    { key: "images", label: "תמונות", icon: Images },
     { key: "archive", label: `ארכיון (${archivedApps.length})`, icon: Archive },
     { key: "pro", label: `בקשות PRO (${proRequests.length})`, icon: Crown },
     { key: "suggestions", label: "הצעות אפליקציות", icon: Gift },
@@ -111,6 +114,7 @@ export default function AdminDashboardClient({
     { key: "deletionRequests", label: `בקשות מחיקת משתמשים (${deletionRequests.length})`, icon: ShieldAlert },
     { key: "passwordResets", label: "איפוסי סיסמה", icon: KeyRound },
     { key: "council", label: "ועדה", icon: Siren },
+    { key: "chatMonitor", label: "ניהול צאטים", icon: MessagesSquare },
     { key: "auditLog", label: "מעקב פיקוח", icon: History },
     { key: "reports", label: "דיווחים על אפליקציות", icon: Flag },
     { key: "duplicates", label: `כפילויות${duplicatesCount ? ` (${duplicatesCount})` : ""}`, icon: Copy },
@@ -163,6 +167,8 @@ export default function AdminDashboardClient({
         </div>
       )}
       {tab === "ownership" && <AppOwnershipPanel />}
+      {tab === "images" && <ImagesManagerPanel apps={allApps} />}
+      {tab === "chatMonitor" && <ChatMonitorPanel />}
       {tab === "allApps" && (
         <div className="flex flex-col gap-4">
           <IconBackfillPanel />

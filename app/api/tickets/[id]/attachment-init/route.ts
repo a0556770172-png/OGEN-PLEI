@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { createUploadUrl, BUCKETS } from "@/lib/r2";
+import { isImagesBanned, IMAGES_BANNED_MESSAGE } from "@/lib/imageBan";
 import { sanitizeFileName, normalizeContentType, validateAttachment } from "@/lib/attachments";
 
 // יוזם העלאת קובץ מצורף להודעה בפנייה - כל סוג קובץ (תמונה, וידאו, קול, ZIP, PDF וכו'),
@@ -37,6 +38,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
 
   const type = normalizeContentType(contentType);
+  if (type.startsWith("image/") && isImagesBanned(profile)) return NextResponse.json({ error: IMAGES_BANNED_MESSAGE }, { status: 403 });
   const attachmentKey = `ticket-attachments/${params.id}/${crypto.randomUUID()}-${sanitizeFileName(fileName)}`;
   const uploadUrl = await createUploadUrl(BUCKETS.uploads, attachmentKey, type);
 

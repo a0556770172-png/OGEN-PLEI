@@ -9,6 +9,7 @@ import { MIN_ANDROID_VERSIONS } from "@/lib/androidVersions";
 import { parseApkForForm } from "@/lib/apkManifest";
 import RichTextEditor from "@/components/RichTextEditor";
 import UploadSuccess from "@/components/UploadSuccess";
+import ScreenshotsPicker from "@/components/ScreenshotsPicker";
 import type { AppSuggestion, Category } from "@/types/database";
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
@@ -27,6 +28,7 @@ export default function SuggestAppPage() {
   const [category, setCategory] = useState("general");
   const [developerName, setDeveloperName] = useState("");
   const [icon, setIcon] = useState<File | null>(null);
+  const [screenshots, setScreenshots] = useState<File[]>([]);
   // בכוונה בלי ברירת מחדל - חובה לבחור בעצמו את גרסת האנדרואיד המינימלית, כדי שלא תישלח
   // בטעות גרסה שגויה שרק "נשארה מסומנת" מברירת המחדל.
   const [minAndroidVersion, setMinAndroidVersion] = useState("");
@@ -118,7 +120,8 @@ export default function SuggestAppPage() {
           fileSize: file.size,
           contentType: file.type || "application/octet-stream",
           iconFileName: icon?.name,
-          iconContentType: icon?.type
+          iconContentType: icon?.type,
+          ...(screenshots.length ? { screenshots: screenshots.map((s) => ({ fileName: s.name, contentType: s.type })) } : {})
         })
       });
       const initJson = await initRes.json();
@@ -136,6 +139,19 @@ export default function SuggestAppPage() {
         }
       }
 
+      // צילומי מסך - "רך" כמו האייקון: כישלון בהעלאה לא מפיל את ההצעה כולה
+      const screenshotKeys: string[] = [];
+      if (Array.isArray(initJson.screenshotUploads)) {
+        for (let i = 0; i < initJson.screenshotUploads.length; i++) {
+          try {
+            await putToR2(initJson.screenshotUploads[i].uploadUrl, screenshots[i]);
+            screenshotKeys.push(initJson.screenshotUploads[i].key);
+          } catch {
+            // מדלגים על התמונה שנכשלה
+          }
+        }
+      }
+
       const res = await fetch("/api/suggestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -147,6 +163,7 @@ export default function SuggestAppPage() {
           descriptionHtml,
           category: netfreeAdapted ? "netfree" : category,
           iconKey: uploadedIconKey,
+          screenshotKeys,
           developerName,
           fileKey: initJson.fileKey,
           fileName: file.name,
@@ -164,6 +181,7 @@ export default function SuggestAppPage() {
       setDescriptionHtml("");
       setDeveloperName("");
       setIcon(null);
+      setScreenshots([]);
       setMinAndroidVersion("");
       setFile(null);
       setNote("");
@@ -292,6 +310,11 @@ export default function SuggestAppPage() {
           <label className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-400"><ImageIcon className="h-4 w-4" /> אייקון (אופציונלי)</label>
           <input type="file" accept="image/*" onChange={(e) => setIcon(e.target.files?.[0] ?? null)} className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[#fff]" />
           <p className="mt-1.5 text-xs text-gray-500">אם לא תעלו אייקון וקובץ ההתקנה הוא APK/APKS, ננסה לחלץ אותו אוטומטית מתוך הקובץ עצמו.</p>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm text-gray-400">צילומי מסך (אופציונלי, עד 8)</label>
+          <ScreenshotsPicker files={screenshots} onChange={setScreenshots} onError={(m) => setError(m)} />
+          <p className="mt-1.5 text-xs text-gray-500">יוצגו בעמוד האפליקציה בלחיצה על &quot;איך זה נראה?&quot;. אפשר להוסיף או לשנות אותם מאוחר יותר דרך הצוות.</p>
         </div>
         <div>
           <label className="mb-1.5 block text-sm text-gray-400">הערה לצוות (אופציונלי)</label>

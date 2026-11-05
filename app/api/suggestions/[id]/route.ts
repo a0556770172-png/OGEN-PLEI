@@ -8,6 +8,7 @@ import { logAudit } from "@/lib/audit";
 import { notifyForApprovedApp } from "@/lib/notifications";
 import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
 import { assignSlug } from "@/lib/appSlug";
+import { cleanPackageName } from "@/lib/appPath";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -65,13 +66,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     // תתפרסם מיד עם אייקון ולא תצטרך תיקון ידני מאוחר יותר - רק אם המציע לא כבר העלה
     // אייקון ידנית בטופס עצמו (suggestion.icon_key), כדי לא לבזבז ניסיון חילוץ מיותר.
     let iconKey: string | null = null;
-    if (!suggestion.icon_key) {
-      try {
-        const iconResult = await extractApkIcon(suggestion.file_key, suggestion.suggested_by);
-        if (iconResult.iconKey !== null) iconKey = iconResult.iconKey;
-      } catch {
-        // חילוץ אייקון הוא נוחות בלבד - לא מכשילים את פרסום האפליקציה בגללו
-      }
+    let packageName: string | null = null;
+    try {
+      // גם כשהמציע העלה אייקון בעצמו קוראים את שם החבילה (לכתובת /apps/com.myapp), בלי לחלץ אייקון
+      const iconResult = await extractApkIcon(suggestion.file_key, suggestion.suggested_by, !!suggestion.icon_key);
+      if (!suggestion.icon_key && iconResult.iconKey !== null) iconKey = iconResult.iconKey;
+      packageName = iconResult.packageName ?? null;
+    } catch {
+      // חילוץ אייקון הוא נוחות בלבד - לא מכשילים את פרסום האפליקציה בגללו
     }
 
     // מעדיפים את השדות המלאים שהמציע מילא בטופס (תיאור קצר/מלא, קטגוריה, אייקון) אם קיימים -
@@ -95,6 +97,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         file_size_bytes: suggestion.file_size_bytes,
         min_android_version: suggestion.min_android_version ?? null,
         offline_support: suggestion.offline_support ?? "unknown",
+        package_name: cleanPackageName(packageName),
+        screenshot_keys: Array.isArray(suggestion.screenshot_keys) ? suggestion.screenshot_keys : [],
         // מקור: הצעה ציבורית - לא ניתנת לעריכה ע"י המציע (ראו app/api/apps/[id]/route.ts).
         source: "public_suggestion",
         developer_name: suggestion.developer_name?.trim() || null,

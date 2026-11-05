@@ -5,6 +5,7 @@ import { notifyAdmins } from "@/lib/push";
 import { MAX_SUGGESTION_MB } from "@/lib/constants";
 import { consumeOversizeGrant } from "@/lib/uploadQuota";
 import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
+import { isImagesBanned, IMAGES_BANNED_MESSAGE } from "@/lib/imageBan";
 
 // כל משתמש מחובר (רגיל או מפתח) יכול להציע אפליקציה פופולרית להוספה למאגר הציבורי
 export async function POST(request: Request) {
@@ -25,7 +26,8 @@ export async function POST(request: Request) {
     fileName,
     fileSize,
     minAndroidVersion,
-    offlineSupport
+    offlineSupport,
+    screenshotKeys
   } = await request.json().catch(() => ({}));
   // ראו הסבר זהה ב-app/api/apps/finalize/route.ts
   const validOfflineSupport = ["offline", "online", "unknown"].includes(offlineSupport) ? offlineSupport : "unknown";
@@ -53,6 +55,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "חובה לציין גרסת אנדרואיד מינימלית נדרשת" }, { status: 400 });
   }
 
+  // צילומי מסך: רק מפתחות שהמציע עצמו העלה (screenshots/<userId>/...), עד 8
+  const validScreenshotKeys: string[] = Array.isArray(screenshotKeys)
+    ? screenshotKeys.filter((k: unknown) => typeof k === "string" && k.startsWith(`screenshots/${user.id}/`) && !k.includes("..")).slice(0, 8)
+    : [];
+  if (isImagesBanned(profile) && (validScreenshotKeys.length > 0 || iconKey)) {
+    return NextResponse.json({ error: IMAGES_BANNED_MESSAGE }, { status: 403 });
+  }
+
   const admin = createAdminSupabase();
   const { error } = await admin.from("app_suggestions").insert({
     suggested_by: user.id,
@@ -68,7 +78,8 @@ export async function POST(request: Request) {
     file_name: fileName,
     file_size_bytes: fileSize,
     min_android_version: minAndroidVersion.trim(),
-    offline_support: validOfflineSupport
+    offline_support: validOfflineSupport,
+    screenshot_keys: validScreenshotKeys
   });
 
   if (error) {

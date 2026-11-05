@@ -4,6 +4,7 @@ import { createAdminSupabase } from "@/lib/supabase/admin";
 import { createUploadUrl, BUCKETS } from "@/lib/r2";
 import { LIMITS } from "@/lib/constants";
 import { effectiveMaxUploadMb } from "@/lib/uploadQuota";
+import { isImagesBanned, IMAGES_BANNED_MESSAGE } from "@/lib/imageBan";
 
 function sanitize(name: string) {
   return name.replace(/[^a-zA-Z0-9.\-_]/g, "_").slice(-80);
@@ -26,6 +27,10 @@ export async function POST(request: Request) {
 
   if (!fileName || !fileSize || !contentType) {
     return NextResponse.json({ error: "חסרים פרטי קובץ" }, { status: 400 });
+  }
+
+  if ((iconFileName || (Array.isArray(screenshots) && screenshots.length)) && isImagesBanned(profile)) {
+    return NextResponse.json({ error: IMAGES_BANNED_MESSAGE }, { status: 403 });
   }
 
   const plan = profile.is_pro ? LIMITS.pro : LIMITS.free;

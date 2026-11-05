@@ -9,6 +9,7 @@ import { notifyForApprovedApp } from "@/lib/notifications";
 import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
 import { platformOverrideFor } from "@/lib/fileKind";
 import { assignSlug } from "@/lib/appSlug";
+import { isImagesBanned, IMAGES_BANNED_MESSAGE } from "@/lib/imageBan";
 import { cleanPackageName } from "@/lib/appPath";
 
 export async function POST(request: Request) {
@@ -71,6 +72,11 @@ export async function POST(request: Request) {
         .filter((k: unknown) => typeof k === "string" && k.startsWith(`screenshots/${user.id}/`) && !k.includes(".."))
         .slice(0, 8)
     : [];
+
+  // משתמש חסום מהעלאת תמונות: לא צילומי מסך ולא אייקון ידני (אייקון שחולץ אוטומטית מה-APK מותר)
+  if (isImagesBanned(profile) && (validScreenshotKeys.length > 0 || (iconKey && !String(iconKey).includes("-auto-extracted.")))) {
+    return NextResponse.json({ error: IMAGES_BANNED_MESSAGE }, { status: 403 });
+  }
 
   const { data: app, error } = await admin
     .from("apps")
