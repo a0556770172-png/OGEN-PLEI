@@ -10,8 +10,8 @@ import AdmZip from "adm-zip";
 import { createDownloadUrl, createUploadUrl, BUCKETS } from "@/lib/r2";
 
 export type ExtractIconResult =
-  | { iconKey: string; appName?: string; versionName?: string }
-  | { iconKey: null; reason: string; detail?: string };
+  | { iconKey: string; appName?: string; versionName?: string; packageName?: string }
+  | { iconKey: null; reason: string; detail?: string; packageName?: string };
 
 // גודל מקסימלי לחילוץ אוטומטי - קבצים גדולים מזה כמעט תמיד לא מספיקים להוריד+לפרסר בזמן
 // (ראו הסבר מפורט למטה על מגבלת ה-10 שניות של Vercel Hobby), אז עדיף לוותר מיד ובבירור
@@ -55,12 +55,13 @@ function findBaseApkEntry(zip: AdmZip) {
 // מפורשת ("הקובץ גדול מדי" / "לקח יותר מדי זמן") - במקום להיתקע בלי שום מידע שימושי.
 const HARD_TIMEOUT_MS = 8000;
 
-export async function extractApkIcon(fileKey: string, ownerId: string): Promise<ExtractIconResult> {
+// packageOnly: רק קריאת שם החבילה (לכתובת הקריאה של האפליקציה) - בלי לחלץ/להעלות אייקון.
+export async function extractApkIcon(fileKey: string, ownerId: string, packageOnly = false): Promise<ExtractIconResult> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), HARD_TIMEOUT_MS);
   try {
     const result = await Promise.race([
-      extractApkIconInner(fileKey, ownerId, controller.signal),
+      extractApkIconInner(fileKey, ownerId, controller.signal, packageOnly),
       new Promise<ExtractIconResult>((resolve) =>
         setTimeout(() => resolve({ iconKey: null, reason: "timeout", detail: "חילוץ האייקון לקח יותר מדי זמן (מעל 8 שניות) - כנראה שהקובץ גדול מדי לחילוץ אוטומטי" }), HARD_TIMEOUT_MS)
       )
@@ -71,7 +72,7 @@ export async function extractApkIcon(fileKey: string, ownerId: string): Promise<
   }
 }
 
-async function extractApkIconInner(fileKey: string, ownerId: string, signal: AbortSignal): Promise<ExtractIconResult> {
+async function extractApkIconInner(fileKey: string, ownerId: string, signal: AbortSignal, packageOnly: boolean): Promise<ExtractIconResult> {
   const lowerKey = fileKey.toLowerCase();
   const isApks = lowerKey.endsWith(".apks");
   if (!lowerKey.endsWith(".apk") && !isApks) {
@@ -102,15 +103,20 @@ async function extractApkIconInner(fileKey: string, ownerId: string, signal: Abo
     stage = "parse";
     const parser = new AppInfoParser(apkPath);
     const parsed = await parser.parse();
+    const packageName = typeof parsed?.package === "string" ? parsed.package : undefined;
+
+    if (packageOnly) {
+      return { iconKey: null, reason: "package-only", packageName };
+    }
 
     if (!parsed?.icon || typeof parsed.icon !== "string" || !parsed.icon.startsWith("data:")) {
-      return { iconKey: null, reason: "no-icon-found" };
+      return { iconKey: null, reason: "no-icon-found", packageName };
     }
 
     stage = "decode";
     const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(parsed.icon);
     if (!match) {
-      return { iconKey: null, reason: "unsupported-icon-format" };
+      return { iconKey: null, reason: "unsupported-icon-format", packageName };
     }
     const [, mimeType, base64Data] = match;
     const iconBuffer = Buffer.from(base64Data, "base64");
@@ -122,10 +128,10 @@ async function extractApkIconInner(fileKey: string, ownerId: string, signal: Abo
 
     const putRes = await fetch(uploadUrl, { method: "PUT", body: iconBuffer, headers: { "Content-Type": mimeType } });
     if (!putRes.ok) {
-      return { iconKey: null, reason: "icon-upload-failed", detail: `R2 PUT status ${putRes.status}` };
+      return { iconKey: null, reason: "icon-upload-failed", detail: `R2 PUT status ${putRes.status}`, packageName };
     }
 
-    return { iconKey, appName: parsed.name, versionName: parsed.versionName };
+    return { iconKey, appName: parsed.name, versionName: parsed.versionName, packageName };
   } catch (err: any) {
     if (err?.code === "TOO_LARGE") {
       return { iconKey: null, reason: "file-too-large", detail: "הקובץ גדול מדי לחילוץ אוטומטי (מעל 35MB) - יש להעלות אייקון ידנית" };

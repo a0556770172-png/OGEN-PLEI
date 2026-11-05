@@ -19,8 +19,9 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { fileName, fileSize, contentType, iconFileName, iconContentType } = body as {
+  const { fileName, fileSize, contentType, iconFileName, iconContentType, screenshots } = body as {
     fileName: string; fileSize: number; contentType: string; iconFileName?: string; iconContentType?: string;
+    screenshots?: { fileName: string; contentType: string }[];
   };
 
   if (!fileName || !fileSize || !contentType) {
@@ -58,5 +59,15 @@ export async function POST(request: Request) {
     iconUploadUrl = await createUploadUrl(BUCKETS.assets, iconKey, iconContentType);
   }
 
-  return NextResponse.json({ uploadUrl, fileKey, iconUploadUrl, iconKey });
+  // צילומי מסך (עד 8) - נשמרים בדלי ה-assets ומוצגים בעמוד האפליקציה.
+  const screenshotUploads: { key: string; uploadUrl: string }[] = [];
+  if (Array.isArray(screenshots)) {
+    for (const s of screenshots.slice(0, 8)) {
+      if (!s?.fileName || !s?.contentType || !String(s.contentType).startsWith("image/")) continue;
+      const key = `screenshots/${user.id}/${crypto.randomUUID()}-${sanitize(s.fileName)}`;
+      screenshotUploads.push({ key, uploadUrl: await createUploadUrl(BUCKETS.assets, key, s.contentType) });
+    }
+  }
+
+  return NextResponse.json({ uploadUrl, fileKey, iconUploadUrl, iconKey, screenshotUploads });
 }

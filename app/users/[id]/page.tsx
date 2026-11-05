@@ -10,6 +10,7 @@ import { isDmUnlocked } from "@/lib/dm-eligibility";
 import { getFollowCounts, isFollowing, getFollowers, getFollowing } from "@/lib/follows";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import StatusBadge from "@/components/StatusBadge";
+import { appPath } from "@/lib/appPath";
 import DmButton from "@/components/DmButton";
 import NotifyButton from "@/components/NotifyButton";
 import FollowButton from "@/components/FollowButton";
@@ -145,7 +146,7 @@ export default async function PublicUserPage({ params }: { params: { id: string 
             <div className="card p-8 text-center text-gray-500">עדיין לא פורסמו אפליקציות או תוכנות מהמפתח הזה.</div>
           ) : (
             appsWithIcons.map(({ app, iconUrl }) => (
-              <Link key={app.id} href={`/apps/${app.id}`} className="card flex items-center gap-4 p-4 transition hover:ring-1 hover:ring-primary/40">
+              <Link key={app.id} href={appPath(app)} className="card flex items-center gap-4 p-4 transition hover:ring-1 hover:ring-primary/40">
                 <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-surface2 ring-1 ring-border">
                   {iconUrl ? (
                     <Image src={iconUrl} alt={app.name} fill sizes="48px" loading="lazy" className="object-cover" />

@@ -8,6 +8,8 @@ import { effectiveMaxUploadMb, consumeOversizeGrant } from "@/lib/uploadQuota";
 import { notifyForApprovedApp } from "@/lib/notifications";
 import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
 import { platformOverrideFor } from "@/lib/fileKind";
+import { assignSlug } from "@/lib/appSlug";
+import { cleanPackageName } from "@/lib/appPath";
 
 export async function POST(request: Request) {
   const result = await requireProfile();
@@ -20,7 +22,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { name, shortDescription, descriptionHtml, version, category, fileKey, fileName, fileSize, iconKey, minAndroidVersion, offlineSupport, zipTarget } = body;
+  const { name, shortDescription, descriptionHtml, version, category, fileKey, fileName, fileSize, iconKey, minAndroidVersion, offlineSupport, zipTarget, packageName, screenshotKeys } = body;
   // "אופליין / אונליין / לא ידוע" - נשאל תמיד באותה חלונית אישור כמו שאלת הנטפרי; אם משום
   // מה לא הגיע ערך תקין (למשל מטופס ישן שעוד לא עודכן), נופלים חזרה ל"לא ידוע" בלי להכשיל
   // את ההעלאה כולה בגלל זה.
@@ -63,6 +65,13 @@ export async function POST(request: Request) {
   // (וגם צוות פיקוח שהוא לא מנהל בפועל) עדיין עוברים את תור הבדיקה הרגיל כרגיל.
   const initialStatus = profile.role === "admin" ? "approved" : "pending";
 
+  // צילומי מסך: רק מפתחות שייכים למעלה עצמו (screenshots/<userId>/...), עד 8.
+  const validScreenshotKeys: string[] = Array.isArray(screenshotKeys)
+    ? screenshotKeys
+        .filter((k: unknown) => typeof k === "string" && k.startsWith(`screenshots/${user.id}/`) && !k.includes(".."))
+        .slice(0, 8)
+    : [];
+
   const { data: app, error } = await admin
     .from("apps")
     .insert({
@@ -78,6 +87,8 @@ export async function POST(request: Request) {
       file_size_bytes: fileSize,
       min_android_version: String(minAndroidVersion).trim(),
       offline_support: validOfflineSupport,
+      package_name: cleanPackageName(packageName),
+      screenshot_keys: validScreenshotKeys,
       // סידור אוטומטי: APK -> אפליקציות, תוכנה -> תוכנות, ZIP -> לפי בחירת המשתמש (lib/fileKind.ts)
       platform_override: platformOverrideFor(String(fileName), zipTarget),
       status: initialStatus,
@@ -94,6 +105,10 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+
+  // כתובת קריאה לעמוד האפליקציה (שם חבילה, או שם-מעלה/שם-אפליקציה) - ראו lib/appSlug.ts
+  const slug = await assignSlug(app.id);
+  if (slug) app.slug = slug;
 
   // מוניטין על ההעלאה ניתן רק באישור הצוות (app/api/admin/review) - לא כאן. מנהל שמעלה
   // מאושר מיד, ולכן מקבל אותו כבר עכשיו.

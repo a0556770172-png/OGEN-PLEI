@@ -1,15 +1,45 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { UploadCloud, Loader2, AlertCircle, CheckCircle2, FileArchive, Image as ImageIcon, Sparkles, ShieldAlert, RefreshCw } from "lucide-react";
+import { UploadCloud, Loader2, AlertCircle, CheckCircle2, FileArchive, Image as ImageIcon, Sparkles, ShieldAlert, RefreshCw, X, Link2, Images } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 import UploadSuccess from "@/components/UploadSuccess";
 import { putToR2, extractIconFailureReason } from "@/lib/uploadHelpers";
 import { MIN_ANDROID_VERSIONS } from "@/lib/androidVersions";
 import { parseApkForForm } from "@/lib/apkManifest";
 import FileKindNotice from "@/components/FileKindNotice";
+import DropZone from "@/components/DropZone";
 import type { AppRow, Category } from "@/types/database";
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_SCREENSHOTS = 8;
+// גודל מקסימלי לחילוץ אייקון/שם חבילה אוטומטי (זהה ל-lib/extractIcon.ts בשרת)
+const MAX_AUTO_EXTRACT_BYTES = 35 * 1024 * 1024;
+
+// תצוגה מקדימה קטנה של תמונה שנבחרה (עם כפתור הסרה)
+function Thumb({ file, onRemove, className = "h-20 w-20" }: { file: File; onRemove: () => void; className?: string }) {
+  const [src, setSrc] = useState("");
+  useEffect(() => {
+    const url = URL.createObjectURL(file);
+    setSrc(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+  return (
+    <div className={`relative shrink-0 overflow-hidden rounded-lg border border-white/10 bg-surface2 ${className}`} onClick={(e) => e.stopPropagation()}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {src && <img src={src} alt={file.name} className="h-full w-full object-cover" />}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+        className="absolute left-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white hover:bg-red-500"
+        aria-label="הסרה"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
 
 // טופס העלאה משותף:
 //   * mode="new" - העלאת אפליקציה/תוכנה חדשה (app/dashboard/developer/upload)
@@ -35,10 +65,84 @@ export default function AppUploadForm({ mode = "new", targetApp }: { mode?: "new
   const [zipTarget, setZipTarget] = useState<"apk" | "software">("apk");
   const [file, setFile] = useState<File | null>(null);
   const [icon, setIcon] = useState<File | null>(null);
+  // צילומי מסך (עד 8) - רק בהעלאה חדשה
+  const [screenshots, setScreenshots] = useState<File[]>([]);
+  const [iconUrlInput, setIconUrlInput] = useState("");
+  const [iconUrlLoading, setIconUrlLoading] = useState(false);
+  // לאן הולכת תמונה שמודבקת (Ctrl+V) בעמוד: לאזור שהעכבר/הפוקוס נמצא בו לאחרונה
+  const activeZone = useRef<"icon" | "shots">("icon");
   const [error, setError] = useState("");
   const [status, setStatus] = useState<"idle" | "uploading" | "extracting-icon" | "needs-icon" | "done">("idle");
   // מה שנשלף אוטומטית מתוך ה-APK בעת בחירת הקובץ (גרסת אנדרואיד מינ׳, מספר גרסה).
   const [autoDetected, setAutoDetected] = useState<string[]>([]);
+
+  function pickIcon(files: File[]) {
+    const f = files[0];
+    if (!f) return;
+    if (!f.type.startsWith("image/")) { setError("האייקון חייב להיות קובץ תמונה"); return; }
+    if (f.size > MAX_IMAGE_BYTES) { setError("תמונת האייקון גדולה מדי (מקסימום 5MB)"); return; }
+    setError("");
+    setIcon(f);
+  }
+
+  function addScreenshots(files: File[]) {
+    const images = files.filter((f) => f.type.startsWith("image/"));
+    const ok = images.filter((f) => f.size <= MAX_IMAGE_BYTES);
+    if (images.length < files.length) setError("אפשר להוסיף כצילומי מסך קבצי תמונה בלבד");
+    else if (ok.length < images.length) setError("חלק מהתמונות גדולות מדי (מקסימום 5MB לתמונה) ולא נוספו");
+    else setError("");
+    setScreenshots((prev) => {
+      if (prev.length + ok.length > MAX_SCREENSHOTS) setError(`אפשר להוסיף עד ${MAX_SCREENSHOTS} צילומי מסך`);
+      return [...prev, ...ok].slice(0, MAX_SCREENSHOTS);
+    });
+  }
+
+  // הבאת תמונה מקישור (דרך השרת - הדפדפן לא יכול בגלל CORS) והפיכתה לקובץ
+  async function fetchImageFile(url: string): Promise<File> {
+    const res = await fetch("/api/apps/fetch-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url })
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => null);
+      throw new Error(j?.error || "לא הצלחנו להביא את התמונה מהקישור");
+    }
+    const blob = await res.blob();
+    const ext = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : blob.type.includes("gif") ? "gif" : "jpg";
+    return new File([blob], `image-from-link.${ext}`, { type: blob.type });
+  }
+
+  async function useIconFromUrl() {
+    const url = iconUrlInput.trim();
+    if (!url) return;
+    setIconUrlLoading(true);
+    setError("");
+    try {
+      pickIcon([await fetchImageFile(url)]);
+      setIconUrlInput("");
+    } catch (err: any) {
+      setError(err.message || "לא הצלחנו להביא את התמונה מהקישור");
+    } finally {
+      setIconUrlLoading(false);
+    }
+  }
+
+  // הדבקת תמונה (Ctrl+V) בכל מקום בעמוד שאינו שדה טקסט - נכנסת לאייקון או לצילומי המסך
+  useEffect(() => {
+    function onPaste(e: ClipboardEvent) {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      const files = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/"));
+      if (!files.length) return;
+      e.preventDefault();
+      if (activeZone.current === "shots" && !isUpdate) addScreenshots(files);
+      else pickIcon(files);
+    }
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleFilePick(f: File | null) {
     setFile(f);
@@ -106,10 +210,8 @@ export default function AppUploadForm({ mode = "new", targetApp }: { mode?: "new
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // גודל מקסימלי לחילוץ אייקון אוטומטי (חייב להיות זהה למה שמוגדר ב-lib/extractIcon.ts
-  // בשרת) - קבצי APK/APKS גדולים מזה כמעט אף פעם לא מספיקים לעבור חילוץ בזמן על Vercel
-  // Hobby, אז אין טעם אפילו לנסות - עדיף לבקש אייקון ידני כבר עכשיו במקום אחרי כישלון.
-  const MAX_AUTO_EXTRACT_BYTES = 35 * 1024 * 1024;
+  // קבצי APK/APKS גדולים מ-MAX_AUTO_EXTRACT_BYTES כמעט אף פעם לא מספיקים לעבור חילוץ בזמן
+  // בשרת, אז אין טעם אפילו לנסות - עדיף לבקש אייקון ידני כבר עכשיו במקום אחרי כישלון.
   const isApkFile = !!file && (file.name.toLowerCase().endsWith(".apk") || file.name.toLowerCase().endsWith(".apks"));
   const canAutoExtract = isApkFile && !!file && file.size <= MAX_AUTO_EXTRACT_BYTES;
   // בעדכון - בלי אייקון חדש פשוט נשאר האייקון הקיים של האפליקציה.
@@ -148,7 +250,10 @@ export default function AppUploadForm({ mode = "new", targetApp }: { mode?: "new
           fileSize: file.size,
           contentType: file.type || "application/octet-stream",
           iconFileName: icon?.name,
-          iconContentType: icon?.type
+          iconContentType: icon?.type,
+          ...(!isUpdate && screenshots.length
+            ? { screenshots: screenshots.map((s) => ({ fileName: s.name, contentType: s.type })) }
+            : {})
         })
       });
       const initJson = await initRes.json();
@@ -162,6 +267,8 @@ export default function AppUploadForm({ mode = "new", targetApp }: { mode?: "new
       // עלה בהצלחה — ממשיכים בלי אייקון, ואז נבקש מהמפתח להשלים אייקון בשלב הבא.
       let iconUploadFailed = false;
       let uploadedIconKey: string | null = null;
+      let packageName: string | undefined;
+      const isApkUpload = file.name.toLowerCase().endsWith(".apk") || file.name.toLowerCase().endsWith(".apks");
       if (icon && initJson.iconUploadUrl) {
         try {
           await putToR2(initJson.iconUploadUrl, icon);
@@ -182,10 +289,40 @@ export default function AppUploadForm({ mode = "new", targetApp }: { mode?: "new
           if (extractRes.ok && extractJson?.iconKey) {
             uploadedIconKey = extractJson.iconKey;
           }
+          if (extractRes.ok && extractJson?.packageName) packageName = extractJson.packageName;
         } catch {
           // מתעלמים בכוונה — ננסה שוב ידנית בשלב הבא אם באמת אין אייקון
         }
         setStatus("uploading");
+      }
+
+      // אייקון הועלה ידנית (או שהחילוץ לא החזיר שם חבילה) - עדיין קוראים את שם החבילה מה-APK,
+      // כדי לבנות את כתובת העמוד של האפליקציה (/apps/com.myapp)
+      if (!isUpdate && isApkUpload && !packageName && file.size <= MAX_AUTO_EXTRACT_BYTES) {
+        try {
+          const pkgRes = await fetch("/api/apps/extract-icon", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fileKey: initJson.fileKey, packageOnly: true })
+          });
+          const pkgJson = await pkgRes.json().catch(() => null);
+          if (pkgRes.ok && pkgJson?.packageName) packageName = pkgJson.packageName;
+        } catch {
+          // לא קריטי - הכתובת תיבנה משם המעלה ושם האפליקציה
+        }
+      }
+
+      // צילומי מסך: "רך" כמו האייקון - כישלון בהעלאה לא מפיל את ההעלאה כולה
+      const screenshotKeys: string[] = [];
+      if (!isUpdate && Array.isArray(initJson.screenshotUploads)) {
+        for (let i = 0; i < initJson.screenshotUploads.length; i++) {
+          try {
+            await putToR2(initJson.screenshotUploads[i].uploadUrl, screenshots[i]);
+            screenshotKeys.push(initJson.screenshotUploads[i].key);
+          } catch {
+            // מדלגים על התמונה שנכשלה
+          }
+        }
       }
 
       const finalizeRes = await fetch(isUpdate ? `/api/apps/${targetApp.id}/update-proposal/finalize` : "/api/apps/finalize", {
@@ -203,7 +340,9 @@ export default function AppUploadForm({ mode = "new", targetApp }: { mode?: "new
           iconKey: uploadedIconKey,
           minAndroidVersion,
           offlineSupport,
-          zipTarget
+          zipTarget,
+          packageName,
+          screenshotKeys
         })
       });
       const finalizeJson = await finalizeRes.json();
@@ -383,7 +522,12 @@ export default function AppUploadForm({ mode = "new", targetApp }: { mode?: "new
             </div>
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-400"><FileArchive className="h-4 w-4" /> קובץ ההתקנה (APK לאפליקציה, או קובץ ההתקנה של התוכנה)</label>
-              <input required type="file" onChange={(e) => handleFilePick(e.target.files?.[0] ?? null)} className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[#fff]" />
+              <DropZone
+                onFiles={(files) => handleFilePick(files[0] ?? null)}
+                icon={<UploadCloud className="h-6 w-6 text-primary-light" />}
+                title={file ? file.name : "גררו לכאן את קובץ ההתקנה, או לחצו לבחירה"}
+                hint={file ? `${(file.size / (1024 * 1024)).toFixed(1)}MB - לחצו כדי להחליף` : "APK, או קובץ ההתקנה של התוכנה"}
+              />
               <FileKindNotice file={file} zipTarget={zipTarget} onZipTargetChange={setZipTarget} />
               {autoDetected.length > 0 && (
                 <div className="mt-1.5 flex items-start gap-1.5 text-xs text-accent">
@@ -396,7 +540,35 @@ export default function AppUploadForm({ mode = "new", targetApp }: { mode?: "new
               <label className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-400">
                 <ImageIcon className="h-4 w-4" /> אייקון {iconRequiredNow ? <span className="text-gold">(חובה בקובץ הזה)</span> : "(אופציונלי)"}
               </label>
-              <input type="file" accept="image/*" onChange={(e) => setIcon(e.target.files?.[0] ?? null)} className="input-field file:ms-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-[#fff]" />
+              <DropZone
+                accept="image/*"
+                onFiles={pickIcon}
+                onActivate={() => { activeZone.current = "icon"; }}
+                icon={icon ? undefined : <ImageIcon className="h-6 w-6 text-primary-light" />}
+                title={icon ? icon.name : "גררו תמונה לכאן, הדביקו (Ctrl+V), או לחצו לבחירה"}
+                hint={icon ? undefined : "PNG / JPG / WEBP עד 5MB"}
+              >
+                {icon && <Thumb file={icon} onRemove={() => setIcon(null)} />}
+              </DropZone>
+              <div className="mt-2 flex gap-2">
+                <input
+                  value={iconUrlInput}
+                  onChange={(e) => setIconUrlInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); useIconFromUrl(); } }}
+                  dir="ltr"
+                  className="input-field flex-1"
+                  placeholder="או הדביקו קישור לתמונה: https://..."
+                />
+                <button
+                  type="button"
+                  onClick={useIconFromUrl}
+                  disabled={!iconUrlInput.trim() || iconUrlLoading}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 px-3 text-sm text-gray-300 hover:text-white disabled:opacity-50"
+                >
+                  {iconUrlLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                  הבא
+                </button>
+              </div>
               {iconRequiredNow ? (
                 <div className="mt-1.5 flex items-start gap-1.5 text-xs text-gold">
                   <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -413,6 +585,31 @@ export default function AppUploadForm({ mode = "new", targetApp }: { mode?: "new
                 <p className="mt-1.5 text-xs text-gray-500">אם לא תעלו אייקון וקובץ האפליקציה הוא APK/APKS עד 35MB, ננסה לחלץ אותו אוטומטית מתוך הקובץ עצמו.</p>
               )}
             </div>
+
+            {!isUpdate && (
+              <div>
+                <label className="mb-1.5 flex items-center gap-1.5 text-sm text-gray-400">
+                  <Images className="h-4 w-4" /> צילומי מסך (אופציונלי, עד {MAX_SCREENSHOTS})
+                </label>
+                <DropZone
+                  accept="image/*"
+                  multiple
+                  onFiles={addScreenshots}
+                  onActivate={() => { activeZone.current = "shots"; }}
+                  icon={<Images className="h-6 w-6 text-primary-light" />}
+                  title="גררו צילומי מסך לכאן, הדביקו (Ctrl+V), או לחצו לבחירה"
+                  hint={`${screenshots.length}/${MAX_SCREENSHOTS} - PNG / JPG / WEBP עד 5MB לתמונה`}
+                >
+                  {screenshots.length > 0 && (
+                    <div className="mt-2 flex flex-wrap justify-center gap-2">
+                      {screenshots.map((s, i) => (
+                        <Thumb key={`${s.name}-${s.size}-${i}`} file={s} onRemove={() => setScreenshots((prev) => prev.filter((_, j) => j !== i))} className="h-24 w-16" />
+                      ))}
+                    </div>
+                  )}
+                </DropZone>
+              </div>
+            )}
 
             <button type="submit" disabled={status === "uploading" || status === "extracting-icon"} className="btn-primary mt-2 w-full">
               {(status === "uploading" || status === "extracting-icon") ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}

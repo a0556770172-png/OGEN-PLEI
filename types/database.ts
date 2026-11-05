@@ -117,6 +117,11 @@ export interface AppRow {
   pinned_at: string | null;
   // מתי אושרה הגרסה החדשה האחרונה - תווית "עודכן" לכמה ימים (lib/updatedBadge.ts, מיגרציה 0066).
   last_updated_at?: string | null;
+  // כתובת קריאה של עמוד האפליקציה (/apps/<slug>) - ראו lib/appSlug.ts, מיגרציה 0069.
+  slug?: string | null;
+  package_name?: string | null;
+  // צילומי מסך (מפתחות בדלי ה-assets).
+  screenshot_keys?: string[] | null;
   created_at: string;
   updated_at: string;
   developer?: Profile;

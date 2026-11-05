@@ -7,6 +7,7 @@ import { extractApkIcon } from "@/lib/extractIcon";
 import { logAudit } from "@/lib/audit";
 import { notifyForApprovedApp } from "@/lib/notifications";
 import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
+import { assignSlug } from "@/lib/appSlug";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -106,6 +107,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     if (!createError && newApp) {
       createdAppId = newApp.id;
+      await assignSlug(newApp.id);
       await admin.from("app_suggestions").update({ created_app_id: newApp.id }).eq("id", suggestion.id);
       revalidatePath("/");
       revalidatePath(`/apps/${newApp.id}`);

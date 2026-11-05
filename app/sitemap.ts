@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getApprovedApps } from "@/lib/apps-data";
+import { assignSlug } from "@/lib/appSlug";
+import { appPath } from "@/lib/appPath";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ogen-plei-qype.vercel.app";
 
@@ -17,8 +19,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let appRoutes: MetadataRoute.Sitemap = [];
   try {
     const apps = await getApprovedApps();
+    // אפליקציות ישנות שעוד אין להן slug מקבלות אחד כאן, כדי שגוגל יקבל רק כתובות קריאות.
+    for (const app of apps) {
+      if (!app.slug) app.slug = await assignSlug(app.id);
+    }
     appRoutes = apps.map((app) => ({
-      url: `${SITE_URL}/apps/${app.id}`,
+      url: `${SITE_URL}${appPath(app)}`,
       lastModified: app.updated_at ?? app.created_at ?? undefined,
       changeFrequency: "weekly",
       priority: 0.7

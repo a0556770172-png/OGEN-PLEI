@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "רק חשבון מפתח יכול לחלץ אייקון" }, { status: 403 });
   }
 
-  const { fileKey } = await request.json();
+  const { fileKey, packageOnly } = await request.json();
   if (!fileKey || typeof fileKey !== "string") {
     return NextResponse.json({ error: "חסר מזהה קובץ" }, { status: 400 });
   }
@@ -28,6 +28,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "אין הרשאה לקובץ הזה" }, { status: 403 });
   }
 
-  const result2 = await extractApkIcon(fileKey, user.id);
+  const result2 = await extractApkIcon(fileKey, user.id, packageOnly === true);
   return NextResponse.json(result2);
 }

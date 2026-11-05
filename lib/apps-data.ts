@@ -1,6 +1,7 @@
 import { createServerSupabase } from "./supabase/server";
 import { publicAssetUrl } from "./r2";
 import type { AppRow } from "@/types/database";
+import { isUuid } from "./appPath";
 
 export async function getApprovedApps(): Promise<AppRow[]> {
   const supabase = createServerSupabase();
@@ -36,6 +37,18 @@ export async function getAppById(id: string): Promise<AppRow | null> {
     .select("*, developer:profiles!apps_developer_id_fkey(username, points, is_pro)")
     .eq("id", id)
     .single();
+  return (data as unknown as AppRow) ?? null;
+}
+
+// מקבל id (קישורים ישנים) או slug (/apps/com.myapp או /apps/UserName/myapp).
+export async function getAppByKey(key: string): Promise<AppRow | null> {
+  if (isUuid(key)) return getAppById(key);
+  const supabase = createServerSupabase();
+  const { data } = await supabase
+    .from("apps")
+    .select("*, developer:profiles!apps_developer_id_fkey(username, points, is_pro)")
+    .eq("slug", key.toLowerCase())
+    .maybeSingle();
   return (data as unknown as AppRow) ?? null;
 }
 

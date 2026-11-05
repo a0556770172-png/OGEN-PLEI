@@ -15,6 +15,7 @@ import NotifyButton from "./NotifyButton";
 import UpdateAppButton from "./UpdateAppButton";
 import UpdatedBadge from "./UpdatedBadge";
 import AppSourceTag from "./AppSourceTag";
+import { appPath } from "@/lib/appPath";
 
 // פיצ'ר 2a: עמוד האפליקציה נפתח בחלונית צפה מעל הדף הנוכחי (במקום ניווט מלא), כדי לשמור
 // על רצף הגלישה ומקום הגלילה. הנתונים כבר קיימים בכרטיס (מהעמוד הראשי), ורכיבי הלקוח
@@ -194,6 +195,7 @@ export default function AppModal({
             <div className="mt-5 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
               <DownloadButton
                 appId={app.id}
+                slug={app.slug}
                 status={app.status}
                 downloadsCount={app.downloads_count}
                 isPaused={isPaused}
@@ -237,7 +239,7 @@ export default function AppModal({
         <AppReviews appId={app.id} viewerIsStaff={viewerIsStaff} />
 
         <div className="mt-6 border-t border-border pt-4 text-center">
-          <Link href={`/apps/${app.id}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-light transition hover:underline">
+          <Link href={appPath(app)} className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-light transition hover:underline">
             <ExternalLink className="h-4 w-4" /> פתיחה בעמוד מלא
           </Link>
         </div>

@@ -5,14 +5,15 @@ import { Download, Loader2, Lock, Share2, Check, AlertTriangle } from "lucide-re
 import { createClient } from "@/lib/supabase/client";
 import type { AppStatus } from "@/types/database";
 
-function ShareButton({ appId }: { appId: string }) {
+function ShareButton({ appId, slug }: { appId: string; slug?: string | null }) {
   const [copied, setCopied] = useState(false);
 
   async function handleShare() {
     // תמיד בונים את הכתובת הקנונית של עמוד האפליקציה מ-appId - ולא window.location.href,
     // כי כשהאפליקציה נפתחת בחלונית צפה (Modal) מדף הבית, ה-URL בשורת הכתובת עדיין מצביע
     // על דף הבית, וזה גרם לשיתוף קישור לאתר הכללי במקום לאפליקציה עצמה.
-    const url = `${window.location.origin}/apps/${appId}`;
+    const path = slug ? slug.split("/").map(encodeURIComponent).join("/") : appId;
+    const url = `${window.location.origin}/apps/${path}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
@@ -33,12 +34,14 @@ function ShareButton({ appId }: { appId: string }) {
 
 export default function DownloadButton({
   appId,
+  slug,
   status,
   downloadsCount,
   isPaused,
   extra
 }: {
   appId: string;
+  slug?: string | null;
   status: AppStatus;
   downloadsCount: number;
   isPaused?: boolean;
@@ -98,7 +101,7 @@ export default function DownloadButton({
       <div className="flex flex-col items-center gap-2 sm:items-start">
         <div className="flex flex-wrap items-center gap-2">
           <button disabled className="btn-ghost opacity-60">האפליקציה אינה זמינה להורדה כעת</button>
-          <ShareButton appId={appId} />
+          <ShareButton appId={appId} slug={slug} />
           {extra}
         </div>
       </div>
@@ -110,7 +113,7 @@ export default function DownloadButton({
       <div className="flex flex-col items-center gap-2 sm:items-start">
         <div className="flex flex-wrap items-center gap-2">
           <button disabled className="btn-ghost opacity-60">המפתח השהה זמנית את ההורדה של האפליקציה הזו</button>
-          <ShareButton appId={appId} />
+          <ShareButton appId={appId} slug={slug} />
           {extra}
         </div>
       </div>
@@ -124,7 +127,7 @@ export default function DownloadButton({
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           {loading ? "מכין הורדה..." : `הורדה (${count.toLocaleString("he-IL")})`}
         </button>
-        <ShareButton appId={appId} />
+        <ShareButton appId={appId} slug={slug} />
         {extra}
       </div>
       {error && <p className="text-sm text-red-400">{error}</p>}
