@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 // לשרת נוספת, לא חשופה לחסימת רשת בצד הלקוח.
 export const dynamic = "force-dynamic";
 
-const TARGET_BASE = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
+const TARGET_BASE = (process.env.SUPABASE_INTERNAL_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
 
 // כותרות שאסור להעביר כמו שהן בין השרתים - חלקן ספציפיות לחיבור עצמו (hop-by-hop),
 // וחלקן (host) יבלבלו את שרת היעד לגבי לאיזה דומיין הבקשה מיועדת.

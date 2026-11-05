@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { serverSupabaseUrl } from "@/lib/supabase/url";
 import { createClient } from "@supabase/supabase-js";
 import { requireProfile, isStaff } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
@@ -8,7 +9,7 @@ import { createAdminSupabase } from "@/lib/supabase/admin";
 // "apps_select_staff" הייתה מראה את האפליקציה בכל מקרה (גם אם היא לא מאושרת),
 // כי לצוות יש הרשאת צפייה מיוחדת. רק לקוח אנונימי אמיתי בודק את מה שמשתמש רגיל רואה בפועל.
 function createAnonSupabase() {
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
+  return createClient(serverSupabaseUrl(), process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
     auth: { autoRefreshToken: false, persistSession: false }
   });
 }

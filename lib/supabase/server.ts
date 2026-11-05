@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { serverSupabaseUrl } from "./url";
 import { cookies } from "next/headers";
 import { noStoreFetch } from "./noStoreFetch";
 
@@ -6,7 +7,7 @@ import { noStoreFetch } from "./noStoreFetch";
 export function createServerSupabase() {
   const cookieStore = cookies();
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serverSupabaseUrl(),
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {

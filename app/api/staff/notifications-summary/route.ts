@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { serverSupabaseUrl } from "@/lib/supabase/url";
 import { createClient } from "@supabase/supabase-js";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { isStaff } from "@/lib/auth-helpers";
@@ -43,7 +44,7 @@ export async function GET(request: Request) {
 
   // מאמתים את הטוקן מול Supabase (בלי צורך ב-cookies) - זה בודק שהטוקן תקף ומחזיר את
   // המשתמש ששייך אליו, בלי לסמוך על שום דבר שמגיע מהלקוח מלבד הטוקן עצמו.
-  const anon = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
+  const anon = createClient(serverSupabaseUrl(), process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
   const { data: userData, error: userError } = await anon.auth.getUser(token);
   if (userError || !userData?.user) {
     return json({ error: "טוקן לא תקף - יש להתחבר מחדש" }, 401);

@@ -83,7 +83,14 @@ done
 
 # ---------- 3. החלפה מהירה והפעלה מחדש ----------
 cd "$APP_DIR" || exit 1
-git reset -q --hard "$NEW"
+# קבצים בבעלות root (נוצרו בעבר ב-sudo) חוסמים את git reset: הוא נכשל בשקט, ה-HEAD נשאר על הגרסה הישנה,
+# והסקריפט חשב בכל ריצה שיש גרסה חדשה - בנייה והפעלה מחדש של האתר כל 2 דקות, בלי סוף.
+# לכן מיישרים בעלות לפני ה-reset, ואם הוא בכל זאת נכשל - עוצרים (האתר החי לא נגעו בו).
+if [ -n "$(find "$APP_DIR" -user root -not -path '*/node_modules/*' -not -path '*/.next*' -not -path '*/backups/*' -print -quit 2>/dev/null)" ]; then
+  echo "-- fixing root-owned files in $APP_DIR"
+  sudo find "$APP_DIR" -user root -not -path '*/node_modules/*' -not -path '*/.next*' -not -path '*/backups/*' -exec chown "$(id -un):$(id -gn)" {} + 2>/dev/null
+fi
+git reset -q --hard "$NEW" || fail "!! git reset failed in $APP_DIR (permissions?) - live site untouched"
 # תלויות: רק אם השתנו (נדיר). קורה ממש לפני ההפעלה מחדש.
 if [ ! -d node_modules ] || ! git diff --quiet "$OLD" "$NEW" -- package-lock.json package.json; then
   npm ci --no-audit --no-fund || echo "!! npm ci in live dir failed"

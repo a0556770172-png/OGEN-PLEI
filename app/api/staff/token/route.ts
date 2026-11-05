@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { serverSupabaseUrl } from "@/lib/supabase/url";
 import { createClient } from "@supabase/supabase-js";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { isStaff } from "@/lib/auth-helpers";
@@ -16,7 +17,7 @@ function json(body: unknown, status = 200) {
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
-  const anon = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
+  const anon = createClient(serverSupabaseUrl(), process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false }
   });
 
