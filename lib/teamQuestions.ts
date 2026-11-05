@@ -158,51 +158,6 @@ export const TEAM_QUESTIONS: TeamQuestion[] = [
     max: 1000
   },
   {
-    id: "scenarioFriend",
-    section: "אופי ושיקול דעת",
-    label: "חבר קרוב שלך העלה אפליקציה שלא עומדת בכללים, והוא מבקש ממך לאשר אותה. מה תעשה?",
-    type: "textarea",
-    required: true,
-    min: 20,
-    max: 1000
-  },
-  {
-    id: "scenarioPopular",
-    section: "אופי ושיקול דעת",
-    label: "אפליקציה מאוד פופולרית, אבל היא כוללת תוכן לא צנוע. משתמשים כותבים לך \"כולם מורידים, למה לא מאשרים?\". איך תפעל?",
-    type: "textarea",
-    required: true,
-    min: 20,
-    max: 1000
-  },
-  {
-    id: "scenarioMistake",
-    section: "אופי ושיקול דעת",
-    label: "הוצאת משתמש מהאתר, ואחר כך הבנת שטעית. מה תעשה?",
-    type: "textarea",
-    required: true,
-    min: 20,
-    max: 1000
-  },
-  {
-    id: "criticism",
-    section: "אופי ושיקול דעת",
-    label: "איך אתה מגיב כשמבקרים אותך, או כשחולקים עליך בפומבי?",
-    type: "textarea",
-    required: true,
-    min: 20,
-    max: 800
-  },
-  {
-    id: "teamwork",
-    section: "אופי ושיקול דעת",
-    label: "אתה לא מסכים עם החלטה של חבר צוות אחר. איך אתה מתנהג?",
-    type: "textarea",
-    required: true,
-    min: 20,
-    max: 800
-  },
-  {
     id: "strengths",
     section: "אופי ושיקול דעת",
     label: "מהן שלוש החוזקות העיקריות שלך, ומהן החולשות שלך?",
