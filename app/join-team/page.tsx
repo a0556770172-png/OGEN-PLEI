@@ -25,7 +25,7 @@ function Notice({ icon: Icon, title, text, tone = "text-primary-light", children
   );
 }
 
-export default async function JoinTeamPage() {
+export default async function JoinTeamPage({ searchParams }: { searchParams: { preview?: string } }) {
   const [{ user, profile }, open] = await Promise.all([getCurrentProfile(), isTeamRecruitOpen()]);
 
   let body: React.ReactNode;
@@ -37,6 +37,16 @@ export default async function JoinTeamPage() {
         <Link href="/login?redirect=/join-team" className="btn-primary">התחברות</Link>
         <Link href="/signup/user" className="text-xs text-gray-400 hover:text-white hover:underline">אין חשבון? הרשמה</Link>
       </Notice>
+    );
+  } else if (isStaff(profile) && searchParams.preview === "1" && profile.role === "admin") {
+    // תצוגה מקדימה למנהל: רואים את השאלון כמו שהמועמד רואה אותו (השליחה תידחה כי אתה כבר בצוות)
+    body = (
+      <>
+        <div className="rounded-xl border border-gold/40 bg-gold/10 px-4 py-3 text-center text-sm text-gold">
+          תצוגה מקדימה למנהל - אפשר למלא ולראות, אבל שליחה לא תתקבל כי אתה כבר חלק מהצוות.
+        </div>
+        <TeamApplyForm />
+      </>
     );
   } else if (isStaff(profile)) {
     body = <Notice icon={ShieldCheck} title="אתה כבר חלק מהצוות" text="תודה על העשייה! אין צורך להגיש מועמדות." tone="text-accent" />;

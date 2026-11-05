@@ -17,6 +17,11 @@ export default function StaffRecruitBadge() {
 
   useEffect(() => {
     let active = true;
+    // תצוגה מקדימה: ?recruit=1 מציג את הבאנר גם לצוות/למי שסגר אותו (כדי שהמנהל יוכל לראות איך זה נראה)
+    if (new URLSearchParams(window.location.search).get("recruit") === "1") {
+      setShow(true);
+      return;
+    }
     try {
       const t = Number(localStorage.getItem(DISMISS_KEY) ?? 0);
       if (t && Date.now() - t < DISMISS_DAYS * 86_400_000) return;
