@@ -80,7 +80,9 @@ export default function ForumPostCard({
   }
 
   async function copyLink() {
-    const url = `${window.location.origin}/forum/${threadId}#post-${post.id}`;
+    const url = isRoot
+      ? `${window.location.origin}/forum/${threadId}`
+      : `${window.location.origin}/forum/${threadId}?post=${post.id}#post-${post.id}`;
     try {
       await navigator.clipboard.writeText(url);
       setLinkCopied(true);
@@ -233,7 +235,7 @@ export default function ForumPostCard({
               )}
               {post.replyTo && variant !== "list" && (
                 <a
-                  href={`#post-${post.replyTo.id}`}
+                  href={`/forum/${threadId}?post=${post.replyTo.id}#post-${post.replyTo.id}`}
                   onClick={(e) => e.stopPropagation()}
                   className="mt-1.5 block truncate rounded-lg border border-border bg-surface2/50 px-2.5 py-1 text-[11px] text-gray-400 transition hover:border-primary/40 hover:text-gray-200"
                 >
@@ -244,6 +246,7 @@ export default function ForumPostCard({
               )}
               <ForumBody
                 text={post.body}
+                mentions={variant === "list" ? [] : post.mentions}
                 className={`mt-1 text-sm text-gray-300 ${variant === "list" ? "line-clamp-3" : ""}`}
               />
             </>

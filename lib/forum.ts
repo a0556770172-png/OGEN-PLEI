@@ -34,6 +34,8 @@ export interface ForumPost {
   editedAt: string | null;
   // אם זו תגובה לתגובה מסוימת - מי ומה (קטע קצר), לתצוגת "בתגובה ל..."
   replyTo: { id: string; username: string; snippet: string } | null;
+  // משתמשים שהוזכרו בהודעה (@שם)
+  mentions: { id: string; username: string }[];
 }
 
 export type ForumSort = "new" | "top";
@@ -48,6 +50,22 @@ async function enrich(rows: any[], viewerId: string | null): Promise<ForumPost[]
     ? await admin.from("forum_posts").select("id, user_id, body, hidden").in("id", replyToIds)
     : { data: [] as any[] };
   const authorIds = [...new Set([...rows.map((r) => r.user_id), ...(replyTargets ?? []).map((t: any) => t.user_id)])];
+
+  // הזכרות (@שם) - מי הוזכר בכל הודעה
+  const { data: mentionRows } = await admin.from("forum_mentions").select("post_id, user_id").in("post_id", ids);
+  const mentionUserIds = [...new Set((mentionRows ?? []).map((m: any) => m.user_id))] as string[];
+  const { data: mentionProfiles } = mentionUserIds.length
+    ? await admin.from("profiles").select("id, username").in("id", mentionUserIds)
+    : { data: [] as any[] };
+  const mentionName = new Map((mentionProfiles ?? []).map((p: any) => [p.id, p.username]));
+  const mentionsByPost = new Map<string, { id: string; username: string }[]>();
+  for (const m of mentionRows ?? []) {
+    const username = mentionName.get((m as any).user_id);
+    if (!username) continue;
+    const list = mentionsByPost.get((m as any).post_id) ?? [];
+    list.push({ id: (m as any).user_id, username });
+    mentionsByPost.set((m as any).post_id, list);
+  }
 
   const [{ data: authors }, { data: likes }, { data: replyCounts }] = await Promise.all([
     admin.from("profiles").select("id, username, avatar_key, role, is_moderator, is_pro, forum_banned").in("id", authorIds),
@@ -118,7 +136,8 @@ async function enrich(rows: any[], viewerId: string | null): Promise<ForumPost[]
     replyCount: replyCount.get(r.id) ?? 0,
     isMine: !!viewerId && r.user_id === viewerId,
     editedAt: r.edited_at ?? null,
-    replyTo: r.reply_to_id ? targetMap.get(r.reply_to_id) ?? null : null
+    replyTo: r.reply_to_id ? targetMap.get(r.reply_to_id) ?? null : null,
+    mentions: mentionsByPost.get(r.id) ?? []
   }));
 }
 
@@ -162,23 +181,57 @@ export async function getForumThreads(
   return sorted;
 }
 
-// פוסט בודד + התגובות שלו.
+// כמה תגובות בכל עמוד של דיון
+export const FORUM_REPLIES_PAGE_SIZE = 30;
+
+// פוסט בודד + עמוד אחד מהתגובות שלו (30 בעמוד). focusPost - תגובה מסוימת: מחשבים באיזה עמוד היא נמצאת
+// ומחזירים אותו (קישורים ישירים והתראות מובילים אליה).
 export async function getForumThread(
   id: string,
   viewerId: string | null,
-  isStaff = false
-): Promise<{ post: ForumPost; replies: ForumPost[] } | null> {
+  isStaff = false,
+  opts: { page?: number; focusPost?: string | null } = {}
+): Promise<{ post: ForumPost; replies: ForumPost[]; total: number; page: number; pages: number } | null> {
   const admin = createAdminSupabase();
   const { data: root } = await admin.from("forum_posts").select("*").eq("id", id).is("parent_id", null).maybeSingle();
   if (!root) return null;
   if (root.hidden && !isStaff) return null;
 
-  let rq = admin.from("forum_posts").select("*").eq("parent_id", id).order("created_at", { ascending: true });
+  const pageSize = FORUM_REPLIES_PAGE_SIZE;
+  let countQ = admin.from("forum_posts").select("id", { count: "exact", head: true }).eq("parent_id", id);
+  if (!isStaff) countQ = countQ.eq("hidden", false);
+  const { count } = await countQ;
+  const total = count ?? 0;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  let page = Math.min(Math.max(1, opts.page ?? 1), pages);
+
+  if (opts.focusPost) {
+    const { data: focus } = await admin.from("forum_posts").select("created_at, parent_id").eq("id", opts.focusPost).maybeSingle();
+    if (focus && focus.parent_id === id) {
+      let beforeQ = admin
+        .from("forum_posts")
+        .select("id", { count: "exact", head: true })
+        .eq("parent_id", id)
+        .lt("created_at", focus.created_at);
+      if (!isStaff) beforeQ = beforeQ.eq("hidden", false);
+      const { count: before } = await beforeQ;
+      page = Math.min(pages, Math.floor((before ?? 0) / pageSize) + 1);
+    }
+  }
+
+  const from = (page - 1) * pageSize;
+  let rq = admin
+    .from("forum_posts")
+    .select("*")
+    .eq("parent_id", id)
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+    .range(from, from + pageSize - 1);
   if (!isStaff) rq = rq.eq("hidden", false);
   const { data: replyRows } = await rq;
 
   const [[post], replies] = await Promise.all([enrich([root], viewerId), enrich(replyRows ?? [], viewerId)]);
-  return { post, replies };
+  return { post, replies, total, page, pages };
 }
 
 // לפאנל הפיקוח: כל מה שנכתב בפורום (פוסטים ותגובות, כולל מוסתרים), החדש קודם.

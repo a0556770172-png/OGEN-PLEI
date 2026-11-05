@@ -181,20 +181,48 @@ export async function notifyForForumReply(replyId: string): Promise<void> {
     kind: "forum_reply",
     title: `${name} הגיב ל: ${threadTitle}`,
     body: reply.body.slice(0, 90),
-    url: `/forum/${reply.parent_id}#post-${reply.id}`
+    url: `/forum/${reply.parent_id}?post=${reply.id}#post-${reply.id}`
   };
   if (directTarget) {
     await deliver([directTarget], {
       kind: "forum_reply",
       title: `${name} ענה לך בפורום`,
       body: reply.body.slice(0, 90),
-      url: `/forum/${reply.parent_id}#post-${reply.id}`
+      url: `/forum/${reply.parent_id}?post=${reply.id}#post-${reply.id}`
     });
   }
   if (targets.length > 0) await deliver(targets, notif);
 
   // הצוות רואה בפעמון ההתראות כל תגובה חדשה בפורום, גם אם לא עוקב אחרי הדיון.
   await notifyStaffInApp(notif, reply.user_id);
+}
+
+// נקרא אחרי שהודעה בפורום נשמרה עם הזכרות (@שם) - מתריע למוזכרים. מי שכבר קיבל "ענה לך" על אותה הודעה לא מקבל עוד אחת.
+export async function notifyForumMentions(postId: string): Promise<void> {
+  const admin = createAdminSupabase();
+  const { data: post } = await admin
+    .from("forum_posts")
+    .select("id, user_id, parent_id, reply_to_id, body, hidden, author:profiles!forum_posts_user_id_fkey(username)")
+    .eq("id", postId)
+    .maybeSingle();
+  if (!post || post.hidden) return;
+
+  const { data: rows } = await admin.from("forum_mentions").select("user_id").eq("post_id", postId);
+  let targets = [...new Set((rows ?? []).map((r) => r.user_id))].filter((id) => id !== post.user_id);
+  if ((post as any).reply_to_id) {
+    const { data: replied } = await admin.from("forum_posts").select("user_id").eq("id", (post as any).reply_to_id).maybeSingle();
+    if (replied) targets = targets.filter((id) => id !== replied.user_id);
+  }
+  if (targets.length === 0) return;
+
+  const threadId = post.parent_id ?? post.id;
+  const name = (post as any).author?.username ?? "משתמש";
+  await deliver(targets, {
+    kind: "forum_mention",
+    title: `${name} הזכיר אותך בפורום`,
+    body: post.body.slice(0, 90),
+    url: `/forum/${threadId}?post=${post.id}#post-${post.id}`
+  });
 }
 
 // התראה בתוך האתר (feed + push) לכל המנהלים - למקרים שהמנהל חייב לדעת עליהם מיד.

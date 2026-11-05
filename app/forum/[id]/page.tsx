@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, MessageSquare } from "lucide-react";
+import { ArrowRight, MessageSquare, ChevronRight, ChevronLeft } from "lucide-react";
 import { getCurrentProfile } from "@/lib/profile";
 import { isStaff } from "@/lib/auth-helpers";
 import { getForumThread } from "@/lib/forum";
@@ -12,13 +12,57 @@ import EmailNotifyToggle from "@/components/EmailNotifyToggle";
 
 export const dynamic = "force-dynamic";
 
-export default async function ForumThreadPage({ params }: { params: { id: string } }) {
+// עימוד תגובות: 30 בכל עמוד. ?page=N לעמוד מסוים, ?post=<id> לעמוד שבו נמצאת תגובה מסוימת (קישורים ישירים והתראות).
+function Pager({ threadId, page, pages }: { threadId: string; page: number; pages: number }) {
+  if (pages <= 1) return null;
+  const nums = new Set<number>([1, pages, page - 2, page - 1, page, page + 1, page + 2]);
+  const list = [...nums].filter((n) => n >= 1 && n <= pages).sort((a, b) => a - b);
+  const href = (p: number) => (p === 1 ? `/forum/${threadId}` : `/forum/${threadId}?page=${p}`);
+  const cls = "inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-xs font-bold transition";
+  const items: React.ReactNode[] = [];
+  list.forEach((n, i) => {
+    if (i > 0 && n - list[i - 1] > 1) items.push(<span key={`gap-${n}`} className="px-1 text-gray-600">…</span>);
+    items.push(
+      n === page ? (
+        <span key={n} className={`${cls} bg-primary text-[#fff]`}>{n}</span>
+      ) : (
+        <Link key={n} href={href(n)} prefetch={false} className={`${cls} bg-surface2 text-gray-300 hover:text-white`}>{n}</Link>
+      )
+    );
+  });
+  return (
+    <nav aria-label="עמודי תגובות" className="flex flex-wrap items-center justify-center gap-1.5">
+      {page > 1 && (
+        <Link href={href(page - 1)} prefetch={false} className={`${cls} gap-1 bg-surface2 text-gray-300 hover:text-white`}>
+          <ChevronRight className="h-3.5 w-3.5" /> הקודם
+        </Link>
+      )}
+      {items}
+      {page < pages && (
+        <Link href={href(page + 1)} prefetch={false} className={`${cls} gap-1 bg-surface2 text-gray-300 hover:text-white`}>
+          הבא <ChevronLeft className="h-3.5 w-3.5" />
+        </Link>
+      )}
+    </nav>
+  );
+}
+
+export default async function ForumThreadPage({
+  params,
+  searchParams
+}: {
+  params: { id: string };
+  searchParams: { page?: string; post?: string };
+}) {
   const { user, profile } = await getCurrentProfile();
   const staff = profile ? isStaff(profile) : false;
 
-  const data = await getForumThread(params.id, user?.id ?? null, staff);
+  const data = await getForumThread(params.id, user?.id ?? null, staff, {
+    page: parseInt(searchParams.page ?? "", 10) || 1,
+    focusPost: searchParams.post ?? null
+  });
   if (!data) notFound();
-  const { post, replies } = data;
+  const { post, replies, total, page, pages } = data;
 
   let followsThread = false;
   if (user) {
@@ -55,8 +99,11 @@ export default async function ForumThreadPage({ params }: { params: { id: string
       <ForumPostCard post={post} loggedIn={!!user} isStaff={staff} variant="detail" />
 
       <div className="flex items-center gap-2 px-1 pt-2 text-sm font-bold text-gray-300">
-        <MessageSquare className="h-4 w-4" /> {replies.length.toLocaleString("he-IL")} תגובות
+        <MessageSquare className="h-4 w-4" /> {total.toLocaleString("he-IL")} תגובות
+        {pages > 1 && <span className="text-xs font-normal text-gray-500">· עמוד {page} מתוך {pages}</span>}
       </div>
+
+      <Pager threadId={post.id} page={page} pages={pages} />
 
       {replies.length > 0 && (
         <div className="flex flex-col gap-3">
@@ -65,6 +112,8 @@ export default async function ForumThreadPage({ params }: { params: { id: string
           ))}
         </div>
       )}
+
+      <Pager threadId={post.id} page={page} pages={pages} />
 
       <ForumComposer parentId={post.id} loggedIn={!!user} variant="reply" />
     </div>

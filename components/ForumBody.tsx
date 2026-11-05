@@ -1,6 +1,56 @@
-// גוף הודעה בפורום, עם תמיכה בציטוט: שורות שמתחילות ב-">" מוצגות כבלוק ציטוט (כמו בפורומים רגילים).
-// בלי dangerouslySetInnerHTML - רק טקסט, כך שאי אפשר להזריק תוכן.
-export default function ForumBody({ text, className = "" }: { text: string; className?: string }) {
+import Link from "next/link";
+import type { ReactNode } from "react";
+
+type Mention = { id: string; username: string };
+
+function escapeRegExp(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// הופך "@שם משתמש" (רק למשתמשים שהוזכרו בפועל בהודעה) לקישור לפרופיל שלהם.
+function withMentions(text: string, mentions: Mention[]): ReactNode {
+  if (!mentions.length) return text;
+  const sorted = [...mentions].sort((a, b) => b.username.length - a.username.length);
+  const re = new RegExp("@(" + sorted.map((m) => escapeRegExp(m.username)).join("|") + ")", "g");
+  const byName = new Map(sorted.map((m) => [m.username, m.id]));
+  const out: ReactNode[] = [];
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) out.push(text.slice(last, match.index));
+    const id = byName.get(match[1]);
+    out.push(
+      id ? (
+        <Link
+          key={`${match.index}-${id}`}
+          href={`/users/${id}`}
+          prefetch={false}
+          onClick={(e) => e.stopPropagation()}
+          className="font-bold text-primary-light hover:underline"
+        >
+          @{match[1]}
+        </Link>
+      ) : (
+        match[0]
+      )
+    );
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
+// גוף הודעה בפורום: ציטוט (שורות שמתחילות ב-">") כבלוק מעוצב, והזכרות (@שם) כקישורים לפרופיל.
+// בלי dangerouslySetInnerHTML - רק טקסט ורכיבי React, כך שאי אפשר להזריק תוכן.
+export default function ForumBody({
+  text,
+  className = "",
+  mentions = []
+}: {
+  text: string;
+  className?: string;
+  mentions?: Mention[];
+}) {
   const blocks: { quote: boolean; lines: string[] }[] = [];
   for (const line of text.split("\n")) {
     const isQuote = line.startsWith(">");
@@ -20,7 +70,7 @@ export default function ForumBody({ text, className = "" }: { text: string; clas
           </blockquote>
         ) : (
           <p key={i} className="whitespace-pre-wrap">
-            {t}
+            {withMentions(t, mentions)}
           </p>
         );
       })}

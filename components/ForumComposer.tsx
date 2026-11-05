@@ -1,9 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Send, Loader2, PenLine, Reply, X } from "lucide-react";
+import Image from "next/image";
+import { Send, Loader2, PenLine, Reply, X, User as UserIcon } from "lucide-react";
+
+type MentionUser = { id: string; username: string; avatarUrl?: string | null };
 
 // כתיבת פוסט חדש (parentId ריק) או תגובה. loggedIn=false -> מציג הזמנה להתחבר.
+// תומך בתגובה לתגובה מסוימת (כפתורי "הגב"/"ציטוט" בדיון), ובהזכרת משתמשים: מקלידים @ ובוחרים מהרשימה.
 export default function ForumComposer({
   parentId = null,
   loggedIn,
@@ -23,6 +27,11 @@ export default function ForumComposer({
   const [replyTo, setReplyTo] = useState<{ id: string; username: string } | null>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
 
+  // הזכרות: מי שנבחר מהרשימה (נשלח לשרת רק אם השם עדיין מופיע בטקסט)
+  const [mentions, setMentions] = useState<MentionUser[]>([]);
+  const [mentionQuery, setMentionQuery] = useState<{ start: number; text: string } | null>(null);
+  const [suggestions, setSuggestions] = useState<MentionUser[]>([]);
+
   useEffect(() => {
     if (variant !== "reply") return;
     function onCompose(e: Event) {
@@ -35,6 +44,63 @@ export default function ForumComposer({
     window.addEventListener("forum-compose", onCompose);
     return () => window.removeEventListener("forum-compose", onCompose);
   }, [variant]);
+
+  // הצעות להזכרה: חיפוש משתמשים לפי מה שהוקלד אחרי ה-@ (עם השהיה קצרה)
+  useEffect(() => {
+    const q = mentionQuery?.text.trim();
+    if (!q) {
+      setSuggestions([]);
+      return;
+    }
+    let active = true;
+    const t = setTimeout(() => {
+      fetch(`/api/users/list?limit=6&q=${encodeURIComponent(q)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          if (active && j && Array.isArray(j.users)) {
+            setSuggestions(j.users.map((u: any) => ({ id: u.id, username: u.username, avatarUrl: u.avatarUrl })));
+          }
+        })
+        .catch(() => {});
+    }, 200);
+    return () => {
+      active = false;
+      clearTimeout(t);
+    };
+  }, [mentionQuery?.text]);
+
+  function onBodyChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const value = e.target.value;
+    setBody(value);
+    const pos = e.target.selectionStart ?? value.length;
+    const before = value.slice(0, pos);
+    const at = before.lastIndexOf("@");
+    if (at >= 0 && (at === 0 || /\s/.test(before[at - 1]))) {
+      const q = before.slice(at + 1);
+      if (q.length <= 20 && !q.includes("\n")) {
+        setMentionQuery({ start: at, text: q });
+        return;
+      }
+    }
+    setMentionQuery(null);
+  }
+
+  function pickMention(u: MentionUser) {
+    if (!mentionQuery) return;
+    const pos = areaRef.current?.selectionStart ?? body.length;
+    const before = body.slice(0, mentionQuery.start);
+    const after = body.slice(pos);
+    const insert = `@${u.username} `;
+    setBody(before + insert + after);
+    setMentions((prev) => (prev.some((m) => m.id === u.id) ? prev : [...prev, u]));
+    setMentionQuery(null);
+    setSuggestions([]);
+    const caret = (before + insert).length;
+    setTimeout(() => {
+      areaRef.current?.focus();
+      areaRef.current?.setSelectionRange(caret, caret);
+    }, 0);
+  }
 
   if (!loggedIn) {
     return (
@@ -59,7 +125,13 @@ export default function ForumComposer({
       const res = await fetch("/api/forum/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: t, title: title.trim() || undefined, parentId: parentId || undefined, replyToId: replyTo?.id })
+        body: JSON.stringify({
+          body: t,
+          title: title.trim() || undefined,
+          parentId: parentId || undefined,
+          replyToId: replyTo?.id,
+          mentionIds: mentions.filter((m) => t.includes(`@${m.username}`)).map((m) => m.id)
+        })
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -69,8 +141,10 @@ export default function ForumComposer({
       setTitle("");
       setBody("");
       setReplyTo(null);
+      setMentions([]);
       if (variant === "post") setOpen(false);
-      if (parentId) router.refresh();
+      // תגובה: עוברים להודעה החדשה (הדף מחשב לבד באיזה עמוד של הדיון היא נמצאת)
+      if (parentId) router.push(`/forum/${parentId}?post=${json.id}#post-${json.id}`);
       else router.push(`/forum/${json.id}`);
     } catch {
       setError("שגיאת רשת - נסו שוב");
@@ -112,15 +186,42 @@ export default function ForumComposer({
           className="input-field"
         />
       )}
-      <textarea
-        ref={areaRef}
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        rows={variant === "reply" ? 3 : 5}
-        maxLength={5000}
-        placeholder={variant === "reply" ? "כתבו תגובה…" : "כתבו כאן מה על הלב — מה מפריע, מה חסר, איך אפשר לקדם את עוגן פליי…"}
-        className="input-field resize-none"
-      />
+      <div className="relative">
+        <textarea
+          ref={areaRef}
+          value={body}
+          onChange={onBodyChange}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setMentionQuery(null);
+          }}
+          rows={variant === "reply" ? 3 : 5}
+          maxLength={5000}
+          placeholder={variant === "reply" ? "כתבו תגובה… (@ להזכרת משתמש)" : "כתבו כאן מה על הלב — מה מפריע, מה חסר, איך אפשר לקדם את עוגן פליי… (@ להזכרת משתמש)"}
+          className="input-field w-full resize-none"
+        />
+        {mentionQuery && suggestions.length > 0 && (
+          <div className="absolute inset-x-0 top-full z-30 mt-1 overflow-hidden rounded-xl border border-border bg-bg shadow-2xl">
+            {suggestions.map((u) => (
+              <button
+                key={u.id}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => pickMention(u)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-right text-sm text-gray-200 transition hover:bg-surface2"
+              >
+                <span className="relative flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface2 ring-1 ring-border">
+                  {u.avatarUrl ? (
+                    <Image src={u.avatarUrl} alt="" fill sizes="24px" className="object-cover" />
+                  ) : (
+                    <UserIcon className="h-3 w-3 text-primary-light" />
+                  )}
+                </span>
+                <span className="font-bold">@{u.username}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       {error && <p className="text-xs text-red-400">{error}</p>}
       <div className="flex items-center gap-2">
         <button onClick={submit} disabled={busy} className="btn-primary text-sm">

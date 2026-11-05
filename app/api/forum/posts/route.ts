@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
-import { notifyForNewForumThread, notifyForForumReply } from "@/lib/notifications";
+import { notifyForNewForumThread, notifyForForumReply, notifyForumMentions } from "@/lib/notifications";
 
 const MAX_BODY = 5000;
 const MAX_TITLE = 140;
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { title, body, parentId, replyToId } = await request.json().catch(() => ({}));
+  const { title, body, parentId, replyToId, mentionIds } = await request.json().catch(() => ({}));
   const cleanBody = typeof body === "string" ? body.trim() : "";
   if (cleanBody.length < 2) return NextResponse.json({ error: "צריך לכתוב משהו" }, { status: 400 });
   if (cleanBody.length > MAX_BODY) return NextResponse.json({ error: "הטקסט ארוך מדי" }, { status: 400 });
@@ -69,6 +69,20 @@ export async function POST(request: Request) {
     .single();
   if (error || !created) return NextResponse.json({ error: "שגיאה בשמירה" }, { status: 500 });
 
+  // הזכרות (@שם): רק מי שנבחר מהרשימה ושהשם שלו באמת מופיע בטקסט, עד 5, לא עצמך ולא חסומים
+  try {
+    if (Array.isArray(mentionIds) && mentionIds.length) {
+      const ids = [...new Set(mentionIds.filter((x: unknown) => typeof x === "string"))].slice(0, 5).filter((id) => id !== user.id) as string[];
+      if (ids.length) {
+        const { data: mentioned } = await admin.from("profiles").select("id, username, banned").in("id", ids);
+        const valid = (mentioned ?? []).filter((u) => !u.banned && cleanBody.includes(`@${u.username}`));
+        if (valid.length) await admin.from("forum_mentions").insert(valid.map((u) => ({ post_id: created.id, user_id: u.id })));
+      }
+    }
+  } catch {
+    // ignore
+  }
+
   // מעקב אוטומטי אחרי הדיון + התראות. best-effort - לא מפיל את הבקשה.
   const threadId = parent ?? created.id;
   try {
@@ -84,6 +98,11 @@ export async function POST(request: Request) {
   try {
     if (parent) await notifyForForumReply(created.id);
     else await notifyForNewForumThread(created.id);
+  } catch {
+    // ignore
+  }
+  try {
+    await notifyForumMentions(created.id);
   } catch {
     // ignore
   }
