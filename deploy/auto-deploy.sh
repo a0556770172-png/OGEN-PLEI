@@ -18,6 +18,9 @@ APP_DIR="/opt/ogen-play"
 BUILD_DIR="$HOME/ogen-play-build"
 BRANCH="main"
 SERVICE="ogen-play"
+# שלוש מופעים של האתר (פורטים 3000-3002) מאחורי nginx: Node רץ על ליבה אחת, כך מנצלים את 4 הליבות
+SERVICES="ogen-play ogen-play-b ogen-play-c"
+PORTS="3000 3001 3002"
 LOG="$HOME/ogen-deploy.log"
 LOCK="/tmp/ogen-deploy.lock"
 APPLIED_FILE="$HOME/ogen-applied-migrations.txt"
@@ -99,14 +102,18 @@ rm -rf "$APP_DIR/.next.prev" "$APP_DIR/.next.new"
 mv "$BUILD_DIR/.next" "$APP_DIR/.next.new"
 mv "$APP_DIR/.next" "$APP_DIR/.next.prev" 2>/dev/null
 mv "$APP_DIR/.next.new" "$APP_DIR/.next"
-sudo systemctl restart "$SERVICE"
+sudo systemctl restart $SERVICES
 
 # ---------- 4. בדיקת תקינות + חזרה לגרסה הקודמת אם צריך ----------
 healthy=0
 for i in $(seq 1 30); do
   sleep 2
-  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:3000/ || true)
-  if [ "$code" = "200" ]; then healthy=1; break; fi
+  all_ok=1
+  for port in $PORTS; do
+    code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://localhost:$port/" || true)
+    [ "$code" = "200" ] || all_ok=0
+  done
+  if [ "$all_ok" = "1" ]; then healthy=1; break; fi
 done
 if [ "$healthy" = "1" ]; then
   echo "OK: deployed ${NEW:0:7} at $(date '+%F %T')"
@@ -116,6 +123,6 @@ else
   if [ -d "$APP_DIR/.next.prev" ]; then
     rm -rf "$APP_DIR/.next.bad" && mv "$APP_DIR/.next" "$APP_DIR/.next.bad" && mv "$APP_DIR/.next.prev" "$APP_DIR/.next"
   fi
-  sudo systemctl restart "$SERVICE"
+  sudo systemctl restart $SERVICES
   fail "!! rolled back from ${NEW:0:7}"
 fi
