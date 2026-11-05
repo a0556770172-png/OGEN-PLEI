@@ -45,12 +45,19 @@ export default function AppModal({
   const category = categories?.find((c) => c.value === app.category)?.label ?? app.category;
   // פוסט הפרסום המלא לא נשלח ברשימת הכרטיסים (חוסך מגה-בייטים בעמוד הבית) - נטען כשהחלונית נפתחת.
   const [descriptionHtml, setDescriptionHtml] = useState<string>(app.description_html ?? "");
+  const [screenshotKeys, setScreenshotKeys] = useState<string[]>(app.screenshot_keys ?? []);
+  const [videoKey, setVideoKey] = useState<string | null>(app.video_key ?? null);
   useEffect(() => {
-    if (app.description_html) return;
+    if (app.description_html && app.screenshot_keys) return;
     let active = true;
     fetch(`/api/apps/${app.id}/description`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => { if (active && j?.html) setDescriptionHtml(j.html); })
+      .then((j) => {
+        if (!active || !j) return;
+        if (j.html) setDescriptionHtml(j.html);
+        if (Array.isArray(j.screenshotKeys)) setScreenshotKeys(j.screenshotKeys);
+        if (j.videoKey) setVideoKey(j.videoKey);
+      })
       .catch(() => {});
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -221,7 +228,7 @@ export default function AppModal({
               />
             </div>
             <div className="mt-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-              <ScreenshotsButton keys={app.screenshot_keys} videoKey={app.video_key} appName={app.name} />
+              <ScreenshotsButton keys={screenshotKeys} videoKey={videoKey} appName={app.name} />
               {app.status === "approved" && app.source === "public_suggestion" && <UpdateAppButton appId={app.id} />}
               {viewerLoggedIn && app.status === "approved" && app.source !== "public_suggestion" && (
                 <NotifyButton

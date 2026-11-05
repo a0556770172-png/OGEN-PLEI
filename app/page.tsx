@@ -3,7 +3,7 @@ import AppGrid from "@/components/AppGrid";
 import UpdatesPopup from "@/components/UpdatesPopup";
 import ReferralHomeBanner from "@/components/ReferralHomeBanner";
 import ForumMoveTour from "@/components/ForumMoveTour";
-import { getApprovedAppsLite, getIconUrl } from "@/lib/apps-data";
+import { getApprovedAppsLite, getIconUrl, slimForCard } from "@/lib/apps-data";
 import { getCategoriesServer } from "@/lib/categories";
 import { getUsersStats } from "@/lib/users-data";
 import { getTotalSiteVisits } from "@/lib/site-stats";
@@ -23,7 +23,7 @@ export default async function HomePage() {
     getSiteSettingsServer()
   ]);
   const withIcons = await Promise.all(
-    apps.map(async (app) => ({ app, iconUrl: await getIconUrl(app.icon_key) }))
+    apps.map(async (app) => ({ app: slimForCard(app), iconUrl: await getIconUrl(app.icon_key) }))
   );
 
   const totalDownloads = apps.reduce((sum, app) => sum + (app.downloads_count ?? 0), 0);
