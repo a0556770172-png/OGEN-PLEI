@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCachedUser } from "@/lib/auth-cache";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { memo } from "@/lib/memo";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 // עכשיו. כך משתמש שנחסם בזמן שהוא באתר מועבר מיד לעמוד /banned, בלי לחכות לניווט/רענון.
 export async function GET() {
   const supabase = createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCachedUser();
   if (!user) return NextResponse.json({ guest: true }, { headers: { "Cache-Control": "no-store" } });
 
   const profile = await memo(`ban-status:${user.id}`, 10_000, async () => {

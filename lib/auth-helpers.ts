@@ -1,10 +1,11 @@
 import { createServerSupabase } from "./supabase/server";
+import { getCachedUser } from "./auth-cache";
 import { createAdminSupabase } from "./supabase/admin";
 import type { Profile } from "@/types/database";
 
 export async function requireProfile(): Promise<{ user: any; profile: Profile } | { error: string; status: number }> {
   const supabase = createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCachedUser();
   if (!user) return { error: "יש להתחבר", status: 401 };
 
   const admin = createAdminSupabase();

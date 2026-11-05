@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCachedUser } from "@/lib/auth-cache";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getBotConfig, botIsLive } from "@/lib/bot";
 import { maybeRunHealthCheck } from "@/lib/botHealth";
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
 // מפעילה (לכל היותר פעם בכמה דקות) בדיקת רקע אם הבוט חזר לעבוד - ראו lib/botHealth.ts.
 export async function GET() {
   const supabase = createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCachedUser();
   const cfg = await memo("bot-config", 10_000, getBotConfig);
   void maybeRunHealthCheck(cfg).catch(() => {});
 

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCachedUser } from "@/lib/auth-cache";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { isStaff } from "@/lib/auth-helpers";
@@ -14,7 +15,7 @@ import { isStaff } from "@/lib/auth-helpers";
 // הביניים (למשתמש רגיל: תמיד. לצוות/מנהל: מוגבל ליום, כדי לא להטריד מי שמוריד הרבה לבדיקה).
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   const supabase = createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCachedUser();
   if (!user) return NextResponse.json({ alreadyDownloaded: false, isStaff: false });
 
   const admin = createAdminSupabase();

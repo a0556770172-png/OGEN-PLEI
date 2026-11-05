@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCachedUser } from "@/lib/auth-cache";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getUserAppUpdates } from "@/lib/updates";
 
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 // משמש את חלונית הכניסה (components/UpdatesPopup.tsx) שמיידעת על העדכונים בכניסה לאתר.
 export async function GET() {
   const supabase = createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCachedUser();
   if (!user) return NextResponse.json({ updates: [] });
 
   const updates = await getUserAppUpdates(user.id);

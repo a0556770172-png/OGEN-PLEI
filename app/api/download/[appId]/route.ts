@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCachedUser } from "@/lib/auth-cache";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { createDownloadUrl, BUCKETS } from "@/lib/r2";
@@ -6,7 +7,7 @@ import { addPoints } from "@/lib/points";
 
 export async function POST(request: Request, { params }: { params: { appId: string } }) {
   const supabase = createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCachedUser();
   if (!user) return NextResponse.json({ error: "יש להתחבר כדי להוריד" }, { status: 401 });
 
   const admin = createAdminSupabase();
@@ -72,7 +73,8 @@ export async function POST(request: Request, { params }: { params: { appId: stri
   }
 
   if (shouldRecord) {
-    await admin.from("apps").update({ downloads_count: app.downloads_count + 1 }).eq("id", app.id);
+    const { error: incError } = await admin.rpc("increment_app_downloads", { p_id: app.id });
+    if (incError) await admin.from("apps").update({ downloads_count: app.downloads_count + 1 }).eq("id", app.id);
     // שומרים גם את הגרסה שהורדה - לזיהוי עתידי של עדכון זמין (פיצ'ר 5, ראו lib/updates.ts).
     await admin.from("download_events").insert({ user_id: user.id, app_id: app.id, downloaded_version: app.version });
   }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCachedUser } from "@/lib/auth-cache";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { grantReferralIfPending, extractClientIp } from "@/lib/referral";
@@ -7,7 +8,7 @@ import { grantReferralIfPending, extractClientIp } from "@/lib/referral";
 // לא קריטי אם זה נכשל בשקט (לא חוסם שום דבר במסך).
 export async function POST(request: Request) {
   const supabase = createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCachedUser();
   if (!user) return NextResponse.json({ ok: false });
 
   const admin = createAdminSupabase();

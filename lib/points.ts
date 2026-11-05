@@ -7,6 +7,18 @@ const PRO_POINTS_THRESHOLD = 300;
 
 export async function addPoints(profileId: string, delta: number) {
   const admin = createAdminSupabase();
+
+  // עדכון אטומי במסד (מיגרציה 0073) - בלי אובדן עדכונים כשכמה הורדות/לייקים מגיעים יחד
+  const { data: updatedPoints, error: rpcError } = await admin.rpc("add_points", { p_id: profileId, p_delta: delta });
+  if (!rpcError) {
+    if (typeof updatedPoints !== "number") return; // הפרופיל לא קיים
+    if (updatedPoints >= PRO_POINTS_THRESHOLD) {
+      await admin.from("profiles").update({ is_pro: true, pro_status: "approved" }).eq("id", profileId).eq("is_pro", false);
+    }
+    return;
+  }
+
+  // גיבוי (לפני המיגרציה): קריאה-חישוב-כתיבה כמו קודם
   const { data: profile } = await admin.from("profiles").select("points, is_pro").eq("id", profileId).single();
   if (!profile) return;
 
