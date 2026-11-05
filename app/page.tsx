@@ -3,7 +3,7 @@ import AppGrid from "@/components/AppGrid";
 import UpdatesPopup from "@/components/UpdatesPopup";
 import ReferralHomeBanner from "@/components/ReferralHomeBanner";
 import ForumMoveTour from "@/components/ForumMoveTour";
-import { getApprovedApps, getIconUrl } from "@/lib/apps-data";
+import { getApprovedAppsLite, getIconUrl } from "@/lib/apps-data";
 import { getCategoriesServer } from "@/lib/categories";
 import { getUsersStats } from "@/lib/users-data";
 import { getTotalSiteVisits } from "@/lib/site-stats";
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const [apps, categories, usersStats, totalVisits, siteSettings] = await Promise.all([
-    getApprovedApps(),
+    getApprovedAppsLite(),
     getCategoriesServer(),
     getUsersStats(),
     getTotalSiteVisits(),

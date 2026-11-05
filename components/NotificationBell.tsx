@@ -1,6 +1,8 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { cachedJson, invalidateJson } from "@/lib/clientSession";
+import { useVisibleInterval } from "@/lib/useVisibleInterval";
 import { Bell, MessageCircle, Siren, Package, Sparkles, Lightbulb, Users, ShieldAlert, KeyRound, CheckCheck, AlertTriangle, ServerCrash } from "lucide-react";
 
 type Conversation = { type: "ticket" | "council"; id: string; title: string; unreadCount: number };
@@ -22,31 +24,34 @@ export default function NotificationBell({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
+  const aliveRef = useRef(true);
   useEffect(() => {
-    let active = true;
-    async function load() {
-      try {
-        const [c, f] = await Promise.all([
-          fetch("/api/notifications/unread").then((r) => (r.ok ? r.json() : null)),
-          fetch("/api/notifications/feed").then((r) => (r.ok ? r.json() : null))
-        ]);
-        if (!active) return;
-        if (c) setConversations(c.conversations ?? []);
-        if (f) {
-          setFeed(f.items ?? []);
-          setFeedUnread(f.unread ?? 0);
-        }
-      } catch {
-        // כשל בטעינת ההתראות לא צריך לשבור שום דבר אחר בניווט
-      }
-    }
-    load();
-    const interval = setInterval(load, 25000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
+    aliveRef.current = true;
+    return () => { aliveRef.current = false; };
   }, []);
+
+  const load = useCallback(async () => {
+    try {
+      const [c, f] = await Promise.all([
+        cachedJson("/api/notifications/unread", 20_000),
+        cachedJson("/api/notifications/feed", 20_000)
+      ]);
+      if (!aliveRef.current) return;
+      if (c) setConversations(c.conversations ?? []);
+      if (f) {
+        setFeed(f.items ?? []);
+        setFeedUnread(f.unread ?? 0);
+      }
+    } catch {
+      // כשל בטעינת ההתראות לא צריך לשבור שום דבר אחר בניווט
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+  // כל דקה, ורק כשהלשונית מוצגת (קודם כל 25 שניות גם בלשוניות שברקע)
+  useVisibleInterval(load, 60_000);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -70,6 +75,7 @@ export default function NotificationBell({
     setOpen(next);
     if (next && feedUnread > 0) {
       fetch("/api/notifications/feed", { method: "POST" }).catch(() => {});
+      invalidateJson("/api/notifications");
       setFeedUnread(0);
     }
   }
@@ -79,6 +85,7 @@ export default function NotificationBell({
     try {
       const res = await fetch("/api/notifications/feed", { method: "DELETE" });
       if (res.ok) {
+        invalidateJson("/api/notifications");
         setFeed([]);
         setFeedUnread(0);
       } else {

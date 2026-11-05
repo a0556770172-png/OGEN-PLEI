@@ -66,6 +66,22 @@ export default function AppGrid({
   // פיצ'ר 2a: האפליקציה שנבחרה לפתיחה בחלונית צפה (Modal).
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  // חיפוש בתוכן פוסט הפרסום: רשימת הכרטיסים כבר לא נושאת את הטקסט המלא של כל פוסט, ולכן ההתאמה
+  // לפי תוכן הפוסט מתבצעת בשרת (עם השהיה קצרה בזמן הקלדה) ומתווספת להתאמה המקומית לפי שם/תיאור קצר.
+  const [remote, setRemote] = useState<{ q: string; ids: Set<string> } | null>(null);
+  useEffect(() => {
+    const q = query.toLowerCase().trim();
+    if (q.length < 2) { setRemote(null); return; }
+    let active = true;
+    const t = setTimeout(() => {
+      fetch(`/api/apps/search?q=${encodeURIComponent(q)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => { if (active && j && Array.isArray(j.ids)) setRemote({ q, ids: new Set<string>(j.ids) }); })
+        .catch(() => {});
+    }, 350);
+    return () => { active = false; clearTimeout(t); };
+  }, [query]);
+
   // מנויי התראות לקטגוריות של המשתמש המחובר.
   const [catSubs, setCatSubs] = useState<Set<string>>(new Set());
   const [catBusy, setCatBusy] = useState(false);
@@ -116,7 +132,10 @@ export default function AppGrid({
     const q = query.toLowerCase().trim();
     const list = items.filter(({ app }) => {
       const matchesTab = mainTab === "apps" ? isApk(app) : !isApk(app);
-      const matchesQuery = !q || (searchIndex.get(app.id) ?? app.name.toLowerCase()).includes(q);
+      const matchesQuery =
+        !q ||
+        (searchIndex.get(app.id) ?? app.name.toLowerCase()).includes(q) ||
+        (remote?.q === q && remote.ids.has(app.id));
       const matchesCategory = category === "all" || app.category === category;
       return matchesTab && matchesQuery && matchesCategory;
     });
@@ -128,7 +147,7 @@ export default function AppGrid({
     else if (sort === "name") sorted.sort((a, b) => a.app.name.localeCompare(b.app.name, "he"));
     else if (sort === "size") sorted.sort((a, b) => (b.app.file_size_bytes ?? 0) - (a.app.file_size_bytes ?? 0));
     return sorted;
-  }, [items, query, category, mainTab, sort, searchIndex]);
+  }, [items, query, category, mainTab, sort, searchIndex, remote]);
 
   const activeItem = activeId ? items.find(({ app }) => app.id === activeId) ?? null : null;
   const closeModal = useCallback(() => setActiveId(null), []);

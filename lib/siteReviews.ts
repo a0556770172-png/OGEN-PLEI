@@ -1,5 +1,6 @@
 import { createAdminSupabase } from "./supabase/admin";
 import { getAvatarUrl } from "./avatar";
+import { memo } from "./memo";
 
 export interface SiteReviewRow {
   id: string;
@@ -24,6 +25,12 @@ export interface SiteReviewsData {
 }
 
 export async function getSiteReviews(opts: { includeHidden?: boolean } = {}): Promise<SiteReviewsData & { hidden?: boolean[] }> {
+  // התצוגה הציבורית זהה לכולם - משותפת ל-15 שניות. תצוגת הצוות (כולל מוסתרות) תמיד טרייה.
+  if (opts.includeHidden) return loadSiteReviews(opts);
+  return memo("site-reviews", 15_000, () => loadSiteReviews(opts));
+}
+
+async function loadSiteReviews(opts: { includeHidden?: boolean } = {}): Promise<SiteReviewsData & { hidden?: boolean[] }> {
   const admin = createAdminSupabase();
   let q = admin
     .from("site_reviews")

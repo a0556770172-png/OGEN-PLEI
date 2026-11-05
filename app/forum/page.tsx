@@ -14,15 +14,24 @@ export const metadata = {
   description: "פורום קהילתי: מה מפריע, מה חסר, ואיך אפשר לשפר ולקדם את עוגן פליי."
 };
 
-export default async function ForumPage({ searchParams }: { searchParams: { sort?: string } }) {
+const FORUM_PAGE_SIZE = 30;
+
+export default async function ForumPage({ searchParams }: { searchParams: { sort?: string; limit?: string } }) {
   const { user, profile } = await getCurrentProfile();
   const staff = profile ? isStaff(profile) : false;
   const sort: ForumSort = searchParams.sort === "top" ? "top" : "new";
+  // טוענים 30 פוסטים בכל פעם (עם "הצג עוד") במקום 200 בבת אחת
+  const limit = Math.min(200, Math.max(FORUM_PAGE_SIZE, parseInt(searchParams.limit ?? "", 10) || FORUM_PAGE_SIZE));
 
-  const [threads, stats] = await Promise.all([
-    getForumThreads(user?.id ?? null, { sort, isStaff: staff }),
+  const [fetched, stats] = await Promise.all([
+    getForumThreads(user?.id ?? null, { sort, isStaff: staff, limit: limit + 1 }),
     getForumStats()
   ]);
+  const pinnedThreads = fetched.filter((t) => t.pinned);
+  const restThreads = fetched.filter((t) => !t.pinned);
+  const hasMore = restThreads.length > limit;
+  const threads = [...pinnedThreads, ...restThreads.slice(0, limit)];
+  const moreHref = `/forum?${sort === "top" ? "sort=top&" : ""}limit=${limit + FORUM_PAGE_SIZE}`;
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-5">
@@ -75,6 +84,11 @@ export default async function ForumPage({ searchParams }: { searchParams: { sort
           {threads.map((t) => (
             <ForumPostCard key={t.id} post={t} loggedIn={!!user} isStaff={staff} variant="list" />
           ))}
+          {hasMore && (
+            <Link href={moreHref} scroll={false} prefetch={false} className="btn-ghost mx-auto text-sm">
+              הצג עוד פוסטים
+            </Link>
+          )}
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 import { createAdminSupabase } from "./supabase/admin";
 import { getAvatarUrl } from "./avatar";
+import { memo } from "./memo";
 
 // כל לייק על פוסט ראשי בפורום מזכה את הכותב במוניטין אחד (פעם אחת לכל נותן-לייק).
 export const FORUM_LIKE_POINTS = 1;
@@ -101,15 +102,36 @@ async function enrich(rows: any[], viewerId: string | null): Promise<ForumPost[]
 }
 
 // רשימת הפוסטים הראשיים (threads). staff רואה גם מוסתרים.
+// limit = כמה פוסטים רגילים (לא נעוצים) לשלוף. הנעוצים תמיד נכללים. ב"הכי אהובים" צריך את כל
+// הפוסטים כדי למיין לפי לייקים, ולכן שם נשלפים עד 200 כמו קודם (והקורא חותך).
 export async function getForumThreads(
   viewerId: string | null,
-  opts: { sort?: ForumSort; isStaff?: boolean } = {}
+  opts: { sort?: ForumSort; isStaff?: boolean; limit?: number } = {}
 ): Promise<ForumPost[]> {
   const admin = createAdminSupabase();
-  let q = admin.from("forum_posts").select("*").is("parent_id", null).limit(200);
-  if (!opts.isStaff) q = q.eq("hidden", false);
-  const { data } = await q;
-  const posts = await enrich(data ?? [], viewerId);
+  let rows: any[] = [];
+  if (opts.sort === "top" || !opts.limit) {
+    let q = admin.from("forum_posts").select("*").is("parent_id", null).limit(200);
+    if (!opts.isStaff) q = q.eq("hidden", false);
+    const { data } = await q;
+    rows = data ?? [];
+  } else {
+    let pinnedQ = admin.from("forum_posts").select("*").is("parent_id", null).eq("pinned", true);
+    let recentQ = admin
+      .from("forum_posts")
+      .select("*")
+      .is("parent_id", null)
+      .eq("pinned", false)
+      .order("created_at", { ascending: false })
+      .limit(Math.min(opts.limit, 200));
+    if (!opts.isStaff) {
+      pinnedQ = pinnedQ.eq("hidden", false);
+      recentQ = recentQ.eq("hidden", false);
+    }
+    const [{ data: pinnedRows }, { data: recentRows }] = await Promise.all([pinnedQ, recentQ]);
+    rows = [...(pinnedRows ?? []), ...(recentRows ?? [])];
+  }
+  const posts = await enrich(rows, viewerId);
 
   const sorted = posts.sort((a, b) => {
     if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
@@ -150,11 +172,13 @@ export async function getForumModerationFeed(limit = 150): Promise<ForumPost[]> 
 }
 
 export async function getForumStats(): Promise<{ threads: number; posters: number }> {
-  const admin = createAdminSupabase();
-  const { data } = await admin.from("forum_posts").select("user_id, parent_id").eq("hidden", false);
-  const rows = data ?? [];
-  return {
-    threads: rows.filter((r) => !r.parent_id).length,
-    posters: new Set(rows.map((r) => r.user_id)).size
-  };
+  return memo("forum-stats", 30_000, async () => {
+    const admin = createAdminSupabase();
+    const { data } = await admin.from("forum_posts").select("user_id, parent_id").eq("hidden", false);
+    const rows = data ?? [];
+    return {
+      threads: rows.filter((r) => !r.parent_id).length,
+      posters: new Set(rows.map((r) => r.user_id)).size
+    };
+  });
 }

@@ -24,7 +24,8 @@ export async function getAllAppsForAdmin(): Promise<AppRow[]> {
       .order("created_at", { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
     if (!data || data.length === 0) break;
-    all.push(...(data as unknown as AppRow[]));
+    // פוסט הפרסום המלא לא נחוץ ברשימות הניהול (הוא נטען בעריכה) - לא שולחים אותו לדפדפן
+    all.push(...(data as unknown as AppRow[]).map((row) => ({ ...row, description_html: "" })));
     if (data.length < PAGE_SIZE) break;
     from += PAGE_SIZE;
   }

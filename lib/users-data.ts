@@ -1,5 +1,6 @@
 import { createAdminSupabase } from "./supabase/admin";
 import { getAvatarUrl } from "./avatar";
+import { memo } from "./memo";
 import type { AppRow } from "@/types/database";
 
 // פרטים ציבוריים בלבד (לא חושפים אימייל/טלפון/סטטוס חסימה וכו') - נשלף כאן בצד השרת
@@ -26,12 +27,69 @@ export interface PublicUserDetail extends PublicUserSummary {
 }
 
 export async function getUsersStats() {
+  return memo("users-stats", 30_000, async () => {
+    const admin = createAdminSupabase();
+    const [{ count: totalUsers }, { count: totalDevelopers }] = await Promise.all([
+      admin.from("profiles").select("id", { count: "exact", head: true }),
+      admin.from("profiles").select("id", { count: "exact", head: true }).in("role", ["developer", "admin"])
+    ]);
+    return { totalUsers: totalUsers ?? 0, totalDevelopers: totalDevelopers ?? 0 };
+  });
+}
+
+// עמוד אחד מרשימת המשתמשים (מהמוניטין הגבוה לנמוך), עם חיפוש לפי שם וסינון "מחוברים כרגע" -
+// במקום לשלוף את כל המשתמשים (אלפים) בכל כניסה. ספירת האפליקציות נשלפת רק למשתמשי העמוד.
+export async function getPublicUsersPage(opts: {
+  offset?: number;
+  limit?: number;
+  q?: string;
+  onlineOnly?: boolean;
+}): Promise<{ users: PublicUserSummary[]; total: number }> {
   const admin = createAdminSupabase();
-  const [{ count: totalUsers }, { count: totalDevelopers }] = await Promise.all([
-    admin.from("profiles").select("id", { count: "exact", head: true }),
-    admin.from("profiles").select("id", { count: "exact", head: true }).in("role", ["developer", "admin"])
-  ]);
-  return { totalUsers: totalUsers ?? 0, totalDevelopers: totalDevelopers ?? 0 };
+  const limit = Math.min(Math.max(opts.limit ?? 60, 1), 100);
+  const offset = Math.max(opts.offset ?? 0, 0);
+
+  let query = admin
+    .from("profiles")
+    .select("id, username, role, is_moderator, is_pro, avatar_key, points, created_at, last_seen_at", { count: "exact" });
+  const q = opts.q?.trim();
+  if (q) query = query.ilike("username", `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
+  if (opts.onlineOnly) query = query.gte("last_seen_at", new Date(Date.now() - 5 * 60 * 1000).toISOString());
+
+  const { data, count } = await query
+    .order("points", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+    .range(offset, offset + limit - 1);
+  const rows = (data ?? []) as any[];
+
+  const appsCountByDev = new Map<string, number>();
+  if (rows.length) {
+    const { data: appsData } = await admin
+      .from("apps")
+      .select("developer_id")
+      .in("developer_id", rows.map((r) => r.id))
+      .neq("status", "archived");
+    for (const row of appsData ?? []) {
+      appsCountByDev.set(row.developer_id, (appsCountByDev.get(row.developer_id) ?? 0) + 1);
+    }
+  }
+
+  const users = await Promise.all(
+    rows.map(async (p) => ({
+      id: p.id,
+      username: p.username,
+      role: p.role,
+      is_moderator: p.is_moderator,
+      is_pro: p.is_pro,
+      avatarUrl: await getAvatarUrl(p.avatar_key, p.role),
+      appsCount: appsCountByDev.get(p.id) ?? 0,
+      points: p.points ?? 0,
+      createdAt: p.created_at,
+      lastSeenAt: p.last_seen_at
+    }))
+  );
+  return { users, total: count ?? users.length };
 }
 
 // PostgREST מחזיר לכל היותר ~1000 שורות בשאילתה אחת (גם בלי limit) - לכן דפדוף עד הסוף,

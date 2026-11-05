@@ -1,4 +1,5 @@
 import { createAdminSupabase } from "./supabase/admin";
+import { memo } from "./memo";
 
 // פיצ'ר 5: התראות חכמות על עדכוני גרסה.
 // מזהה עבור משתמש מסוים אילו אפליקציות הוא כבר הוריד בעבר - וכעת קיימת להן גרסה חדשה
@@ -14,6 +15,11 @@ export interface AppUpdateInfo {
 
 // מחזיר מפה של appId -> פרטי העדכון, רק לאפליקציות מאושרות שהמשתמש הוריד גרסה ישנה שלהן.
 export async function getUserAppUpdates(userId: string): Promise<Map<string, AppUpdateInfo>> {
+  if (!userId) return new Map();
+  return memo(`app-updates:${userId}`, 60_000, () => computeUserAppUpdates(userId));
+}
+
+async function computeUserAppUpdates(userId: string): Promise<Map<string, AppUpdateInfo>> {
   const result = new Map<string, AppUpdateInfo>();
   if (!userId) return result;
 

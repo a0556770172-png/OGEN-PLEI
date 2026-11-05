@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
+import { refreshMe } from "@/lib/clientSession";
 import { useRouter } from "next/navigation";
 import { Camera, Loader2, AlertCircle, AlertTriangle, CheckCircle2, User } from "lucide-react";
 import { putToR2 } from "@/lib/uploadHelpers";
@@ -46,6 +47,7 @@ export default function AvatarUploadForm({
 
       setPreview(finalizeJson.url);
       setSuccess(true);
+      refreshMe();
       router.refresh();
     } catch (err: any) {
       setError(err.message || "שגיאה כללית");

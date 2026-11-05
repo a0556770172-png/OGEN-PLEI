@@ -43,6 +43,18 @@ export default function AppModal({
   onClose: () => void;
 }) {
   const category = categories?.find((c) => c.value === app.category)?.label ?? app.category;
+  // פוסט הפרסום המלא לא נשלח ברשימת הכרטיסים (חוסך מגה-בייטים בעמוד הבית) - נטען כשהחלונית נפתחת.
+  const [descriptionHtml, setDescriptionHtml] = useState<string>(app.description_html ?? "");
+  useEffect(() => {
+    if (app.description_html) return;
+    let active = true;
+    fetch(`/api/apps/${app.id}/description`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (active && j?.html) setDescriptionHtml(j.html); })
+      .catch(() => {});
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app.id]);
   const isPaused = app.download_paused || (app.download_paused_until ? new Date(app.download_paused_until).getTime() > Date.now() : false);
 
   // סגירה עם אנימציית CSS: מסמנים "נסגר" (data-closing), וכשאנימציית היציאה של השכבה נגמרת -
@@ -231,10 +243,10 @@ export default function AppModal({
           </div>
         </div>
 
-        {app.description_html && (
+        {descriptionHtml && (
           <div className="mt-6 border-t border-border pt-5">
             <h2 className="mb-3 text-lg font-bold text-white">תיאור מלא</h2>
-            <div className="rich-content text-gray-300" dangerouslySetInnerHTML={{ __html: app.description_html }} />
+            <div className="rich-content text-gray-300" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
           </div>
         )}
 

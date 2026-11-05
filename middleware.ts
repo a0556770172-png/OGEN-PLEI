@@ -13,10 +13,58 @@ const NEW_SITE_ORIGIN = "https://ogenplay.com";
 // לעולם לא יראה את הסיבה/משך החסימה או יוכל לכתוב ערעור), וגם /login כדי שיוכל להתחבר בכלל.
 const BANNED_ALLOWED_PREFIXES = ["/banned", "/login", "/signup", "/auth"];
 
+// חייב להיות זהה לשם הקבוע ב-lib/supabase/client.ts - ראו ההסבר שם.
+const AUTH_COOKIE = "sb-ogenplay-auth-token";
+
+// ה-middleware רץ על כל ניווט בעמוד. קודם הוא פנה בכל פעם גם לשרת האימות וגם לטבלת הפרופילים.
+// עכשיו: תוצאת הבדיקה של משתמש מחובר נשמרת בזיכרון לכמה שניות (לפי עוגיית ההתחברות), אורחים
+// לא עוברים בדיקה בכלל, ובקשות prefetch של קישורים (שנשלחות בעשרות לכל עמוד) מדלגות עליו.
+// משתמש שנחסם מועבר ל-/banned תוך שניות בודדות (BanWatcher בודק גם הוא ברקע).
+type Verdict = { banned: boolean; exp: number };
+const verdicts = new Map<string, Verdict>();
+const OK_TTL_MS = 45_000;
+const BANNED_TTL_MS = 10_000;
+const MAX_VERDICTS = 5000;
+
 export async function middleware(request: NextRequest) {
   if (request.nextUrl.hostname === OLD_VERCEL_HOSTNAME) {
     const target = new URL(request.nextUrl.pathname + request.nextUrl.search, NEW_SITE_ORIGIN);
     return NextResponse.redirect(target, 308);
+  }
+
+  // טעינה מקדימה של קישור (Link prefetch) - לא ניווט אמיתי; הבדיקה המלאה תרוץ בניווט עצמו.
+  const headers = request.headers;
+  if (headers.get("next-router-prefetch") || headers.get("purpose") === "prefetch") {
+    return NextResponse.next();
+  }
+
+  const pathname = request.nextUrl.pathname;
+  const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
+  const isBannedAllowedPath = BANNED_ALLOWED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
+
+  const authCookies = request.cookies.getAll().filter((c) => c.name.startsWith(AUTH_COOKIE));
+
+  // אורח - אין עוגיית התחברות, אין מה לבדוק מול Supabase
+  if (authCookies.length === 0) {
+    if (isProtected) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next({ request: { headers: request.headers } });
+  }
+
+  // משתמש מחובר שכבר נבדק לאחרונה - משתמשים בתוצאה השמורה
+  const cacheKey = authCookies.map((c) => `${c.name}=${c.value}`).join(";");
+  const hit = verdicts.get(cacheKey);
+  if (hit && hit.exp > Date.now()) {
+    if (hit.banned && !isBannedAllowedPath) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/banned";
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next({ request: { headers: request.headers } });
   }
 
   let response = NextResponse.next({ request: { headers: request.headers } });
@@ -36,14 +84,11 @@ export async function middleware(request: NextRequest) {
           response.cookies.set({ name, value: "", ...options });
         }
       },
-      // חייב להיות זהה לשם הקבוע ב-lib/supabase/client.ts - ראו ההסבר שם.
-      cookieOptions: { name: "sb-ogenplay-auth-token" }
+      cookieOptions: { name: AUTH_COOKIE }
     }
   );
 
   const { data: { user } } = await supabase.auth.getUser();
-  const pathname = request.nextUrl.pathname;
-  const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone();
@@ -55,7 +100,6 @@ export async function middleware(request: NextRequest) {
   // חסימת גישה לכל האתר (לא רק /dashboard) למשתמש חסום, מלבד עמודי /banned, /login וכו' -
   // כדי שהוא תמיד ינחת על /banned ויראה שם את הסיבה/משך החסימה ויוכל לכתוב ערעור, בלי
   // קשר לאיזה עמוד הוא ניסה לפתוח. ה-API עצמו כבר חסום ברמת lib/auth-helpers.ts בנפרד.
-  const isBannedAllowedPath = BANNED_ALLOWED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
   if (user && !isBannedAllowedPath) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -63,15 +107,18 @@ export async function middleware(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    if (profile?.banned) {
-      const stillBanned = !profile.ban_expires_at || new Date(profile.ban_expires_at).getTime() > Date.now();
-      if (stillBanned) {
-        const url = request.nextUrl.clone();
-        url.pathname = "/banned";
-        return NextResponse.redirect(url);
-      }
-      // אם משך החסימה כבר פג - לא חוסמים כאן את הניווט; הביטול בפועל של החסימה קורה
-      // אוטומטית ב-lib/auth-helpers.ts בפעם הראשונה שהמשתמש מבצע פעולה אמיתית באתר.
+    // אם משך החסימה כבר פג - לא חוסמים כאן את הניווט; הביטול בפועל של החסימה קורה
+    // אוטומטית ב-lib/auth-helpers.ts בפעם הראשונה שהמשתמש מבצע פעולה אמיתית באתר.
+    const stillBanned =
+      !!profile?.banned && (!profile.ban_expires_at || new Date(profile.ban_expires_at).getTime() > Date.now());
+
+    if (verdicts.size >= MAX_VERDICTS) verdicts.clear();
+    verdicts.set(cacheKey, { banned: stillBanned, exp: Date.now() + (stillBanned ? BANNED_TTL_MS : OK_TTL_MS) });
+
+    if (stillBanned) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/banned";
+      return NextResponse.redirect(url);
     }
   }
 

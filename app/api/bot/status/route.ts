@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getBotConfig, botIsLive } from "@/lib/bot";
 import { maybeRunHealthCheck } from "@/lib/botHealth";
+import { memo } from "@/lib/memo";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const supabase = createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
-  const cfg = await getBotConfig();
+  const cfg = await memo("bot-config", 10_000, getBotConfig);
   void maybeRunHealthCheck(cfg).catch(() => {});
 
   const widgetVisible = cfg.widget_visible && !cfg.auto_hidden;

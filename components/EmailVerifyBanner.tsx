@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { MailWarning, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { getMe, onMeChange } from "@/lib/clientSession";
 
 // באנר עדין שמופיע בכל האתר למשתמש מחובר שהמייל שלו עדיין לא אומת.
 // השליחה יזומה ע"י המשתמש עצמו (לחיצה על כפתור) ולא אוטומטית בכל טעינה —
@@ -17,8 +18,7 @@ export default function EmailVerifyBanner() {
   useEffect(() => {
     let active = true;
     async function check() {
-      const { data } = await supabase.auth.getUser();
-      const user = data?.user;
+      const { user } = await getMe();
       if (!active) return;
       if (user && !user.email_confirmed_at) {
         setEmail(user.email ?? null);
@@ -27,10 +27,10 @@ export default function EmailVerifyBanner() {
       }
     }
     check();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => check());
+    const off = onMeChange(() => check());
     return () => {
       active = false;
-      sub.subscription.unsubscribe();
+      off();
     };
   }, []);
 

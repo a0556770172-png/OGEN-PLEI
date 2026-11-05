@@ -1,4 +1,5 @@
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { memo } from "@/lib/memo";
 
 export interface SiteSettings {
   require_email_verification: boolean;
@@ -11,6 +12,10 @@ export interface SiteSettings {
 
 // שליפת הגדרות האתר הגלובליות (שורה אחת בלבד בטבלה) - משמש קומפוננטות שרת.
 export async function getSiteSettingsServer(): Promise<SiteSettings> {
+  return memo("site-settings", 15_000, loadSiteSettings);
+}
+
+async function loadSiteSettings(): Promise<SiteSettings> {
   const admin = createAdminSupabase();
   const { data } = await admin
     .from("site_settings")

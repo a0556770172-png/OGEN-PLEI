@@ -11,6 +11,7 @@ import { uploadAttachment, type UploadedAttachment } from "@/lib/uploadAttachmen
 import { FormattedMessageBody, buildQuoteText, copyMessageWithLink, toggleBoldAtSelection } from "@/lib/chatFormat";
 import { formatMessageTime, fullMessageTime } from "@/lib/formatTime";
 import type { CouncilThread, CouncilMessage, Profile } from "@/types/database";
+import { useVisibleInterval } from "@/lib/useVisibleInterval";
 
 // "ועדה" - ערוץ חירום/עדכונים משותף לכל צוות הפיקוח (לא פרטי כמו "הודעות" הרגילות).
 // מנהל בפועל פותח ישירות; חבר צוות פיקוח רק מבקש, ואם עוד חבר צוות שונה מבקש תוך 24 שעות
@@ -51,7 +52,7 @@ export default function CouncilPanel({ currentProfile }: { currentProfile: Profi
       }
     }
     loadUnread();
-    const interval = setInterval(loadUnread, 20000);
+    const interval = setInterval(loadUnread, 45000);
     return () => { active = false; clearInterval(interval); };
   }, [selected?.id]);
 
@@ -75,12 +76,7 @@ export default function CouncilPanel({ currentProfile }: { currentProfile: Profi
   }, []);
 
   // פולינג צמוד לדיון הפתוח כדי שהודעות חדשות מחברי צוות אחרים יופיעו כמעט מיידית.
-  useEffect(() => {
-    if (!selected) return;
-    const interval = setInterval(refreshMessages, 3000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.id]);
+  useVisibleInterval(refreshMessages, 5000, !!selected);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });

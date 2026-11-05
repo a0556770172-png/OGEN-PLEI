@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { ShieldAlert, ScrollText } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/database";
+import { getMe, onMeChange, refreshMe, cachedJson, invalidateJson } from "@/lib/clientSession";
 
 // שער חובה שקופץ מייד לכל חבר צוות פיקוח (is_moderator) שעדיין לא חתם על הסכם התפקיד
 // (moderator_agreement_signed_at is null) - בכל עמוד באתר, מיד עם הכניסה או אם כבר מחובר.
@@ -22,15 +23,14 @@ export default function ModeratorAgreementGate() {
   useEffect(() => {
     let active = true;
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { if (active) setProfile(null); return; }
-      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      if (active) setProfile(data as Profile);
+      const { user, profile: p } = await getMe();
+      if (!active) return;
+      setProfile(user ? p : null);
     }
     load();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => load());
-    return () => { sub.subscription.unsubscribe(); };
-  }, [pathname]);
+    const off = onMeChange(() => load());
+    return () => { active = false; off(); };
+  }, []);
 
   function handleScroll() {
     const el = scrollRef.current;
@@ -44,6 +44,7 @@ export default function ModeratorAgreementGate() {
     setSubmitting(false);
     if (res.ok) {
       setProfile((p) => (p ? { ...p, moderator_agreement_signed_at: new Date().toISOString() } : p));
+      refreshMe();
     } else {
       const j = await res.json().catch(() => ({}));
       alert(j.error || "שגיאה בשמירת החתימה, נסה שוב");

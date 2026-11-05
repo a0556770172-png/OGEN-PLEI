@@ -1,7 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
-  images: { remotePatterns: [{ protocol: "https", hostname: "**" }] },
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "**" }],
+    // אייקונים/תמונות באתר לא משתנים (מפתח חדש לכל העלאה) - אין סיבה שהאופטימייזר של Next יבצע
+    // אותה המרה מחדש כל דקה (ברירת המחדל), זו עבודת מעבד מיותרת.
+    minimumCacheTTL: 2592000
+  },
   // חילוץ אייקון מ-APK (app-info-parser) עושה require() מרובה לקבצים פנימיים בחבילה.
   // בלי ההגדרות האלה, ה-Output File Tracing של Vercel/Next עלול "לשכוח" חלק מהקבצים
   // האלה בפריסה לפרודקשן (עובד ב-dev מקומי, נכשל דווקא אחרי דיפלוי) - זו הסיבה השכיחה

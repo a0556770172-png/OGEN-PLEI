@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { ShieldAlert, ScrollText } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import SiteRulesContent from "./SiteRulesContent";
+import { getMe, onMeChange, refreshMe, cachedJson, invalidateJson } from "@/lib/clientSession";
 import type { Profile } from "@/types/database";
 
 // שער חובה חד-פעמי שקופץ לכל חשבון (רשום מזמן או שנרשם עכשיו) שעדיין לא אישר את "חוקי
@@ -11,6 +12,9 @@ import type { Profile } from "@/types/database";
 // חוסם גישה לכל האתר עד לאישור. בניגוד ל-ModeratorAgreementGate (רלוונטי רק לצוות פיקוח),
 // זה רלוונטי לכל משתמש רשום באתר, ולכן ה-z-index כאן גבוה יותר - כדי שיוצג ראשון אם שני
 // השערים רלוונטיים בו-זמנית (למשל חבר צוות פיקוח חדש שגם לא אישר את חוקי האתר).
+// הגדרות חוקי האתר (טקסט החוקים הארוך + מספר הגרסה) נשמרות בדפדפן ל-5 דקות במקום להישלף בכל ניווט.
+let rulesCache: { at: number; data: { site_rules_html: string | null; site_rules_version: number | null; site_rules_update_note: string | null } } | null = null;
+
 export default function SiteRulesGate() {
   const pathname = usePathname();
   const supabase = createClient();
@@ -27,15 +31,22 @@ export default function SiteRulesGate() {
   useEffect(() => {
     let active = true;
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { if (active) setProfile(null); return; }
-      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      if (active) setProfile(data as Profile);
-      const { data: settings } = await supabase
-        .from("site_settings")
-        .select("site_rules_html, site_rules_version, site_rules_update_note")
-        .eq("id", true)
-        .single();
+      const { user, profile: p } = await getMe();
+      if (!active) return;
+      if (!user) { setProfile(null); return; }
+      setProfile(p);
+      let settings = rulesCache && Date.now() - rulesCache.at < 300_000 ? rulesCache.data : null;
+      if (!settings) {
+        const { data } = await supabase
+          .from("site_settings")
+          .select("site_rules_html, site_rules_version, site_rules_update_note")
+          .eq("id", true)
+          .single();
+        if (data) {
+          rulesCache = { at: Date.now(), data: data as any };
+          settings = data as any;
+        }
+      }
       if (active && settings) {
         setRulesHtml(settings.site_rules_html ?? null);
         setRulesVersion(settings.site_rules_version ?? 1);
@@ -43,9 +54,9 @@ export default function SiteRulesGate() {
       }
     }
     load();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => load());
-    return () => { sub.subscription.unsubscribe(); };
-  }, [pathname]);
+    const off = onMeChange(() => load());
+    return () => { active = false; off(); };
+  }, []);
 
   function handleScroll() {
     const el = scrollRef.current;
@@ -59,6 +70,7 @@ export default function SiteRulesGate() {
     setSubmitting(false);
     if (res.ok) {
       setProfile((p) => (p ? { ...p, site_rules_accepted_at: new Date().toISOString(), site_rules_seen_version: rulesVersion } : p));
+      refreshMe();
     } else {
       const j = await res.json().catch(() => ({}));
       alert(j.error || "שגיאה בשמירת האישור, נסה שוב");

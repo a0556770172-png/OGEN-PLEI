@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { cachedJson } from "@/lib/clientSession";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Star, X, ArrowLeft, PartyPopper, Bot, Gift, BellRing } from "lucide-react";
@@ -46,9 +47,8 @@ export default function FeatureAnnounce() {
 
   useEffect(() => {
     // כרטיס "סוכן AI" מוצג רק אם המנהל הפעיל את כפתור הבוט - כדי לא לחשוף את קיומו כברירת מחדל.
-    fetch("/api/bot/status")
-      .then((r) => r.json())
-      .then((j) => setAgentVisible(!!j.widgetVisible))
+    cachedJson("/api/bot/status", 60_000)
+      .then((j) => setAgentVisible(!!j?.widgetVisible))
       .catch(() => {});
 
     let seen = true;

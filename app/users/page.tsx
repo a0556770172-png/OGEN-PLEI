@@ -1,12 +1,12 @@
 import { Users, Rocket } from "lucide-react";
-import { getUsersStats, getPublicUsersList } from "@/lib/users-data";
+import { getUsersStats, getPublicUsersPage } from "@/lib/users-data";
 import UsersDirectoryList from "@/components/UsersDirectoryList";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "משתמשים — עוגן פליי" };
 
 export default async function UsersDirectoryPage() {
-  const [{ totalUsers, totalDevelopers }, users] = await Promise.all([getUsersStats(), getPublicUsersList()]);
+  const [{ totalUsers, totalDevelopers }, firstPage] = await Promise.all([getUsersStats(), getPublicUsersPage({ offset: 0, limit: 60 })]);
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-8">
@@ -35,7 +35,7 @@ export default async function UsersDirectoryPage() {
         </div>
       </div>
 
-      <UsersDirectoryList users={users} />
+      <UsersDirectoryList users={firstPage.users} total={firstPage.total} />
     </div>
   );
 }

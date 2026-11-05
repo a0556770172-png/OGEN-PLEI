@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Bot, X, Plus, MessageCircle, ArrowLeft, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import BotChat, { isBotOpenerOff } from "./BotChat";
+import { getMe, onMeChange, cachedJson } from "@/lib/clientSession";
 
 // כפתור צף יחיד (פינה שמאלית-תחתונה) שמאחד את העוזר (AI) ואת ההודעות בין משתמשים.
 // לחיצה פותחת חלונית: העוזר בפנים, וכפתור מעבר להודעות הרגילות + מעבר לעמוד המלא.
@@ -26,22 +27,20 @@ export default function BotWidget() {
   useEffect(() => {
     let active = true;
     async function check() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user } = await getMe();
       if (!active) return;
       setLoggedIn(!!user);
       if (!user) {
         setLive(false);
         setUnread(0);
-        fetch("/api/bot/status")
-          .then((r) => r.json())
-          .then((j) => active && setWidgetVisible(!!j.widgetVisible))
+        cachedJson("/api/bot/status", 60_000)
+          .then((j) => active && setWidgetVisible(!!j?.widgetVisible))
           .catch(() => {});
         return;
       }
-      fetch("/api/bot/status")
-        .then((r) => r.json())
+      cachedJson("/api/bot/status", 60_000)
         .then((j) => {
-          if (!active) return;
+          if (!active || !j) return;
           setWidgetVisible(!!j.widgetVisible);
           if (!j.live) return;
           setLive(true);
@@ -69,16 +68,15 @@ export default function BotWidget() {
           }
         })
         .catch(() => {});
-      fetch("/api/notifications/unread")
-        .then((r) => r.json())
+      cachedJson("/api/notifications/unread", 20_000)
         .then((j) => active && setUnread(j?.totalUnread ?? 0))
         .catch(() => {});
     }
     check();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => check());
+    const off = onMeChange(() => check());
     return () => {
       active = false;
-      sub.subscription.unsubscribe();
+      off();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);

@@ -13,6 +13,7 @@ import MessageReactionsBar from "@/components/MessageReactions";
 import { FormattedMessageBody, buildQuoteText, copyMessageWithLink, toggleBoldAtSelection } from "@/lib/chatFormat";
 import { formatMessageTime, fullMessageTime } from "@/lib/formatTime";
 import type { Ticket, TicketMessage } from "@/types/database";
+import { useVisibleInterval } from "@/lib/useVisibleInterval";
 
 // עוטפים ב-Suspense כי useSearchParams (בשביל ?ticket=<id> - ראו components/NotificationBell.tsx)
 // דורש את זה ב-App Router, אחרת ה-build נכשל (ראו הסבר דומה ב-app/login/page.tsx).
@@ -71,12 +72,7 @@ function SupportPageInner() {
   }, []);
 
   // פולינג צמוד לשיחה הפתוחה כדי שהודעות שמגיעות מהצוות יופיעו כמעט מיידית, בלי לרענן ידנית.
-  useEffect(() => {
-    if (!selected) return;
-    const interval = setInterval(refreshMessages, 3000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.id]);
+  useVisibleInterval(refreshMessages, 5000, !!selected);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });

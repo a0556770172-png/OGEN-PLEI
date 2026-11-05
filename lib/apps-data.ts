@@ -2,6 +2,7 @@ import { createServerSupabase } from "./supabase/server";
 import { publicAssetUrl } from "./r2";
 import type { AppRow } from "@/types/database";
 import { isUuid } from "./appPath";
+import { memo } from "./memo";
 
 export async function getApprovedApps(): Promise<AppRow[]> {
   const supabase = createServerSupabase();
@@ -28,6 +29,30 @@ export async function getApprovedApps(): Promise<AppRow[]> {
   }
 
   return (data as unknown as AppRow[]) ?? [];
+}
+
+// רשימת הכרטיסים בעמוד הבית: רק העמודות שהכרטיס והחלונית באמת משתמשים בהן - בלי פוסט הפרסום
+// המלא (description_html, שהיה רוב משקל הדף - מגה-בייטים). הפוסט נטען בנפרד כשהחלונית נפתחת
+// (api/apps/[id]/description) והחיפוש בתוכנו נעשה בשרת (api/apps/search). התוצאה משותפת בין
+// גולשים ל-10 שניות.
+const LITE_COLUMNS =
+  "id, developer_id, name, short_description, version, category, icon_key, file_name, file_key, file_size_bytes, min_android_version, status, downloads_count, platform_override, download_paused, download_paused_until, source, developer_name, offline_support, pinned, pinned_at, last_updated_at, published_at, created_at, updated_at, slug, screenshot_keys, video_key, package_name";
+
+export async function getApprovedAppsLite(): Promise<AppRow[]> {
+  return memo("apps:approved-lite", 10_000, async () => {
+    const supabase = createServerSupabase();
+    const { data, error } = await supabase
+      .from("apps")
+      .select(`${LITE_COLUMNS}, developer:profiles!apps_developer_id_fkey(username)`)
+      .eq("status", "approved")
+      .order("pinned", { ascending: false })
+      .order("pinned_at", { ascending: false, nullsFirst: false })
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false });
+    // עמידות: אם עמודה חסרה (מיגרציה שעוד לא רצה) - חוזרים לשליפה המלאה הישנה
+    if (error) return getApprovedApps();
+    return ((data ?? []) as unknown as AppRow[]).map((a) => ({ ...a, description_html: "" }));
+  });
 }
 
 export async function getAppById(id: string): Promise<AppRow | null> {

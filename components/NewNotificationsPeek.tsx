@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Bell, X, ArrowLeft } from "lucide-react";
+import { getMe, cachedJson } from "@/lib/clientSession";
 
 const SESSION_KEY = "ogen-notif-peek-shown";
 const LAST_SHOWN_KEY = "ogen-notif-peek-last";
@@ -29,9 +30,11 @@ export default function NewNotificationsPeek() {
     if (shown) return;
 
     let active = true;
-    const t = setTimeout(() => {
-      fetch("/api/notifications/feed")
-        .then((r) => (r.ok ? r.json() : null))
+    const t = setTimeout(async () => {
+      // אורח לא מחובר אין לו התראות - לא שולחים בקשה בכלל
+      const { user } = await getMe();
+      if (!active || !user) return;
+      cachedJson("/api/notifications/feed", 20_000)
         .then((j) => {
           if (!active || !j || (j.unread ?? 0) < 1) return;
           const items: FeedItem[] = j.items ?? [];

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { memo } from "@/lib/memo";
 
 export const dynamic = "force-dynamic";
 
@@ -11,11 +12,14 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ guest: true }, { headers: { "Cache-Control": "no-store" } });
 
-  const { data: profile } = await createAdminSupabase()
-    .from("profiles")
-    .select("banned, ban_expires_at")
-    .eq("id", user.id)
-    .maybeSingle();
+  const profile = await memo(`ban-status:${user.id}`, 10_000, async () => {
+    const { data } = await createAdminSupabase()
+      .from("profiles")
+      .select("banned, ban_expires_at")
+      .eq("id", user.id)
+      .maybeSingle();
+    return data;
+  });
 
   const banned =
     !!profile?.banned && (!profile.ban_expires_at || new Date(profile.ban_expires_at).getTime() > Date.now());

@@ -11,6 +11,7 @@ import { uploadAttachment } from "@/lib/uploadAttachment";
 import { FormattedMessageBody, buildQuoteText, copyMessageWithLink, toggleBoldAtSelection } from "@/lib/chatFormat";
 import { formatMessageTime, fullMessageTime } from "@/lib/formatTime";
 import type { Ticket, TicketMessage, Profile } from "@/types/database";
+import { useVisibleInterval } from "@/lib/useVisibleInterval";
 
 // פאנל "הודעות" של הצוות (מנהל/פיקוח) - כאן מאוחדות פניות התמיכה עם אפשרות לצוות
 // לפתוח שיחה יזומה למשתמש ספציפי, ולצרף קבצים (מוגבל למנהל או למי שקיבל הרשאה).
@@ -69,7 +70,7 @@ export default function TicketsPanel({
       }
     }
     loadUnread();
-    const interval = setInterval(loadUnread, 20000);
+    const interval = setInterval(loadUnread, 45000);
     return () => { active = false; clearInterval(interval); };
   }, [selected?.id]);
 
@@ -91,12 +92,7 @@ export default function TicketsPanel({
   }, []);
 
   // פולינג צמוד לשיחה הפתוחה כדי שהודעות שמגיעות מהמשתמש יופיעו כמעט מיידית, בלי לרענן ידנית.
-  useEffect(() => {
-    if (!selected) return;
-    const interval = setInterval(refreshMessages, 3000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.id]);
+  useVisibleInterval(refreshMessages, 5000, !!selected);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });

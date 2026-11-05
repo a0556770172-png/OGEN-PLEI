@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getApprovedApps } from "@/lib/apps-data";
+import { getApprovedAppsLite } from "@/lib/apps-data";
 import { assignSlug } from "@/lib/appSlug";
 import { appPath } from "@/lib/appPath";
 
@@ -18,7 +18,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let appRoutes: MetadataRoute.Sitemap = [];
   try {
-    const apps = await getApprovedApps();
+    const apps = await getApprovedAppsLite();
     // אפליקציות ישנות שעוד אין להן slug מקבלות אחד כאן, כדי שגוגל יקבל רק כתובות קריאות.
     for (const app of apps) {
       if (!app.slug) app.slug = await assignSlug(app.id);

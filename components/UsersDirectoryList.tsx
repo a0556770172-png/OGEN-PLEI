@@ -1,12 +1,14 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Search, ShieldCheck, Package, Crown, User as UserIcon, Wifi, Coins } from "lucide-react";
+import { Search, ShieldCheck, Package, Crown, User as UserIcon, Wifi, Coins, Loader2 } from "lucide-react";
 import type { PublicUserSummary } from "@/lib/users-data";
+import { useVisibleInterval } from "@/lib/useVisibleInterval";
 
 const ONLINE_THRESHOLD_MS = 5 * 60 * 1000;
-const POLL_MS = 20 * 1000;
+const POLL_MS = 60 * 1000;
+const PAGE_SIZE = 60;
 
 function isOnlineByTimestamp(lastSeenAt: string | null) {
   if (!lastSeenAt) return false;
@@ -26,47 +28,87 @@ function timeAgoLabel(dateStr: string | null) {
   return new Date(dateStr).toLocaleDateString("he-IL");
 }
 
-// רשימת המשתמשים הציבורית - חיפוש לפי שם, סינון "מחוברים כרגע" (5 דקות אחרונות), וסדר
-// אלפביתי קבוע (לא לפי תאריך הצטרפות כמו קודם).
-export default function UsersDirectoryList({ users }: { users: PublicUserSummary[] }) {
+// רשימת המשתמשים הציבורית. הדף נטען עם PAGE_SIZE המשתמשים הראשונים בלבד (לפי מוניטין); החיפוש
+// והסינון "מחוברים כרגע" נעשים בשרת, והמשך הרשימה נטען בגלילה - במקום לשלוף ולשלוח אלפי
+// משתמשים בכל כניסה לעמוד.
+export default function UsersDirectoryList({ users: initialUsers, total: initialTotal }: { users: PublicUserSummary[]; total: number }) {
+  const [users, setUsers] = useState<PublicUserSummary[]>(initialUsers);
+  const [total, setTotal] = useState(initialTotal);
   const [query, setQuery] = useState("");
   const [onlyOnline, setOnlyOnline] = useState(false);
-  // רשימת המשתמשים נטענת פעם אחת בצד השרת בזמן הניווט לעמוד, אבל "ביקור אחרון" מתעדכן
-  // בצד הלקוח (heartbeat) - כך שהתמונה הראשונית לא בהכרח תואמת את מי שמחובר ממש עכשיו,
-  // ולא הייתה מתעדכנת בלי רענון ידני של הדף. לכן שולפים בנוסף, בפולינג קליינטי, רשימת
-  // מזהים "מחוברים כרגע" עדכנית מהשרת - וזו המקור האמיתי לתג/למונה, לא תמונת ה-SSR הישנה.
+  const [loading, setLoading] = useState(false);
+  // "ביקור אחרון" מתעדכן בצד הלקוח (heartbeat), ולכן רשימת המזהים ה"מחוברים כרגע" נשלפת בנפרד
+  // (בקשה קלה ומשותפת בין כל הגולשים, ורק כשהלשונית מוצגת) והיא המקור לתג ולמונה.
   const [onlineIds, setOnlineIds] = useState<Set<string> | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    async function poll() {
-      try {
-        const res = await fetch("/api/users/online-status");
-        const json = await res.json();
-        if (active && Array.isArray(json.onlineIds)) setOnlineIds(new Set(json.onlineIds));
-      } catch {
-        // אם השליפה נכשלת - ממשיכים עם המידע הקיים (או עם ההערכה לפי חותמת הזמן)
-      }
+  const requestId = useRef(0);
+  const firstRun = useRef(true);
+
+  const fetchPage = useCallback(async (offset: number, q: string, online: boolean) => {
+    const id = ++requestId.current;
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ offset: String(offset), limit: String(PAGE_SIZE) });
+      if (q) params.set("q", q);
+      if (online) params.set("online", "1");
+      const res = await fetch(`/api/users/list?${params}`);
+      const json = await res.json();
+      if (id !== requestId.current || !Array.isArray(json.users)) return;
+      setUsers((prev) => (offset === 0 ? json.users : [...prev, ...json.users]));
+      setTotal(json.total ?? 0);
+    } catch {
+      // תקלת רשת זמנית - המשתמש יכול לגלול/לחפש שוב
+    } finally {
+      if (id === requestId.current) setLoading(false);
     }
-    poll();
-    const interval = setInterval(poll, POLL_MS);
-    return () => { active = false; clearInterval(interval); };
   }, []);
+
+  // שינוי חיפוש / סינון -> שליפה מחדש מההתחלה (עם השהיה קצרה בזמן הקלדה)
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
+    const t = setTimeout(() => fetchPage(0, query.trim(), onlyOnline), 300);
+    return () => clearTimeout(t);
+  }, [query, onlyOnline, fetchPage]);
+
+  const poll = useCallback(async () => {
+    try {
+      const res = await fetch("/api/users/online-status");
+      const json = await res.json();
+      if (Array.isArray(json.onlineIds)) setOnlineIds(new Set(json.onlineIds));
+    } catch {
+      // ממשיכים עם המידע הקיים (או עם ההערכה לפי חותמת הזמן)
+    }
+  }, []);
+  useEffect(() => {
+    poll();
+  }, [poll]);
+  useVisibleInterval(poll, POLL_MS);
 
   function isOnline(u: PublicUserSummary) {
     if (onlineIds) return onlineIds.has(u.id);
     return isOnlineByTimestamp(u.lastSeenAt);
   }
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return users
-      .filter((u) => (!q || u.username.toLowerCase().includes(q)) && (!onlyOnline || isOnline(u)))
-      .sort((a, b) => b.points - a.points || a.username.localeCompare(b.username, "he"));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [users, query, onlyOnline, onlineIds]);
+  const onlineCount = onlineIds ? onlineIds.size : users.filter((u) => isOnline(u)).length;
 
-  const onlineCount = useMemo(() => users.filter((u) => isOnline(u)).length, [users, onlineIds]);
+  const hasMore = users.length < total;
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!hasMore || loading) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) fetchPage(users.length, query.trim(), onlyOnline);
+      },
+      { rootMargin: "600px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loading, users.length, query, onlyOnline, fetchPage]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -91,14 +133,15 @@ export default function UsersDirectoryList({ users }: { users: PublicUserSummary
         </button>
       </div>
 
-      {filtered.length === 0 ? (
+      {users.length === 0 && !loading ? (
         <div className="card p-10 text-center text-gray-500">לא נמצאו משתמשים התואמים לחיפוש.</div>
       ) : (
         <div className="flex flex-col gap-3">
-          {filtered.map((u) => (
+          {users.map((u) => (
             <Link
               key={u.id}
               href={`/users/${u.id}`}
+              prefetch={false}
               className="card flex items-center gap-4 p-4 transition hover:ring-1 hover:ring-primary/40"
             >
               <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface2 ring-1 ring-border">
@@ -136,6 +179,13 @@ export default function UsersDirectoryList({ users }: { users: PublicUserSummary
           ))}
         </div>
       )}
+
+      {loading && (
+        <div className="flex items-center justify-center gap-2 py-4 text-sm text-gray-500">
+          <Loader2 className="h-4 w-4 animate-spin" /> טוען...
+        </div>
+      )}
+      {hasMore && !loading && <div ref={sentinelRef} aria-hidden className="h-1 w-full" />}
     </div>
   );
 }

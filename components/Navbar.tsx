@@ -12,6 +12,23 @@ import LanguageToggle from "@/components/LanguageToggle";
 import AppearanceMenu from "@/components/AppearanceMenu";
 import PushNotificationsSetup from "@/components/PushNotificationsSetup";
 import NotificationBell from "@/components/NotificationBell";
+import { getMe, onMeChange, refreshMe, cachedJson, invalidateJson } from "@/lib/clientSession";
+
+// "ביקור אחרון" מעודכן לכל היותר פעם בדקה (ולא בכל ניווט), וכתובת תמונת הפרופיל נשמרת לכמה דקות.
+let lastBeat = 0;
+let avatarCache: { key: string; url: string | null; at: number } | null = null;
+
+async function getAvatarUrlCached(key: string): Promise<string | null> {
+  if (avatarCache && avatarCache.key === key && Date.now() - avatarCache.at < 240_000) return avatarCache.url;
+  try {
+    const res = await fetch("/api/profile/avatar-url");
+    const json = await res.json();
+    avatarCache = { key, url: json.url ?? null, at: Date.now() };
+    return avatarCache.url;
+  } catch {
+    return null;
+  }
+}
 
 export default function Navbar() {
   const supabase = createClient();
@@ -25,29 +42,37 @@ export default function Navbar() {
   useEffect(() => {
     let active = true;
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        if (active) { setProfile(null); setAvatarUrl(null); setLoading(false); }
+      const { user, profile: p } = await getMe();
+      if (!active) return;
+      if (!user || !p) {
+        setProfile(null);
+        setAvatarUrl(null);
+        setLoading(false);
         return;
       }
-      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      if (active) { setProfile(data as Profile); setLoading(false); }
-      // מעדכן "ביקור אחרון" בכל טעינת עמוד/ניווט - לא קריטי, נכשל בשקט אם יש בעיה
-      fetch("/api/profile/heartbeat", { method: "POST" }).catch(() => {});
-      if ((data as Profile)?.avatar_key) {
-        fetch("/api/profile/avatar-url")
-          .then((r) => r.json())
-          .then((json) => { if (active) setAvatarUrl(json.url ?? null); })
-          .catch(() => {});
+      setProfile(p);
+      setLoading(false);
+      if (p.avatar_key) {
+        const url = await getAvatarUrlCached(p.avatar_key);
+        if (active) setAvatarUrl(url);
       } else if (active) {
         // למנהל בפועל בלי תמונת פרופיל משלו - לוגו האתר משמש כברירת מחדל.
-        setAvatarUrl((data as Profile)?.role === "admin" ? "/logo-512.png" : null);
+        setAvatarUrl(p.role === "admin" ? "/logo-512.png" : null);
       }
     }
     load();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => load());
-    return () => { active = false; sub.subscription.unsubscribe(); };
-  }, [pathname]);
+    const off = onMeChange(() => load());
+    return () => { active = false; off(); };
+  }, []);
+
+  // מעדכן "ביקור אחרון" - לא קריטי, נכשל בשקט, ולא יותר מפעם בדקה
+  useEffect(() => {
+    if (!profile) return;
+    const now = Date.now();
+    if (now - lastBeat < 60_000) return;
+    lastBeat = now;
+    fetch("/api/profile/heartbeat", { method: "POST" }).catch(() => {});
+  }, [pathname, profile?.id]);
 
   async function logout() {
     await supabase.auth.signOut();

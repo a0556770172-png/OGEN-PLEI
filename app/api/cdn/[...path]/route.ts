@@ -13,7 +13,14 @@ export async function GET(req: NextRequest, { params }: { params: { path: string
 
   // סרטונים: מעבירים את בקשת הטווח (Range) ל-R2 כדי שהנגן יוכל לדלג ולהתחיל לנגן לפני שהקובץ ירד כולו
   const range = req.headers.get("range");
-  const upstream = await fetch(signedUrl, range ? { headers: { range } } : undefined);
+  const upstreamHeaders: Record<string, string> = {};
+  if (range) upstreamHeaders.range = range;
+  const ifNoneMatch = req.headers.get("if-none-match");
+  if (ifNoneMatch) upstreamHeaders["if-none-match"] = ifNoneMatch;
+  const upstream = await fetch(signedUrl, { headers: upstreamHeaders });
+  if (upstream.status === 304) {
+    return new NextResponse(null, { status: 304, headers: { "cache-control": "public, max-age=31536000, immutable" } });
+  }
   if (!upstream.ok) {
     return new NextResponse(null, { status: upstream.status === 404 ? 404 : 502 });
   }
@@ -21,6 +28,8 @@ export async function GET(req: NextRequest, { params }: { params: { path: string
   const headers = new Headers();
   const contentType = upstream.headers.get("content-type");
   if (contentType) headers.set("content-type", contentType);
+  const etag = upstream.headers.get("etag");
+  if (etag) headers.set("etag", etag);
   const contentLength = upstream.headers.get("content-length");
   if (contentLength) headers.set("content-length", contentLength);
   headers.set("accept-ranges", "bytes");

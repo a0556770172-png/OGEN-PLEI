@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Send, Loader2 } from "lucide-react";
 import { formatMessageTime, fullMessageTime } from "@/lib/formatTime";
+import { useVisibleInterval } from "@/lib/useVisibleInterval";
 
 interface DmMessage {
   id: string;
@@ -39,10 +40,11 @@ export default function DmThreadPage() {
   useEffect(() => {
     fetch("/api/profile/heartbeat", { method: "POST" }).catch(() => {});
     load();
-    const interval = setInterval(load, 3000);
-    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadId]);
+
+  // רענון שיחה: כל 5 שניות ורק כשהלשונית מוצגת (קודם כל 3 שניות גם ברקע)
+  useVisibleInterval(load, 5000);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
