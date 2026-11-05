@@ -33,3 +33,9 @@ export function appPath(app: { id: string; slug?: string | null }): string {
   if (!app.slug) return `/apps/${app.id}`;
   return `/apps/${app.slug.split("/").map(encodeURIComponent).join("/")}`;
 }
+
+// כתובת ציבורית של צילום מסך (דלי ה-assets, מוגש דרך /api/cdn) - זהה ל-publicAssetUrl שב-lib/r2.ts,
+// אבל בלי תלות בשרת כדי שאפשר יהיה להשתמש בה בקומפוננטות לקוח.
+export function screenshotUrl(key: string): string {
+  return `/api/cdn/${key.split("/").map(encodeURIComponent).join("/")}`;
+}

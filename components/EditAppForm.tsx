@@ -9,6 +9,7 @@ import { LIMITS } from "@/lib/constants";
 import { putToR2 } from "@/lib/uploadHelpers";
 import type { AppRow, Category } from "@/types/database";
 import FileKindNotice from "./FileKindNotice";
+import ScreenshotsEditor from "./ScreenshotsEditor";
 
 export default function EditAppForm({
   app,
@@ -176,6 +177,8 @@ export default function EditAppForm({
           שמירת שינויים
         </button>
       </motion.form>
+
+      <ScreenshotsEditor appId={app.id} initialKeys={app.screenshot_keys ?? []} />
 
       <motion.form
         initial={{ opacity: 0, y: 12 }}

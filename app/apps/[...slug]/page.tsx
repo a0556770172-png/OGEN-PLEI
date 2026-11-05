@@ -6,8 +6,8 @@ import { notFound, redirect, permanentRedirect } from "next/navigation";
 import { getAppByKey, getIconUrl } from "@/lib/apps-data";
 import { assignSlug } from "@/lib/appSlug";
 import { appPath } from "@/lib/appPath";
-import { publicAssetUrl } from "@/lib/r2";
 import AppUploadForm from "@/components/AppUploadForm";
+import ScreenshotsButton from "@/components/ScreenshotsButton";
 import { getCategoriesServer } from "@/lib/categories";
 import { formatFileSize } from "@/lib/format";
 import StatusBadge from "@/components/StatusBadge";
@@ -119,15 +119,6 @@ export default async function AppDetailPage({ params }: { params: { slug: string
     .eq("status", "approved")
     .order("reviewed_at", { ascending: false });
 
-  const screenshotUrls: string[] = [];
-  for (const k of app.screenshot_keys ?? []) {
-    try {
-      screenshotUrls.push(publicAssetUrl(k));
-    } catch {
-      // מפתח לא תקין - מדלגים
-    }
-  }
-
   return (
     <div className="mx-auto max-w-4xl">
       <div className="card overflow-hidden p-6 sm:p-8">
@@ -184,6 +175,7 @@ export default async function AppDetailPage({ params }: { params: { slug: string
               />
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+              <ScreenshotsButton keys={app.screenshot_keys} appName={app.name} />
               {app.status === "approved" && app.source === "public_suggestion" && <UpdateAppButton appId={app.id} />}
               {canNotify && (
                 <NotifyButton
@@ -210,25 +202,6 @@ export default async function AppDetailPage({ params }: { params: { slug: string
           <div className="mt-8 border-t border-border pt-6">
             <h2 className="mb-3 text-lg font-bold text-white">תיאור מלא</h2>
             <div className="rich-content text-gray-300" dangerouslySetInnerHTML={{ __html: app.description_html }} />
-          </div>
-        )}
-
-        {screenshotUrls.length > 0 && (
-          <div className="mt-8 border-t border-border pt-6">
-            <h2 className="mb-3 text-lg font-bold text-white">צילומי מסך</h2>
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {screenshotUrls.map((url, i) => (
-                <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={url}
-                    alt={`צילום מסך ${i + 1} של ${app.name}`}
-                    loading="lazy"
-                    className="h-72 w-auto rounded-xl border border-border bg-surface2 object-contain"
-                  />
-                </a>
-              ))}
-            </div>
           </div>
         )}
 

@@ -72,6 +72,33 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     updates.icon_key = iconKey;
   }
 
+  // צילומי מסך (עד 8): שלב 1 - בקשת כתובות העלאה (לא נשמר כלום עדיין);
+  // שלב 2 - שמירת הרשימה הסופית (screenshotKeys), והסרת מה שנמחק מהאחסון.
+  const screenshotUploads: { key: string; uploadUrl: string }[] = [];
+  const existingShots: string[] = Array.isArray(app.screenshot_keys) ? app.screenshot_keys : [];
+  let removedShots: string[] = [];
+  if (Array.isArray(body.screenshotUploadRequests)) {
+    const room = Math.max(0, 8 - existingShots.length);
+    for (const s of body.screenshotUploadRequests.slice(0, room)) {
+      if (!s?.fileName || !String(s?.contentType).startsWith("image/")) continue;
+      const safeName = String(s.fileName).replace(/[^a-zA-Z0-9.\-_]/g, "_").slice(-80);
+      const key = `screenshots/${app.developer_id}/${crypto.randomUUID()}-${safeName}`;
+      screenshotUploads.push({ key, uploadUrl: await createUploadUrl(BUCKETS.assets, key, s.contentType) });
+    }
+  }
+  if (Array.isArray(body.screenshotKeys)) {
+    const final = Array.from(
+      new Set(
+        body.screenshotKeys.filter(
+          (k: unknown): k is string =>
+            typeof k === "string" && !k.includes("..") && (existingShots.includes(k) || k.startsWith(`screenshots/${app.developer_id}/`))
+        )
+      )
+    ).slice(0, 8) as string[];
+    updates.screenshot_keys = final;
+    removedShots = existingShots.filter((k) => !final.includes(k));
+  }
+
   if (Object.keys(updates).length > 0) {
     updates.updated_at = new Date().toISOString();
     const { error } = await admin.from("apps").update(updates).eq("id", app.id);
@@ -79,6 +106,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return NextResponse.json({ error: `שגיאה בעדכון האפליקציה: ${error.message}` }, { status: 500 });
     }
   }
+
+  for (const k of removedShots) await deleteObject(BUCKETS.assets, k).catch(() => {});
 
   if (typeof updates.category === "string" && updates.category !== app.category && isStaff(profile)) {
     await logAudit({
@@ -119,7 +148,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   revalidatePath(`/apps/${app.id}`);
   revalidatePath(`/users/${app.developer_id}`);
 
-  return NextResponse.json({ ok: true, iconUploadUrl, iconKey });
+  return NextResponse.json({ ok: true, iconUploadUrl, iconKey, screenshotUploads });
 }
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
@@ -138,6 +167,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
   await deleteObject(BUCKETS.apps, app.file_key).catch(() => {});
   if (app.icon_key) await deleteObject(BUCKETS.assets, app.icon_key).catch(() => {});
+  for (const k of Array.isArray(app.screenshot_keys) ? app.screenshot_keys : []) await deleteObject(BUCKETS.assets, k).catch(() => {});
   await admin.from("apps").delete().eq("id", app.id);
 
   if (isStaff(profile)) {

@@ -15,6 +15,7 @@ import NotifyButton from "./NotifyButton";
 import UpdateAppButton from "./UpdateAppButton";
 import UpdatedBadge from "./UpdatedBadge";
 import AppSourceTag from "./AppSourceTag";
+import ScreenshotsButton from "./ScreenshotsButton";
 import { appPath } from "@/lib/appPath";
 
 // פיצ'ר 2a: עמוד האפליקציה נפתח בחלונית צפה מעל הדף הנוכחי (במקום ניווט מלא), כדי לשמור
@@ -208,6 +209,7 @@ export default function AppModal({
               />
             </div>
             <div className="mt-2 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+              <ScreenshotsButton keys={app.screenshot_keys} appName={app.name} />
               {app.status === "approved" && app.source === "public_suggestion" && <UpdateAppButton appId={app.id} />}
               {viewerLoggedIn && app.status === "approved" && app.source !== "public_suggestion" && (
                 <NotifyButton
