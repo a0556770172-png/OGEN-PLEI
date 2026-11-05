@@ -175,7 +175,7 @@ export default async function AppDetailPage({ params }: { params: { slug: string
               />
             </div>
             <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-              <ScreenshotsButton keys={app.screenshot_keys} appName={app.name} />
+              <ScreenshotsButton keys={app.screenshot_keys} videoKey={app.video_key} appName={app.name} />
               {app.status === "approved" && app.source === "public_suggestion" && <UpdateAppButton appId={app.id} />}
               {canNotify && (
                 <NotifyButton

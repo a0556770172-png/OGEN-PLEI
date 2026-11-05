@@ -6,6 +6,7 @@ import { MAX_SUGGESTION_MB } from "@/lib/constants";
 import { consumeOversizeGrant } from "@/lib/uploadQuota";
 import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
 import { isImagesBanned, IMAGES_BANNED_MESSAGE } from "@/lib/imageBan";
+import { validateVideoRequest, isValidVideoKey } from "@/lib/media";
 
 // כל משתמש מחובר (רגיל או מפתח) יכול להציע אפליקציה פופולרית להוספה למאגר הציבורי
 export async function POST(request: Request) {
@@ -27,7 +28,8 @@ export async function POST(request: Request) {
     fileSize,
     minAndroidVersion,
     offlineSupport,
-    screenshotKeys
+    screenshotKeys,
+    videoKey
   } = await request.json().catch(() => ({}));
   // ראו הסבר זהה ב-app/api/apps/finalize/route.ts
   const validOfflineSupport = ["offline", "online", "unknown"].includes(offlineSupport) ? offlineSupport : "unknown";
@@ -59,7 +61,8 @@ export async function POST(request: Request) {
   const validScreenshotKeys: string[] = Array.isArray(screenshotKeys)
     ? screenshotKeys.filter((k: unknown) => typeof k === "string" && k.startsWith(`screenshots/${user.id}/`) && !k.includes("..")).slice(0, 8)
     : [];
-  if (isImagesBanned(profile) && (validScreenshotKeys.length > 0 || iconKey)) {
+  const validVideoKey = isValidVideoKey(videoKey, user.id) ? videoKey : null;
+  if (isImagesBanned(profile) && (validScreenshotKeys.length > 0 || validVideoKey || iconKey)) {
     return NextResponse.json({ error: IMAGES_BANNED_MESSAGE }, { status: 403 });
   }
 
@@ -79,7 +82,8 @@ export async function POST(request: Request) {
     file_size_bytes: fileSize,
     min_android_version: minAndroidVersion.trim(),
     offline_support: validOfflineSupport,
-    screenshot_keys: validScreenshotKeys
+    screenshot_keys: validScreenshotKeys,
+    video_key: validVideoKey
   });
 
   if (error) {

@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Images, X, Loader2, Save, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Images, X, Loader2, Save, AlertCircle, CheckCircle2, Clapperboard, Trash2 } from "lucide-react";
 import DropZone from "@/components/DropZone";
 import { putToR2 } from "@/lib/uploadHelpers";
 import { screenshotUrl } from "@/lib/appPath";
+import { MAX_VIDEO_MB, MAX_VIDEO_BYTES, isAllowedVideoType } from "@/lib/media";
 
 const MAX_SCREENSHOTS = 8;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -37,9 +38,18 @@ function NewThumb({ file, onRemove }: { file: File; onRemove: () => void }) {
   return <Thumb src={src} alt={file.name} onRemove={onRemove} isNew />;
 }
 
-// ניהול צילומי המסך של אפליקציה קיימת (דף עריכת אפליקציה אצל המפתח): הוספה בגרירה/הדבקה/בחירה,
-// הסרה, ושמירה. התמונות מוצגות בעמוד האפליקציה ובחלונית הצפה דרך הכפתור "איך זה נראה?".
-export default function ScreenshotsEditor({ appId, initialKeys }: { appId: string; initialKeys: string[] }) {
+// ניהול המדיה של אפליקציה קיימת (דף עריכת אפליקציה אצל המפתח, וטאב "תמונות" אצל הצוות):
+// סרטון הסבר (העלאה / החלפה / מחיקה) וצילומי מסך (הוספה בגרירה/הדבקה/בחירה, הסרה, שמירה).
+// הכול מוצג למשתמשים בלחיצה על "איך זה נראה?" בעמוד האפליקציה.
+export default function ScreenshotsEditor({
+  appId,
+  initialKeys,
+  initialVideoKey = null
+}: {
+  appId: string;
+  initialKeys: string[];
+  initialVideoKey?: string | null;
+}) {
   const router = useRouter();
   const [keys, setKeys] = useState<string[]>(initialKeys);
   const [savedKeys, setSavedKeys] = useState<string[]>(initialKeys);
@@ -48,9 +58,64 @@ export default function ScreenshotsEditor({ appId, initialKeys }: { appId: strin
   const [error, setError] = useState("");
   const [msg, setMsg] = useState("");
 
+  const [videoKey, setVideoKey] = useState<string | null>(initialVideoKey);
+  const [videoBusy, setVideoBusy] = useState(false);
+
   const total = keys.length + newFiles.length;
   const dirty = newFiles.length > 0 || keys.length !== savedKeys.length || keys.some((k, i) => k !== savedKeys[i]);
 
+  async function patch(body: Record<string, unknown>) {
+    const res = await fetch(`/api/apps/${appId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || "שגיאה בשמירה");
+    return json;
+  }
+
+  // ---- סרטון ----
+  async function replaceVideo(files: File[]) {
+    const f = files[0];
+    if (!f) return;
+    if (!isAllowedVideoType(f.type)) { setError("אפשר להעלות סרטון MP4 או WEBM בלבד"); return; }
+    if (f.size > MAX_VIDEO_BYTES) { setError(`הסרטון גדול מדי (מקסימום ${MAX_VIDEO_MB}MB)`); return; }
+    setVideoBusy(true);
+    setError("");
+    setMsg("");
+    try {
+      const init = await patch({ videoUploadRequest: { fileName: f.name, contentType: f.type, fileSize: f.size } });
+      await putToR2(init.videoUpload.uploadUrl, f);
+      await patch({ videoKey: init.videoUpload.key });
+      setVideoKey(init.videoUpload.key);
+      setMsg("הסרטון נשמר!");
+      router.refresh();
+    } catch (err: any) {
+      setError(err.message || "שגיאה בהעלאת הסרטון");
+    } finally {
+      setVideoBusy(false);
+    }
+  }
+
+  async function removeVideo() {
+    if (!confirm("למחוק את סרטון ההסבר של האפליקציה?")) return;
+    setVideoBusy(true);
+    setError("");
+    setMsg("");
+    try {
+      await patch({ videoKey: null });
+      setVideoKey(null);
+      setMsg("הסרטון נמחק");
+      router.refresh();
+    } catch (err: any) {
+      setError(err.message || "שגיאה במחיקת הסרטון");
+    } finally {
+      setVideoBusy(false);
+    }
+  }
+
+  // ---- צילומי מסך ----
   function addFiles(files: File[]) {
     setMsg("");
     const images = files.filter((f) => f.type.startsWith("image/"));
@@ -87,13 +152,7 @@ export default function ScreenshotsEditor({ appId, initialKeys }: { appId: strin
     try {
       const uploadedKeys: string[] = [];
       if (newFiles.length) {
-        const initRes = await fetch(`/api/apps/${appId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ screenshotUploadRequests: newFiles.map((f) => ({ fileName: f.name, contentType: f.type })) })
-        });
-        const initJson = await initRes.json();
-        if (!initRes.ok) throw new Error(initJson.error || "שגיאה בהכנת ההעלאה");
+        const initJson = await patch({ screenshotUploadRequests: newFiles.map((f) => ({ fileName: f.name, contentType: f.type })) });
         const uploads: { key: string; uploadUrl: string }[] = initJson.screenshotUploads ?? [];
         for (let i = 0; i < uploads.length; i++) {
           await putToR2(uploads[i].uploadUrl, newFiles[i]);
@@ -101,13 +160,7 @@ export default function ScreenshotsEditor({ appId, initialKeys }: { appId: strin
         }
       }
       const finalKeys = [...keys, ...uploadedKeys];
-      const res = await fetch(`/api/apps/${appId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ screenshotKeys: finalKeys })
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "שגיאה בשמירת צילומי המסך");
+      await patch({ screenshotKeys: finalKeys });
       setKeys(finalKeys);
       setSavedKeys(finalKeys);
       setNewFiles([]);
@@ -121,11 +174,11 @@ export default function ScreenshotsEditor({ appId, initialKeys }: { appId: strin
   }
 
   return (
-    <div className="card flex flex-col gap-4 p-6">
+    <div className="card flex flex-col gap-5 p-6">
       <div>
-        <h2 className="font-bold text-white">צילומי מסך</h2>
+        <h2 className="font-bold text-white">סרטון הסבר וצילומי מסך</h2>
         <p className="text-xs text-gray-500">
-          עד {MAX_SCREENSHOTS} תמונות. הן מוצגות למשתמשים בלחיצה על &quot;איך זה נראה?&quot; בעמוד האפליקציה.
+          מוצגים למשתמשים בלחיצה על &quot;איך זה נראה?&quot; בעמוד האפליקציה. סרטון ההסבר מתנגן אוטומטית כשהם פותחים.
         </p>
       </div>
 
@@ -140,30 +193,56 @@ export default function ScreenshotsEditor({ appId, initialKeys }: { appId: strin
         </div>
       )}
 
-      <DropZone
-        accept="image/*"
-        multiple
-        onFiles={addFiles}
-        icon={<Images className="h-6 w-6 text-primary-light" />}
-        title="גררו צילומי מסך לכאן, הדביקו (Ctrl+V), או לחצו לבחירה"
-        hint={`${total}/${MAX_SCREENSHOTS} - PNG / JPG / WEBP עד 5MB לתמונה`}
-      >
-        {total > 0 && (
-          <div className="mt-2 flex flex-wrap justify-center gap-2">
-            {keys.map((k) => (
-              <Thumb key={k} src={screenshotUrl(k)} alt="צילום מסך" onRemove={() => setKeys((prev) => prev.filter((x) => x !== k))} />
-            ))}
-            {newFiles.map((f, i) => (
-              <NewThumb key={`${f.name}-${f.size}-${i}`} file={f} onRemove={() => setNewFiles((prev) => prev.filter((_, j) => j !== i))} />
-            ))}
+      <div className="flex flex-col gap-2">
+        <h3 className="flex items-center gap-1.5 text-sm font-bold text-white"><Clapperboard className="h-4 w-4" /> סרטון הסבר</h3>
+        {videoKey && (
+          <div className="flex flex-wrap items-start gap-3">
+            <video src={screenshotUrl(videoKey)} controls muted playsInline preload="metadata" className="max-h-52 rounded-lg border border-white/10 bg-black" />
+            <button
+              type="button"
+              onClick={removeVideo}
+              disabled={videoBusy}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> מחיקת הסרטון
+            </button>
           </div>
         )}
-      </DropZone>
+        <DropZone
+          accept="video/mp4,video/webm,video/quicktime"
+          onFiles={replaceVideo}
+          icon={videoBusy ? <Loader2 className="h-6 w-6 animate-spin text-primary-light" /> : <Clapperboard className="h-6 w-6 text-primary-light" />}
+          title={videoBusy ? "מעלה את הסרטון..." : videoKey ? "גררו סרטון חדש להחלפה, או לחצו לבחירה" : "גררו לכאן סרטון הסבר, או לחצו לבחירה"}
+          hint={`MP4 / WEBM עד ${MAX_VIDEO_MB}MB · אפשר גם סרטון שנוצר בבינה מלאכותית (AI)`}
+        />
+      </div>
 
-      <button type="button" onClick={save} disabled={!dirty || saving} className="btn-primary w-full sm:w-auto">
-        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-        שמירת צילומי המסך
-      </button>
+      <div className="flex flex-col gap-2">
+        <h3 className="flex items-center gap-1.5 text-sm font-bold text-white"><Images className="h-4 w-4" /> צילומי מסך</h3>
+        <DropZone
+          accept="image/*"
+          multiple
+          onFiles={addFiles}
+          icon={<Images className="h-6 w-6 text-primary-light" />}
+          title="גררו צילומי מסך לכאן, הדביקו (Ctrl+V), או לחצו לבחירה"
+          hint={`${total}/${MAX_SCREENSHOTS} - PNG / JPG / WEBP עד 5MB לתמונה`}
+        >
+          {total > 0 && (
+            <div className="mt-2 flex flex-wrap justify-center gap-2">
+              {keys.map((k) => (
+                <Thumb key={k} src={screenshotUrl(k)} alt="צילום מסך" onRemove={() => setKeys((prev) => prev.filter((x) => x !== k))} />
+              ))}
+              {newFiles.map((f, i) => (
+                <NewThumb key={`${f.name}-${f.size}-${i}`} file={f} onRemove={() => setNewFiles((prev) => prev.filter((_, j) => j !== i))} />
+              ))}
+            </div>
+          )}
+        </DropZone>
+        <button type="button" onClick={save} disabled={!dirty || saving} className="btn-primary w-full sm:w-auto">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          שמירת צילומי המסך
+        </button>
+      </div>
     </div>
   );
 }

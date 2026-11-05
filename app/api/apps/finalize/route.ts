@@ -11,6 +11,7 @@ import { platformOverrideFor } from "@/lib/fileKind";
 import { assignSlug } from "@/lib/appSlug";
 import { isImagesBanned, IMAGES_BANNED_MESSAGE } from "@/lib/imageBan";
 import { cleanPackageName } from "@/lib/appPath";
+import { validateVideoRequest, isValidVideoKey } from "@/lib/media";
 
 export async function POST(request: Request) {
   const result = await requireProfile();
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { name, shortDescription, descriptionHtml, version, category, fileKey, fileName, fileSize, iconKey, minAndroidVersion, offlineSupport, zipTarget, packageName, screenshotKeys } = body;
+  const { name, shortDescription, descriptionHtml, version, category, fileKey, fileName, fileSize, iconKey, minAndroidVersion, offlineSupport, zipTarget, packageName, screenshotKeys, videoKey } = body;
   // "אופליין / אונליין / לא ידוע" - נשאל תמיד באותה חלונית אישור כמו שאלת הנטפרי; אם משום
   // מה לא הגיע ערך תקין (למשל מטופס ישן שעוד לא עודכן), נופלים חזרה ל"לא ידוע" בלי להכשיל
   // את ההעלאה כולה בגלל זה.
@@ -74,7 +75,8 @@ export async function POST(request: Request) {
     : [];
 
   // משתמש חסום מהעלאת תמונות: לא צילומי מסך ולא אייקון ידני (אייקון שחולץ אוטומטית מה-APK מותר)
-  if (isImagesBanned(profile) && (validScreenshotKeys.length > 0 || (iconKey && !String(iconKey).includes("-auto-extracted.")))) {
+  const validVideoKey = isValidVideoKey(videoKey, user.id) ? videoKey : null;
+  if (isImagesBanned(profile) && (validScreenshotKeys.length > 0 || validVideoKey || (iconKey && !String(iconKey).includes("-auto-extracted.")))) {
     return NextResponse.json({ error: IMAGES_BANNED_MESSAGE }, { status: 403 });
   }
 
@@ -95,6 +97,7 @@ export async function POST(request: Request) {
       offline_support: validOfflineSupport,
       package_name: cleanPackageName(packageName),
       screenshot_keys: validScreenshotKeys,
+      video_key: validVideoKey,
       // סידור אוטומטי: APK -> אפליקציות, תוכנה -> תוכנות, ZIP -> לפי בחירת המשתמש (lib/fileKind.ts)
       platform_override: platformOverrideFor(String(fileName), zipTarget),
       status: initialStatus,

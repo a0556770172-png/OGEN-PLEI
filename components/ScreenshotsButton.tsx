@@ -1,16 +1,31 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Images, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Images, X, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { screenshotUrl } from "@/lib/appPath";
 
-// כפתור "איך זה נראה?" - פותח גלריית צילומי המסך של האפליקציה. משמש גם בחלונית הצפה
-// (AppModal) וגם בעמוד האפליקציה המלא. לא מוצג בכלל כשאין צילומי מסך.
-export default function ScreenshotsButton({ keys, appName }: { keys?: string[] | null; appName: string }) {
+type Item = { type: "video" | "image"; url: string };
+
+// כפתור "איך זה נראה?" - פותח גלריית מדיה של האפליקציה: סרטון ההסבר (מתנגן אוטומטית) ואחריו
+// צילומי המסך. משמש גם בחלונית הצפה (AppModal) וגם בעמוד האפליקציה המלא. לא מוצג כשאין מדיה.
+export default function ScreenshotsButton({
+  keys,
+  videoKey,
+  appName
+}: {
+  keys?: string[] | null;
+  videoKey?: string | null;
+  appName: string;
+}) {
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
-  const urls = (keys ?? []).map(screenshotUrl);
-  const count = urls.length;
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const items: Item[] = [
+    ...(videoKey ? [{ type: "video" as const, url: screenshotUrl(videoKey) }] : []),
+    ...(keys ?? []).map((k) => ({ type: "image" as const, url: screenshotUrl(k) }))
+  ];
+  const count = items.length;
 
   const close = useCallback(() => setOpen(false), []);
   const next = useCallback(() => setIndex((i) => (i + 1) % count), [count]);
@@ -33,6 +48,22 @@ export default function ScreenshotsButton({ keys, appName }: { keys?: string[] |
     return () => window.removeEventListener("keydown", onKey, true);
   }, [open, close, next, prev]);
 
+  const current = items[index];
+
+  // ניגון אוטומטי של הסרטון בפתיחה: קודם עם קול (הפתיחה היא לחיצה של המשתמש, ולכן מותר),
+  // ואם הדפדפן חוסם - מנגנים בלי קול (המשתמש יכול להפעיל קול מהפקדים).
+  useEffect(() => {
+    if (!open || current?.type !== "video") return;
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = false;
+    v.currentTime = 0;
+    v.play().catch(() => {
+      v.muted = true;
+      v.play().catch(() => {});
+    });
+  }, [open, index, current?.type]);
+
   if (count === 0) return null;
 
   return (
@@ -53,12 +84,12 @@ export default function ScreenshotsButton({ keys, appName }: { keys?: string[] |
             onClick={(e) => { e.stopPropagation(); close(); }}
             onPointerDown={(e) => e.stopPropagation()}
             role="dialog"
-            aria-label={`צילומי מסך של ${appName}`}
+            aria-label={`איך ${appName} נראית`}
           >
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); close(); }}
-              className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+              className="absolute left-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
               aria-label="סגירה"
             >
               <X className="h-5 w-5" />
@@ -75,13 +106,26 @@ export default function ScreenshotsButton({ keys, appName }: { keys?: string[] |
                   <ChevronRight className="h-6 w-6" />
                 </button>
               )}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={urls[index]}
-                alt={`צילום מסך ${index + 1} של ${appName}`}
-                className="max-h-[75vh] max-w-full rounded-xl object-contain"
-                onClick={count > 1 ? next : undefined}
-              />
+              {current.type === "video" ? (
+                <video
+                  key={current.url}
+                  ref={videoRef}
+                  src={current.url}
+                  controls
+                  playsInline
+                  loop
+                  preload="auto"
+                  className="max-h-[75vh] max-w-full rounded-xl bg-black"
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={current.url}
+                  alt={`צילום מסך של ${appName}`}
+                  className="max-h-[75vh] max-w-full rounded-xl object-contain"
+                  onClick={count > 1 ? next : undefined}
+                />
+              )}
               {count > 1 && (
                 <button
                   type="button"
@@ -96,20 +140,24 @@ export default function ScreenshotsButton({ keys, appName }: { keys?: string[] |
 
             {count > 1 && (
               <div className="mt-3 flex max-w-full gap-2 overflow-x-auto pb-1" onClick={(e) => e.stopPropagation()}>
-                {urls.map((u, i) => (
+                {items.map((it, i) => (
                   <button
-                    key={u}
+                    key={it.url}
                     type="button"
                     onClick={() => setIndex(i)}
-                    className={`h-16 w-12 shrink-0 overflow-hidden rounded-lg border-2 ${i === index ? "border-primary" : "border-transparent opacity-60 hover:opacity-100"}`}
+                    className={`relative h-16 w-12 shrink-0 overflow-hidden rounded-lg border-2 ${i === index ? "border-primary" : "border-transparent opacity-60 hover:opacity-100"}`}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={u} alt="" className="h-full w-full object-cover" />
+                    {it.type === "video" ? (
+                      <span className="flex h-full w-full items-center justify-center bg-surface2 text-primary-light"><Play className="h-5 w-5" /></span>
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={it.url} alt="" className="h-full w-full object-cover" />
+                    )}
                   </button>
                 ))}
               </div>
             )}
-            <p className="mt-2 text-xs text-gray-400">{index + 1} / {count}</p>
+            <p className="mt-2 text-xs text-gray-400">{index + 1} / {count}{current.type === "video" ? " · סרטון הסבר" : ""}</p>
           </div>,
           document.body
         )}

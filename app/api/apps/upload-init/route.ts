@@ -5,6 +5,7 @@ import { createUploadUrl, BUCKETS } from "@/lib/r2";
 import { LIMITS } from "@/lib/constants";
 import { effectiveMaxUploadMb } from "@/lib/uploadQuota";
 import { isImagesBanned, IMAGES_BANNED_MESSAGE } from "@/lib/imageBan";
+import { validateVideoRequest, isValidVideoKey } from "@/lib/media";
 
 function sanitize(name: string) {
   return name.replace(/[^a-zA-Z0-9.\-_]/g, "_").slice(-80);
@@ -20,16 +21,21 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { fileName, fileSize, contentType, iconFileName, iconContentType, screenshots } = body as {
+  const { fileName, fileSize, contentType, iconFileName, iconContentType, screenshots, video } = body as {
     fileName: string; fileSize: number; contentType: string; iconFileName?: string; iconContentType?: string;
     screenshots?: { fileName: string; contentType: string }[];
+    video?: { fileName: string; contentType: string; fileSize: number };
   };
 
   if (!fileName || !fileSize || !contentType) {
     return NextResponse.json({ error: "חסרים פרטי קובץ" }, { status: 400 });
   }
 
-  if ((iconFileName || (Array.isArray(screenshots) && screenshots.length)) && isImagesBanned(profile)) {
+  if (video) {
+    const videoErr = validateVideoRequest(video);
+    if (videoErr) return NextResponse.json({ error: videoErr }, { status: 400 });
+  }
+  if ((iconFileName || video || (Array.isArray(screenshots) && screenshots.length)) && isImagesBanned(profile)) {
     return NextResponse.json({ error: IMAGES_BANNED_MESSAGE }, { status: 403 });
   }
 
@@ -74,5 +80,12 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ uploadUrl, fileKey, iconUploadUrl, iconKey, screenshotUploads });
+  // סרטון הסבר (אופציונלי)
+  let videoUpload: { key: string; uploadUrl: string } | undefined;
+  if (video) {
+    const key = `videos/${user.id}/${uuid}-${sanitize(video.fileName)}`;
+    videoUpload = { key, uploadUrl: await createUploadUrl(BUCKETS.assets, key, video.contentType) };
+  }
+
+  return NextResponse.json({ uploadUrl, fileKey, iconUploadUrl, iconKey, screenshotUploads, videoUpload });
 }

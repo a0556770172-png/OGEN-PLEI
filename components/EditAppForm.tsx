@@ -178,7 +178,7 @@ export default function EditAppForm({
         </button>
       </motion.form>
 
-      <ScreenshotsEditor appId={app.id} initialKeys={app.screenshot_keys ?? []} />
+      <ScreenshotsEditor appId={app.id} initialKeys={app.screenshot_keys ?? []} initialVideoKey={app.video_key ?? null} />
 
       <motion.form
         initial={{ opacity: 0, y: 12 }}

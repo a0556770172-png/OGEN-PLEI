@@ -126,6 +126,8 @@ export interface AppRow {
   package_name?: string | null;
   // צילומי מסך (מפתחות בדלי ה-assets).
   screenshot_keys?: string[] | null;
+  // סרטון הסבר (מפתח בדלי ה-assets) - מתנגן אוטומטית ב"איך זה נראה?".
+  video_key?: string | null;
   created_at: string;
   updated_at: string;
   developer?: Profile;
@@ -213,6 +215,7 @@ export interface AppSuggestion {
   version: string | null;
   note: string | null;
   screenshot_keys?: string[] | null;
+  video_key?: string | null;
   file_key: string | null;
   file_name: string | null;
   file_size_bytes: number | null;

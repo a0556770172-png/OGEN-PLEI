@@ -10,6 +10,7 @@ import { MIN_ANDROID_VERSIONS } from "@/lib/androidVersions";
 import { parseApkForForm } from "@/lib/apkManifest";
 import FileKindNotice from "@/components/FileKindNotice";
 import DropZone from "@/components/DropZone";
+import VideoPicker from "@/components/VideoPicker";
 import type { AppRow, Category } from "@/types/database";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -67,6 +68,7 @@ export default function AppUploadForm({ mode = "new", targetApp }: { mode?: "new
   const [icon, setIcon] = useState<File | null>(null);
   // צילומי מסך (עד 8) - רק בהעלאה חדשה
   const [screenshots, setScreenshots] = useState<File[]>([]);
+  const [video, setVideo] = useState<File | null>(null);
   const [iconUrlInput, setIconUrlInput] = useState("");
   const [iconUrlLoading, setIconUrlLoading] = useState(false);
   // לאן הולכת תמונה שמודבקת (Ctrl+V) בעמוד: לאזור שהעכבר/הפוקוס נמצא בו לאחרונה
@@ -253,7 +255,8 @@ export default function AppUploadForm({ mode = "new", targetApp }: { mode?: "new
           iconContentType: icon?.type,
           ...(!isUpdate && screenshots.length
             ? { screenshots: screenshots.map((s) => ({ fileName: s.name, contentType: s.type })) }
-            : {})
+            : {}),
+          ...(!isUpdate && video ? { video: { fileName: video.name, contentType: video.type, fileSize: video.size } } : {})
         })
       });
       const initJson = await initRes.json();
@@ -325,6 +328,17 @@ export default function AppUploadForm({ mode = "new", targetApp }: { mode?: "new
         }
       }
 
+      // סרטון הסבר: "רך" כמו האייקון וצילומי המסך
+      let uploadedVideoKey: string | null = null;
+      if (!isUpdate && video && initJson.videoUpload) {
+        try {
+          await putToR2(initJson.videoUpload.uploadUrl, video);
+          uploadedVideoKey = initJson.videoUpload.key;
+        } catch {
+          // מדלגים - אפשר להוסיף סרטון מאוחר יותר בעריכת האפליקציה
+        }
+      }
+
       const finalizeRes = await fetch(isUpdate ? `/api/apps/${targetApp.id}/update-proposal/finalize` : "/api/apps/finalize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -342,7 +356,8 @@ export default function AppUploadForm({ mode = "new", targetApp }: { mode?: "new
           offlineSupport,
           zipTarget,
           packageName,
-          screenshotKeys
+          screenshotKeys,
+          videoKey: uploadedVideoKey
         })
       });
       const finalizeJson = await finalizeRes.json();
@@ -608,6 +623,14 @@ export default function AppUploadForm({ mode = "new", targetApp }: { mode?: "new
                     </div>
                   )}
                 </DropZone>
+              </div>
+            )}
+
+            {!isUpdate && (
+              <div>
+                <label className="mb-1.5 block text-sm text-gray-400">סרטון הסבר (אופציונלי)</label>
+                <VideoPicker file={video} onChange={setVideo} onError={(m) => setError(m)} />
+                <p className="mt-1.5 text-xs text-gray-500">יתנגן אוטומטית כשמשתמשים לוחצים על &quot;איך זה נראה?&quot;. אפשר גם סרטון שנוצר בבינה מלאכותית.</p>
               </div>
             )}
 

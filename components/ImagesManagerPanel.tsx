@@ -258,7 +258,7 @@ export default function ImagesManagerPanel({ apps }: { apps: AppRow[] }) {
                     {app.source === "public_suggestion" ? "ציבורית" : "פרטית"} · {STATUS_LABEL[app.status] ?? app.status}
                     {(app.developer as any)?.username ? ` · ${(app.developer as any).username}` : ""}
                     {" · "}
-                    {app.icon_key ? "יש אייקון" : "אין אייקון"} · {shots} צילומי מסך
+                    {app.icon_key ? "יש אייקון" : "אין אייקון"} · {shots} צילומי מסך · {app.video_key ? "יש סרטון" : "אין סרטון"}
                   </p>
                 </div>
                 {open ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
@@ -266,7 +266,7 @@ export default function ImagesManagerPanel({ apps }: { apps: AppRow[] }) {
               {open && (
                 <div className="flex flex-col gap-4 border-t border-border p-4">
                   <IconEditor app={app} />
-                  <ScreenshotsEditor appId={app.id} initialKeys={app.screenshot_keys ?? []} />
+                  <ScreenshotsEditor appId={app.id} initialKeys={app.screenshot_keys ?? []} initialVideoKey={app.video_key ?? null} />
                 </div>
               )}
             </div>

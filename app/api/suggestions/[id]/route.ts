@@ -99,6 +99,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         offline_support: suggestion.offline_support ?? "unknown",
         package_name: cleanPackageName(packageName),
         screenshot_keys: Array.isArray(suggestion.screenshot_keys) ? suggestion.screenshot_keys : [],
+        video_key: suggestion.video_key ?? null,
         // מקור: הצעה ציבורית - לא ניתנת לעריכה ע"י המציע (ראו app/api/apps/[id]/route.ts).
         source: "public_suggestion",
         developer_name: suggestion.developer_name?.trim() || null,

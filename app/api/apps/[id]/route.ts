@@ -6,6 +6,7 @@ import { deleteObject, createUploadUrl, BUCKETS } from "@/lib/r2";
 import { logAudit } from "@/lib/audit";
 import { sanitizeUserHtml } from "@/lib/sanitizeHtml";
 import { isImagesBanned, IMAGES_BANNED_MESSAGE } from "@/lib/imageBan";
+import { validateVideoRequest, isValidVideoKey } from "@/lib/media";
 
 // עריכת פרטי הפרסום (שם/תיאור/קטגוריה/אייקון) - הבעלים של האפליקציה בלבד, או צוות.
 // שינוי פרטים בלבד (לא קובץ) לא מאפס את הבדיקה - זה נשאר כפי שהיה (מאושר/ממתין/וכו').
@@ -35,7 +36,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   const body = await request.json().catch(() => ({}));
   const { name, shortDescription, descriptionHtml, category, iconFileName, iconContentType, adminNote } = body;
 
-  if (isImagesBanned(profile) && ((iconFileName && iconContentType) || Array.isArray(body.screenshotUploadRequests))) {
+  if (isImagesBanned(profile) && ((iconFileName && iconContentType) || Array.isArray(body.screenshotUploadRequests) || body.videoUploadRequest)) {
     return NextResponse.json({ error: IMAGES_BANNED_MESSAGE }, { status: 403 });
   }
 
@@ -109,6 +110,31 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     removedShots = existingShots.filter((k) => !final.includes(k));
   }
 
+  // סרטון הסבר: שלב 1 - בקשת כתובת העלאה (videoUploadRequest); שלב 2 - שמירת המפתח (videoKey) או מחיקה (videoKey: null)
+  let videoUpload: { key: string; uploadUrl: string } | undefined;
+  let removedVideoKey: string | null = null;
+  if (body.videoUploadRequest) {
+    const videoErr = validateVideoRequest(body.videoUploadRequest);
+    if (videoErr) return NextResponse.json({ error: videoErr }, { status: 400 });
+    const vr = body.videoUploadRequest;
+    const safeVideoName = String(vr.fileName).replace(/[^a-zA-Z0-9.\-_]/g, "_").slice(-80);
+    const key = `videos/${app.developer_id}/${crypto.randomUUID()}-${safeVideoName}`;
+    videoUpload = { key, uploadUrl: await createUploadUrl(BUCKETS.assets, key, vr.contentType) };
+  }
+  if ("videoKey" in body) {
+    if (body.videoKey === null) {
+      if (app.video_key) {
+        updates.video_key = null;
+        removedVideoKey = app.video_key;
+      }
+    } else if (isValidVideoKey(body.videoKey, app.developer_id)) {
+      updates.video_key = body.videoKey;
+      if (app.video_key && app.video_key !== body.videoKey) removedVideoKey = app.video_key;
+    } else {
+      return NextResponse.json({ error: "מפתח סרטון לא תקין" }, { status: 400 });
+    }
+  }
+
   if (Object.keys(updates).length > 0) {
     updates.updated_at = new Date().toISOString();
     const { error } = await admin.from("apps").update(updates).eq("id", app.id);
@@ -119,6 +145,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   for (const k of removedShots) await deleteObject(BUCKETS.assets, k).catch(() => {});
   if (removedIconKey) await deleteObject(BUCKETS.assets, removedIconKey).catch(() => {});
+  if (removedVideoKey) await deleteObject(BUCKETS.assets, removedVideoKey).catch(() => {});
 
   if (typeof updates.category === "string" && updates.category !== app.category && isStaff(profile)) {
     await logAudit({
@@ -159,7 +186,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   revalidatePath(`/apps/${app.id}`);
   revalidatePath(`/users/${app.developer_id}`);
 
-  return NextResponse.json({ ok: true, iconUploadUrl, iconKey, screenshotUploads });
+  return NextResponse.json({ ok: true, iconUploadUrl, iconKey, screenshotUploads, videoUpload });
 }
 
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
@@ -179,6 +206,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   await deleteObject(BUCKETS.apps, app.file_key).catch(() => {});
   if (app.icon_key) await deleteObject(BUCKETS.assets, app.icon_key).catch(() => {});
   for (const k of Array.isArray(app.screenshot_keys) ? app.screenshot_keys : []) await deleteObject(BUCKETS.assets, k).catch(() => {});
+  if (app.video_key) await deleteObject(BUCKETS.assets, app.video_key).catch(() => {});
   await admin.from("apps").delete().eq("id", app.id);
 
   if (isStaff(profile)) {

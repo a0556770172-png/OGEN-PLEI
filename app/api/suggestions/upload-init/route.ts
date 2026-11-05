@@ -4,6 +4,7 @@ import { createUploadUrl, BUCKETS } from "@/lib/r2";
 import { MAX_SUGGESTION_MB } from "@/lib/constants";
 import { effectiveMaxUploadMb } from "@/lib/uploadQuota";
 import { isImagesBanned, IMAGES_BANNED_MESSAGE } from "@/lib/imageBan";
+import { validateVideoRequest, isValidVideoKey } from "@/lib/media";
 
 function sanitize(name: string) {
   return name.replace(/[^a-zA-Z0-9.\-_]/g, "_").slice(-80);
@@ -17,8 +18,12 @@ export async function POST(request: Request) {
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
   const { user, profile } = result;
 
-  const { fileName, fileSize, contentType, iconFileName, iconContentType, screenshots } = await request.json().catch(() => ({}));
-  if ((iconFileName || (Array.isArray(screenshots) && screenshots.length)) && isImagesBanned(profile)) {
+  const { fileName, fileSize, contentType, iconFileName, iconContentType, screenshots, video } = await request.json().catch(() => ({}));
+  if (video) {
+    const videoErr = validateVideoRequest(video);
+    if (videoErr) return NextResponse.json({ error: videoErr }, { status: 400 });
+  }
+  if ((iconFileName || video || (Array.isArray(screenshots) && screenshots.length)) && isImagesBanned(profile)) {
     return NextResponse.json({ error: IMAGES_BANNED_MESSAGE }, { status: 403 });
   }
   if (!fileName || !fileSize) {
@@ -62,5 +67,11 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ uploadUrl, fileKey, iconUploadUrl, iconKey, screenshotUploads });
+  let videoUpload: { key: string; uploadUrl: string } | undefined;
+  if (video) {
+    const key = `videos/${user.id}/${uuid}-${sanitize(String(video.fileName))}`;
+    videoUpload = { key, uploadUrl: await createUploadUrl(BUCKETS.assets, key, video.contentType) };
+  }
+
+  return NextResponse.json({ uploadUrl, fileKey, iconUploadUrl, iconKey, screenshotUploads, videoUpload });
 }

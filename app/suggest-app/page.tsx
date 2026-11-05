@@ -10,6 +10,7 @@ import { parseApkForForm } from "@/lib/apkManifest";
 import RichTextEditor from "@/components/RichTextEditor";
 import UploadSuccess from "@/components/UploadSuccess";
 import ScreenshotsPicker from "@/components/ScreenshotsPicker";
+import VideoPicker from "@/components/VideoPicker";
 import type { AppSuggestion, Category } from "@/types/database";
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
@@ -29,6 +30,7 @@ export default function SuggestAppPage() {
   const [developerName, setDeveloperName] = useState("");
   const [icon, setIcon] = useState<File | null>(null);
   const [screenshots, setScreenshots] = useState<File[]>([]);
+  const [video, setVideo] = useState<File | null>(null);
   // בכוונה בלי ברירת מחדל - חובה לבחור בעצמו את גרסת האנדרואיד המינימלית, כדי שלא תישלח
   // בטעות גרסה שגויה שרק "נשארה מסומנת" מברירת המחדל.
   const [minAndroidVersion, setMinAndroidVersion] = useState("");
@@ -121,7 +123,8 @@ export default function SuggestAppPage() {
           contentType: file.type || "application/octet-stream",
           iconFileName: icon?.name,
           iconContentType: icon?.type,
-          ...(screenshots.length ? { screenshots: screenshots.map((s) => ({ fileName: s.name, contentType: s.type })) } : {})
+          ...(screenshots.length ? { screenshots: screenshots.map((s) => ({ fileName: s.name, contentType: s.type })) } : {}),
+          ...(video ? { video: { fileName: video.name, contentType: video.type, fileSize: video.size } } : {})
         })
       });
       const initJson = await initRes.json();
@@ -152,6 +155,16 @@ export default function SuggestAppPage() {
         }
       }
 
+      let uploadedVideoKey: string | null = null;
+      if (video && initJson.videoUpload) {
+        try {
+          await putToR2(initJson.videoUpload.uploadUrl, video);
+          uploadedVideoKey = initJson.videoUpload.key;
+        } catch {
+          // סרטון הוא תוספת "רכה" - לא מפילים את ההצעה בגללו
+        }
+      }
+
       const res = await fetch("/api/suggestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -164,6 +177,7 @@ export default function SuggestAppPage() {
           category: netfreeAdapted ? "netfree" : category,
           iconKey: uploadedIconKey,
           screenshotKeys,
+          videoKey: uploadedVideoKey,
           developerName,
           fileKey: initJson.fileKey,
           fileName: file.name,
@@ -182,6 +196,7 @@ export default function SuggestAppPage() {
       setDeveloperName("");
       setIcon(null);
       setScreenshots([]);
+      setVideo(null);
       setMinAndroidVersion("");
       setFile(null);
       setNote("");
@@ -315,6 +330,11 @@ export default function SuggestAppPage() {
           <label className="mb-1.5 block text-sm text-gray-400">צילומי מסך (אופציונלי, עד 8)</label>
           <ScreenshotsPicker files={screenshots} onChange={setScreenshots} onError={(m) => setError(m)} />
           <p className="mt-1.5 text-xs text-gray-500">יוצגו בעמוד האפליקציה בלחיצה על &quot;איך זה נראה?&quot;. אפשר להוסיף או לשנות אותם מאוחר יותר דרך הצוות.</p>
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm text-gray-400">סרטון הסבר (אופציונלי)</label>
+          <VideoPicker file={video} onChange={setVideo} onError={(m) => setError(m)} />
+          <p className="mt-1.5 text-xs text-gray-500">יתנגן אוטומטית ב&quot;איך זה נראה?&quot;. אפשר גם סרטון שנוצר בבינה מלאכותית.</p>
         </div>
         <div>
           <label className="mb-1.5 block text-sm text-gray-400">הערה לצוות (אופציונלי)</label>
