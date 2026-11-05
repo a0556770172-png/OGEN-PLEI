@@ -102,6 +102,12 @@ rm -rf "$APP_DIR/.next.prev" "$APP_DIR/.next.new"
 mv "$BUILD_DIR/.next" "$APP_DIR/.next.new"
 mv "$APP_DIR/.next" "$APP_DIR/.next.prev" 2>/dev/null
 mv "$APP_DIR/.next.new" "$APP_DIR/.next"
+# שומרים גם את קבצי ה-JS/CSS של הגרסה הקודמת: לשונית פתוחה (או עמוד HTML ישן במטמון של nginx) עדיין מפנה
+# אליהם, ובלעדיהם מקבלים ChunkLoadError ועמוד ריק. קבצים ישנים מעל יומיים נמחקים כדי שהתיקייה לא תגדל.
+if [ -d "$APP_DIR/.next.prev/static" ]; then
+  cp -anp "$APP_DIR/.next.prev/static/." "$APP_DIR/.next/static/" 2>/dev/null
+fi
+find "$APP_DIR/.next/static" -type f -mtime +2 -delete 2>/dev/null
 sudo systemctl restart $SERVICES
 
 # ---------- 4. בדיקת תקינות + חזרה לגרסה הקודמת אם צריך ----------
@@ -116,6 +122,8 @@ for i in $(seq 1 30); do
   if [ "$all_ok" = "1" ]; then healthy=1; break; fi
 done
 if [ "$healthy" = "1" ]; then
+  # מנקים את מטמון ה-HTML של nginx (עמודי אורחים שנשמרו 15 שניות) כדי שיוגשו עמודים של הגרסה החדשה
+  sudo find /var/cache/nginx/ogen-html -type f -delete 2>/dev/null
   echo "OK: deployed ${NEW:0:7} at $(date '+%F %T')"
 else
   echo "!! site not healthy after deploy of ${NEW:0:7} - rolling back to ${OLD:0:7}"
