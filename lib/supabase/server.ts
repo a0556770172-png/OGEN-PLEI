@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { noStoreFetch } from "./noStoreFetch";
 
 // לקוח מחובר לסשן של המשתמש (מכבד RLS) — לשימוש ב-Server Components / Route Handlers
 export function createServerSupabase() {
@@ -26,7 +27,8 @@ export function createServerSupabase() {
         }
       },
       // חייב להיות זהה לשם הקבוע ב-lib/supabase/client.ts - ראו ההסבר שם.
-      cookieOptions: { name: "sb-ogenplay-auth-token" }
+      cookieOptions: { name: "sb-ogenplay-auth-token" },
+      global: { fetch: noStoreFetch }
     }
   );
 }
