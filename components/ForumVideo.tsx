@@ -56,7 +56,7 @@ export default function ForumVideo({
         {poster && <img src={poster} alt="" loading="lazy" className="h-full w-full object-cover" />}
         <span className="absolute inset-0 flex items-center justify-center">
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/90 text-white shadow-glow">
-            <Play className="h-6 w-6 -scale-x-100" fill="currentColor" />
+            <Play className="h-6 w-6" fill="currentColor" />
           </span>
         </span>
         <span className="absolute bottom-2 start-2 rounded-lg bg-black/70 px-2 py-1">{viewsLabel}</span>
