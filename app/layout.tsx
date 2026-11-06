@@ -11,6 +11,7 @@ import SiteVisitTracker from "@/components/SiteVisitTracker";
 import BanWatcher from "@/components/BanWatcher";
 import ReferralCapture from "@/components/ReferralCapture";
 import FeatureAnnounce from "@/components/FeatureAnnounce";
+import VideoAnnounce from "@/components/VideoAnnounce";
 import NewNotificationsPeek from "@/components/NewNotificationsPeek";
 import SiteTranslator from "@/components/SiteTranslator";
 import StaffRecruitBadge from "@/components/StaffRecruitBadge";
@@ -123,6 +124,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <BanWatcher />
         <ReferralCapture />
         <FeatureAnnounce />
+        <VideoAnnounce />
         <NewNotificationsPeek />
         <SiteRulesGate />
         <ModeratorAgreementGate />
