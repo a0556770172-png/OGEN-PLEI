@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { grantReferralIfPending, extractClientIp, linkReferralFromCookie } from "@/lib/referral";
+import { safeRedirect } from "@/lib/safeRedirect";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -42,15 +43,18 @@ export async function GET(request: Request) {
 
     // התחברות/הרשמה עם Google (בניגוד לאימות מייל רגיל) - יש כבר סשן פעיל בדיוק עכשיו,
     // אז מנווטים ישר פנימה במקום להראות שוב את מסך ההתחברות (אין למשתמש כזה סיסמה בכלל).
-    // תמיד לדף הבית, בדיוק כמו בהתחברות רגילה - ראו app/login/page.tsx.
+    // לדף הבית, בדיוק כמו בהתחברות רגילה - ראו app/login/page.tsx - אלא אם המשתמש הגיע מעמוד
+    // מסוים (למשל אפליקציה שרצה להוריד ונדרש להתחבר): אז חוזרים בדיוק לשם (נתיב פנימי בלבד).
     // חריג: משתמש שנרשם עכשיו לראשונה עם Google מקבל קודם מסך לבחירת שם משתמש
-    // (אחרת נשאר לו השם שנוצר אוטומטית מהמייל) - ראו app/welcome/username/page.tsx.
+    // (אחרת נשאר לו השם שנוצר אוטומטית מהמייל) - ראו app/welcome/username/page.tsx - ואחריו חוזר לאותו עמוד.
     if (isOAuth) {
+      const dest = safeRedirect(searchParams.get("redirect"));
       const justCreated = user && Date.now() - new Date(user.created_at).getTime() < 10 * 60 * 1000;
       if (justCreated && !user.user_metadata?.username_chosen) {
-        return NextResponse.redirect(`${origin}/welcome/username`);
+        const q = dest !== "/" ? `?redirect=${encodeURIComponent(dest)}` : "";
+        return NextResponse.redirect(`${origin}/welcome/username${q}`);
       }
-      return NextResponse.redirect(`${origin}/`);
+      return NextResponse.redirect(`${origin}${dest}`);
     }
   }
 

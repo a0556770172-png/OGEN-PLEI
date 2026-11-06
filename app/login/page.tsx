@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Mail, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { safeRedirect } from "@/lib/safeRedirect";
 
 // חשוב: בלי זה, Next.js מנסה לרנדר את הדף הזה כ-HTML סטטי כבר בזמן ה-build עצמו
 // (לפני שמשתני הסביבה של Vercel זמינים בפועל), מה שגורם לקריסת ה-build עם שגיאת
@@ -37,10 +38,11 @@ function LoginForm() {
   async function handleGoogleSignIn() {
     setError("");
     setGoogleLoading(true);
-    const redirect = params.get("redirect");
+    const redirect = safeRedirect(params.get("redirect"));
     const callbackUrl = new URL(`${window.location.origin}/auth/callback`);
     callbackUrl.searchParams.set("flow", "oauth");
-    if (redirect) callbackUrl.searchParams.set("redirect", redirect);
+    // חוזרים בדיוק לעמוד שממנו הגיעו (למשל אפליקציה שרצו להוריד) - ראו app/auth/callback/route.ts
+    if (redirect !== "/") callbackUrl.searchParams.set("redirect", redirect);
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: callbackUrl.toString() }
@@ -100,8 +102,7 @@ function LoginForm() {
 
     // תמיד לדף הבית אחרי התחברות (גם מנהל/פיקוח/מפתח) - חוץ ממקרה שבו המשתמש הופנה
     // לכאן מעמוד מוגן ספציפי (redirect בכתובת), אז חוזרים בדיוק לשם.
-    const redirect = params.get("redirect");
-    const dest = redirect || "/";
+    const dest = safeRedirect(params.get("redirect"));
 
     router.push(dest);
     router.refresh();

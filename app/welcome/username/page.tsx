@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { AtSign, AlertCircle, Loader2, UserRound } from "lucide-react";
+import { safeRedirect } from "@/lib/safeRedirect";
 
 // מונע רינדור סטטי בזמן ה-build (ראו הסבר מפורט ב-app/login/page.tsx)
 export const dynamic = "force-dynamic";
@@ -45,7 +46,9 @@ export default function ChooseUsernamePage() {
       setSaving(false);
       return;
     }
-    router.push("/");
+    // אם הגיעו מעמוד מסוים (למשל אפליקציה להורדה) - חוזרים אליו אחרי בחירת השם
+    const dest = safeRedirect(new URLSearchParams(window.location.search).get("redirect"));
+    router.push(dest);
     router.refresh();
   }
 

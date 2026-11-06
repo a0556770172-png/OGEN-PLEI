@@ -34,6 +34,11 @@ export default function Navbar() {
   const supabase = createClient();
   const router = useRouter();
   const pathname = usePathname();
+  // כניסה מעמוד מסוים (למשל אפליקציה) מחזירה בדיוק אליו אחרי ההתחברות. לא מחזירים לדפי התחברות/הרשמה עצמם.
+  const loginHref =
+    pathname && pathname !== "/" && !/^\/(login|signup|auth|welcome|reset-password|banned)/.test(pathname)
+      ? `/login?redirect=${encodeURIComponent(pathname)}`
+      : "/login";
   const [profile, setProfile] = useState<Profile | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -106,7 +111,7 @@ export default function Navbar() {
           {!loading && !profile && (
             <>
               <Link href="/signup/user" className="btn-primary text-sm">הרשמה</Link>
-              <Link href="/login" className="text-sm font-medium text-gray-300 transition hover:text-white">
+              <Link href={loginHref} className="text-sm font-medium text-gray-300 transition hover:text-white">
                 כניסה
               </Link>
             </>
@@ -188,7 +193,7 @@ export default function Navbar() {
             {!profile ? (
               <>
                 <Link href="/signup/user" onClick={() => setOpen(false)}>הרשמה</Link>
-                <Link href="/login" onClick={() => setOpen(false)}>כניסה</Link>
+                <Link href={loginHref} onClick={() => setOpen(false)}>כניסה</Link>
               </>
             ) : null}
             <Link href="/" onClick={() => setOpen(false)}>החנות</Link>
