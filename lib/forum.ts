@@ -2,6 +2,7 @@ import { createAdminSupabase } from "./supabase/admin";
 import { getAvatarUrl } from "./avatar";
 import { memo } from "./memo";
 import { forumSnippet } from "./forumText";
+import { publicAssetUrl } from "./r2";
 
 // כל לייק על פוסט ראשי בפורום מזכה את הכותב במוניטין אחד (פעם אחת לכל נותן-לייק).
 export const FORUM_LIKE_POINTS = 1;
@@ -36,6 +37,8 @@ export interface ForumPost {
   replyTo: { id: string; username: string; snippet: string } | null;
   // משתמשים שהוזכרו בהודעה (@שם)
   mentions: { id: string; username: string }[];
+  // סרטון מצורף לפוסט (אם יש) + כמה פעמים נצפה
+  video: { url: string; posterUrl: string | null; views: number } | null;
 }
 
 export type ForumSort = "new" | "top";
@@ -137,7 +140,14 @@ async function enrich(rows: any[], viewerId: string | null): Promise<ForumPost[]
     isMine: !!viewerId && r.user_id === viewerId,
     editedAt: r.edited_at ?? null,
     replyTo: r.reply_to_id ? targetMap.get(r.reply_to_id) ?? null : null,
-    mentions: mentionsByPost.get(r.id) ?? []
+    mentions: mentionsByPost.get(r.id) ?? [],
+    video: r.video_key
+      ? {
+          url: publicAssetUrl(r.video_key),
+          posterUrl: r.video_poster_key ? publicAssetUrl(r.video_poster_key) : null,
+          views: Number(r.video_views ?? 0)
+        }
+      : null
   }));
 }
 

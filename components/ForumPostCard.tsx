@@ -24,6 +24,7 @@ import {
   Link2
 } from "lucide-react";
 import ForumBody from "./ForumBody";
+import ForumVideo from "./ForumVideo";
 import { forumSnippet } from "@/lib/forumText";
 import ForumLikeButton from "./ForumLikeButton";
 import type { ForumPost } from "@/lib/forum";
@@ -249,6 +250,15 @@ export default function ForumPostCard({
                 mentions={variant === "list" ? [] : post.mentions}
                 className={`mt-1 text-sm text-gray-300 ${variant === "list" ? "line-clamp-3" : ""}`}
               />
+              {isRoot && post.video && (
+                <ForumVideo
+                  postId={post.id}
+                  src={post.video.url}
+                  poster={post.video.posterUrl}
+                  views={post.video.views}
+                  mode={variant === "list" ? "list" : "detail"}
+                />
+              )}
             </>
           )}
 
