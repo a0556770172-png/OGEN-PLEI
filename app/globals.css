@@ -260,3 +260,17 @@ html[dir="ltr"] select {
 .forum-post { scroll-margin-top: 5.5rem; }
 .forum-post:target { box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.75); animation: forum-target-flash 2.2s ease-out 1; }
 @keyframes forum-target-flash { 0% { background-color: rgba(139, 92, 246, 0.25); } 100% { background-color: transparent; } }
+
+/* ---- סימון "חושב" בזמן מעבר בין דפים (components/NavigationProgress.tsx) ---- */
+/* סמן "ממתין" מיד בלחיצה על קישור פנימי */
+html.ogen-navigating,
+html.ogen-navigating * {
+  cursor: progress !important;
+}
+/* אם ההמתנה נמשכת מעבר ל-350ms - התוכן מתעמעם קלות, כדי שיהיה ברור שהלחיצה נקלטה. מעבר מהיר לא מתעמעם */
+main {
+  transition: opacity 200ms ease-out;
+}
+html.ogen-navigating-slow main {
+  opacity: 0.55;
+}
