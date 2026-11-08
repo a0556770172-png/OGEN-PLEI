@@ -49,19 +49,45 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   let createdAppId: string | null = suggestion.created_app_id ?? null;
 
-  if (status === "approved" && !suggestion.points_awarded) {
-    await admin.from("app_suggestions").update({ points_awarded: true }).eq("id", suggestion.id);
-    await admin.from("points_log").insert({
-      profile_id: suggestion.suggested_by,
-      delta: SUGGESTION_POINTS,
-      reason: "app_suggestion_approved"
-    });
-    await addPoints(suggestion.suggested_by, SUGGESTION_POINTS);
+  // תוקן: "!suggestion.points_awarded" היה check-then-act לא אטומי על ערך שנקרא בתחילת
+  // הפונקציה - אישור כפול (לחיצה כפולה) יכול היה לשלם 10 נקודות במקום 5. ה-UPDATE המותנה
+  // (.eq על points_awarded=false) הוא ההגנה האמיתית: רק מי שבאמת קיבל שורה בחזרה משלם.
+  if (status === "approved") {
+    const { data: claimedPoints } = await admin
+      .from("app_suggestions")
+      .update({ points_awarded: true })
+      .eq("id", suggestion.id)
+      .eq("points_awarded", false)
+      .select("id");
+    if (claimedPoints && claimedPoints.length > 0) {
+      await admin.from("points_log").insert({
+        profile_id: suggestion.suggested_by,
+        delta: SUGGESTION_POINTS,
+        reason: "app_suggestion_approved"
+      });
+      await addPoints(suggestion.suggested_by, SUGGESTION_POINTS);
+    }
   }
 
   // יצירת האפליקציה בפועל בחנות - רק אם יש קובץ מצורף (הצעות ישנות בלי קובץ לא ניתנות
-  // לפרסום אוטומטי) ורק אם עדיין לא נוצרה אפליקציה מההצעה הזו בעבר (מונע כפילות בלחיצה כפולה)
+  // לפרסום אוטומטי) ורק אם עדיין לא נוצרה אפליקציה מההצעה הזו בעבר.
+  // תוקן: הבדיקה "!createdAppId" (ערך שנקרא בתחילת הפונקציה) היתה check-then-act לא אטומי -
+  // אישור כפול (לחיצה כפולה) יכול היה ליצור שתי רשומות apps נפרדות מאותה הצעה, כלומר
+  // האפליקציה מתפרסמת פעמיים בחנות. created_app_id עצמו נודע רק *אחרי* היצירה ולכן לא יכול
+  // לשמש כנעילה - משתמשים ב-app_creation_claimed (migration 0081) כנעילה אטומית לפני היצירה:
+  // רק מי שבאמת "השתלט" (קיבל שורה בחזרה מה-UPDATE המותנה) ממשיך ליצור את האפליקציה.
+  let wonCreationClaim = false;
   if (status === "approved" && suggestion.file_key && suggestion.file_name && suggestion.file_size_bytes && !createdAppId) {
+    const { data: claimedCreation } = await admin
+      .from("app_suggestions")
+      .update({ app_creation_claimed: true })
+      .eq("id", suggestion.id)
+      .eq("app_creation_claimed", false)
+      .is("created_app_id", null)
+      .select("id");
+    wonCreationClaim = !!(claimedCreation && claimedCreation.length > 0);
+  }
+  if (wonCreationClaim) {
     // מנסים לחלץ אייקון מתוך הקובץ (רק אם זה APK) לפני יצירת הרשומה, כדי שהאפליקציה
     // תתפרסם מיד עם אייקון ולא תצטרך תיקון ידני מאוחר יותר - רק אם המציע לא כבר העלה
     // אייקון ידנית בטופס עצמו (suggestion.icon_key), כדי לא לבזבז ניסיון חילוץ מיותר.
@@ -121,6 +147,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       } catch {
         // התראות לא מכשילות את הפרסום
       }
+    } else {
+      // ה-INSERT עצמו נכשל אחרי שכבר "ניצחנו" את הנעילה - משחררים אותה כדי שניסיון
+      // אישור חוזר (למשל אחרי שהבעיה שגרמה לכשל תוקנה) לא יישאר נעול לנצח בלי אפליקציה.
+      await admin.from("app_suggestions").update({ app_creation_claimed: false }).eq("id", suggestion.id);
     }
   }
 

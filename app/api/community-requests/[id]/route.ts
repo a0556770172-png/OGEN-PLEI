@@ -33,19 +33,34 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   async function approveFulfilled() {
     patch.status = "fulfilled";
     patch.fulfilled_at = now;
-    if (!req.fulfilled_by) patch.fulfilled_by = user.id;
+    // תוקן: היה מתעלם מ-patch.fulfilled_by שהקריאה (case "fulfill" עם staff=true) כבר קבעה
+    // למתנדב הנכון (req.claimed_by), ודורס אותו בחזרה למזהה איש הצוות - כי הבדיקה היתה על
+    // req.fulfilled_by (הערך המקורי מה-DB, עדיין null) ולא על patch.fulfilled_by.
+    if (!patch.fulfilled_by && !req.fulfilled_by) patch.fulfilled_by = user.id;
     if (typeof fulfilledAppId === "string" && fulfilledAppId) patch.fulfilled_app_id = fulfilledAppId;
-    // +20 מוניטין למי שמילא את הבקשה (המתנדב שהתנדב, ואם אין - מי שסימן בוצע).
-    // נפרד לגמרי ממוניטין ההעלאה הרגיל, ומשולם פעם אחת לכל בקשה (points_awarded).
-    if (!req.points_awarded && req.status !== "fulfilled") {
-      const rewardee = req.claimed_by || req.fulfilled_by || user.id;
-      patch.points_awarded = true;
-      await admin.from("points_log").insert({
-        profile_id: rewardee,
-        delta: COMMUNITY_FULFILL_POINTS,
-        reason: "community_request_fulfilled"
-      });
-      await addPoints(rewardee, COMMUNITY_FULFILL_POINTS);
+    // +20 מוניטין למי שמילא את הבקשה (המתנדב שהתנדב, ואם אין - מי שסימן בוצע). נפרד לגמרי
+    // ממוניטין ההעלאה הרגיל, ומשולם פעם אחת לכל בקשה.
+    // תוקן: הבדיקה "req.points_awarded" לפני העדכון היתה check-then-act לא אטומי - אישור כפול
+    // (לחיצה כפולה, או שני אנשי צוות) יכול היה לשלם 40 נקודות במקום 20. ה-UPDATE המותנה
+    // כאן (.eq על points_awarded=false) הוא ההגנה האמיתית - רק מי שבאמת "השתלט" על השורה
+    // (קיבל שורה בחזרה) משלם.
+    if (req.status !== "fulfilled") {
+      const rewardee = req.claimed_by || patch.fulfilled_by || req.fulfilled_by || user.id;
+      const { data: claimed } = await admin
+        .from("community_requests")
+        .update({ points_awarded: true })
+        .eq("id", req.id)
+        .eq("points_awarded", false)
+        .select("id");
+      if (claimed && claimed.length > 0) {
+        patch.points_awarded = true;
+        await admin.from("points_log").insert({
+          profile_id: rewardee,
+          delta: COMMUNITY_FULFILL_POINTS,
+          reason: "community_request_fulfilled"
+        });
+        await addPoints(rewardee, COMMUNITY_FULFILL_POINTS);
+      }
     }
   }
 
