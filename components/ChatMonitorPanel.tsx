@@ -4,7 +4,7 @@ import { Search, Loader2, Eye, ArrowRight, MessagesSquare, RefreshCw } from "luc
 
 interface ThreadRow { id: string; a: string; b: string; lastBody: string | null; lastAt: string; messages: number }
 interface Hit { id: string; threadId: string; a: string; b: string; sender: string; body: string; createdAt: string }
-interface Msg { id: string; sender: string; senderId: string; body: string; createdAt: string }
+interface Msg { id: string; sender: string; senderId: string; body: string; createdAt: string; edited?: boolean; deleted?: boolean }
 interface ThreadView { thread: { id: string; a: string; b: string; createdAt: string }; messages: Msg[] }
 
 function fmt(iso: string) {
@@ -83,7 +83,11 @@ export default function ChatMonitorPanel() {
             const isA = m.sender === view.thread.a;
             return (
               <div key={m.id} className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${isA ? "self-start bg-surface2" : "self-end bg-primary/20"}`}>
-                <div className="mb-0.5 text-[11px] font-bold text-gray-400">{m.sender} · {fmt(m.createdAt)}</div>
+                <div className="mb-0.5 text-[11px] font-bold text-gray-400">
+                  {m.sender} · {fmt(m.createdAt)}
+                  {m.deleted && <span className="mr-1.5 rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] text-red-300">נמחקה ע"י השולח</span>}
+                  {m.edited && !m.deleted && <span className="mr-1.5 rounded bg-yellow-500/20 px-1.5 py-0.5 text-[10px] text-yellow-300">נערכה</span>}
+                </div>
                 <div className="whitespace-pre-wrap break-words text-gray-100">{m.body}</div>
               </div>
             );

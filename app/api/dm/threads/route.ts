@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { getAvatarUrl } from "@/lib/avatar";
 
 // רשימת השיחות (צ'אטים בין משתמשים) של המשתמש המחובר, עם שם הצד השני ותאריך ההודעה
 // האחרונה, ממוין מהחדש לישן.
@@ -19,7 +20,7 @@ export async function GET() {
   const rows = threads ?? [];
   const otherIds = rows.map((t) => (t.user_a === user.id ? t.user_b : t.user_a));
   const { data: profiles } = otherIds.length
-    ? await admin.from("profiles").select("id, username, avatar_key").in("id", otherIds)
+    ? await admin.from("profiles").select("id, username, avatar_key, role").in("id", otherIds)
     : { data: [] as any[] };
   const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
 
@@ -35,7 +36,7 @@ export async function GET() {
       const other = profileMap.get(otherId);
       const { data: lastMsg } = await admin
         .from("dm_messages")
-        .select("body, created_at, sender_id")
+        .select("body, created_at, sender_id, deleted_at")
         .eq("thread_id", t.id)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -43,11 +44,13 @@ export async function GET() {
       const lastReadAt = readMap.get(t.id);
       let unread = 0;
       if (lastMsg) {
+        // הודעה שנמחקה לא נספרת כלא-נקראה (המקבל כבר לא יכול לראות אותה)
         const { count } = await admin
           .from("dm_messages")
           .select("id", { count: "exact", head: true })
           .eq("thread_id", t.id)
           .neq("sender_id", user.id)
+          .is("deleted_at", null)
           .gt("created_at", lastReadAt ?? "1970-01-01");
         unread = count ?? 0;
       }
@@ -55,7 +58,10 @@ export async function GET() {
         id: t.id,
         otherUserId: otherId,
         otherUsername: other?.username ?? "משתמש",
-        lastMessage: lastMsg?.body ?? null,
+        otherAvatarUrl: other ? await getAvatarUrl(other.avatar_key, other.role) : null,
+        lastMessage: lastMsg ? (lastMsg.deleted_at ? "" : lastMsg.body) : null,
+        lastMessageDeleted: !!lastMsg?.deleted_at,
+        lastMessageFromMe: lastMsg ? lastMsg.sender_id === user.id : false,
         lastMessageAt: lastMsg?.created_at ?? t.created_at,
         unreadCount: unread
       };

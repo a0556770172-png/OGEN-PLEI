@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     if (!thread) return NextResponse.json({ error: "השיחה לא נמצאה" }, { status: 404 });
     const { data: messages } = await admin
       .from("dm_messages")
-      .select("id, sender_id, body, created_at")
+      .select("id, sender_id, body, created_at, edited_at, deleted_at")
       .eq("thread_id", threadId)
       .order("created_at", { ascending: true })
       .limit(1000);
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
     });
     return NextResponse.json({
       thread: { id: thread.id, a: names[thread.user_a] ?? "?", b: names[thread.user_b] ?? "?", createdAt: thread.created_at },
-      messages: (messages ?? []).map((m: any) => ({ id: m.id, sender: names[m.sender_id] ?? "?", senderId: m.sender_id, body: m.body, createdAt: m.created_at }))
+      messages: (messages ?? []).map((m: any) => ({ id: m.id, sender: names[m.sender_id] ?? "?", senderId: m.sender_id, body: m.body, createdAt: m.created_at, edited: !!m.edited_at, deleted: !!m.deleted_at }))
     });
   }
 
