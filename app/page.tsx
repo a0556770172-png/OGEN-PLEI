@@ -19,12 +19,15 @@ export const dynamic = "force-dynamic";
 const INITIAL_CARDS = 60;
 
 export default async function HomePage() {
-  const [apps, categories, usersStats, totalVisits, siteSettings] = await Promise.all([
+  const [apps, categories, usersStats, totalVisits, siteSettings, { user, profile }] = await Promise.all([
     getApprovedAppsLite(),
     getCategoriesServer(),
     getUsersStats(),
     getTotalSiteVisits(),
-    getSiteSettingsServer()
+    getSiteSettingsServer(),
+    // פיצ'ר 5: למשתמש מחובר - אילו אפליקציות שהוריד קיבלו עדכון גרסה (ל-Badge בכרטיס
+    // ולחלונית הכניסה). לא תלוי באף אחת מהשאילתות האחרות כאן, אז נכנס לאותה אצווה מקבילה.
+    getCurrentProfile()
   ]);
   const withIcons = await Promise.all(
     apps.map(async (app) => ({ app: slimForCard(app), iconUrl: await getIconUrl(app.icon_key) }))
@@ -33,9 +36,6 @@ export default async function HomePage() {
   const apkCount = apps.filter((a) => isApk(a)).length;
   const totalDownloads = apps.reduce((sum, app) => sum + (app.downloads_count ?? 0), 0);
 
-  // פיצ'ר 5: למשתמש מחובר - אילו אפליקציות שהוריד קיבלו עדכון גרסה (ל-Badge בכרטיס
-  // ולחלונית הכניסה).
-  const { user, profile } = await getCurrentProfile();
   const updates = user ? [...(await getUserAppUpdates(user.id)).values()] : [];
   const updateAppIds = updates.map((u) => u.appId);
   // צוות (מנהל/פיקוח) יכול לערוך את פוסט הפרסום של כל אפליקציה ישירות מהחנות - ראו AppModal.

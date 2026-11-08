@@ -17,7 +17,7 @@ import ChangePasswordCard from "@/components/ChangePasswordCard";
 import ReferralCard from "@/components/ReferralCard";
 import { getReferralStats } from "@/lib/referral";
 import { getFollowCounts } from "@/lib/follows";
-import { getDeveloperContributionCount, isDmUnlocked, DM_UNLOCK_THRESHOLD } from "@/lib/dm-eligibility";
+import { getDeveloperContributionCount, DM_UNLOCK_THRESHOLD } from "@/lib/dm-eligibility";
 import type { AppRow } from "@/types/database";
 
 export const dynamic = "force-dynamic";
@@ -78,11 +78,16 @@ export default async function ProfilePage() {
   }
 
   const plan = profile.is_pro ? LIMITS.pro : LIMITS.free;
-  const contributionCount = await getDeveloperContributionCount(user.id);
-  const referralStats = await getReferralStats(user.id);
-  const followCounts = await getFollowCounts(user.id);
-  const dmUnlocked = await isDmUnlocked(user.id);
+  // שלוש הקריאות הבאות לא תלויות זו בזו - כולן צריכות רק את user.id, אז מריצים במקביל
+  // במקום בזו אחר זו. dmUnlocked מחושב מקומית מ-contributionCount וה-role שכבר יש לנו ב-profile,
+  // בלי לקרוא שוב ל-isDmUnlocked (שהיה שואל מה-DB את אותו profile.role וסופר שוב contributionCount).
+  const [contributionCount, referralStats, followCounts] = await Promise.all([
+    getDeveloperContributionCount(user.id),
+    getReferralStats(user.id),
+    getFollowCounts(user.id)
+  ]);
   const dmUnlockedByRole = profile.role === "admin" || profile.is_moderator || profile.is_pro;
+  const dmUnlocked = dmUnlockedByRole || contributionCount >= DM_UNLOCK_THRESHOLD;
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-8">

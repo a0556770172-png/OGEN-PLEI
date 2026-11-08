@@ -71,24 +71,24 @@ export async function notifyForApprovedApp(appId: string): Promise<void> {
   // מנוי לאפליקציה ספציפית - רלוונטי רק לגרסה חדשה (אפליקציה חדשה עדיין אין למי לעקוב אחריה).
   if (isUpdate) conditions.push({ type: "app", target: app.id });
 
+  // כל תנאי מנוי נבדק בנפרד, ועוקבים חברתיים (אם רלוונטי) לא תלויים באף אחד מהם -
+  // מריצים את כל השאילתות האלה במקביל במקום בזו אחר זו בלופ.
+  const [conditionResults, followers] = await Promise.all([
+    Promise.all(
+      conditions.map((c) =>
+        admin.from("notification_subscriptions").select("user_id").eq("type", c.type).eq("target_id", c.target)
+      )
+    ),
+    // עוקבים חברתיים של המפתח (user_follows) - מקבלים התראה על אפליקציה חדשה שלו (לא על עדכון).
+    !isUpdate
+      ? admin.from("user_follows").select("follower_id").eq("following_id", app.developer_id)
+      : Promise.resolve({ data: null })
+  ]);
   const userIds: string[] = [];
-  for (const c of conditions) {
-    const { data } = await admin
-      .from("notification_subscriptions")
-      .select("user_id")
-      .eq("type", c.type)
-      .eq("target_id", c.target);
+  for (const { data } of conditionResults) {
     for (const r of data ?? []) userIds.push(r.user_id);
   }
-
-  // עוקבים חברתיים של המפתח (user_follows) - מקבלים התראה על אפליקציה חדשה שלו (לא על עדכון).
-  if (!isUpdate) {
-    const { data: followers } = await admin
-      .from("user_follows")
-      .select("follower_id")
-      .eq("following_id", app.developer_id);
-    for (const r of followers ?? []) userIds.push(r.follower_id);
-  }
+  for (const r of followers.data ?? []) userIds.push(r.follower_id);
 
   // לא מתריעים למפתח על האפליקציה של עצמו.
   const targets = [...new Set(userIds)].filter((id) => id !== app.developer_id);

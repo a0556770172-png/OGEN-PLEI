@@ -203,20 +203,27 @@ export async function getForumThread(
   opts: { page?: number; focusPost?: string | null } = {}
 ): Promise<{ post: ForumPost; replies: ForumPost[]; total: number; page: number; pages: number } | null> {
   const admin = createAdminSupabase();
-  const { data: root } = await admin.from("forum_posts").select("*").eq("id", id).is("parent_id", null).maybeSingle();
-  if (!root) return null;
-  if (root.hidden && !isStaff) return null;
-
   const pageSize = FORUM_REPLIES_PAGE_SIZE;
   let countQ = admin.from("forum_posts").select("id", { count: "exact", head: true }).eq("parent_id", id);
   if (!isStaff) countQ = countQ.eq("hidden", false);
-  const { count } = await countQ;
+
+  // שלוש השאילתות הבאות לא תלויות זו בזו (כולן רק צריכות id/opts.focusPost, שכבר ידועים) -
+  // מריצים במקביל במקום בזו אחר זו.
+  const [{ data: root }, { count }, { data: focus }] = await Promise.all([
+    admin.from("forum_posts").select("*").eq("id", id).is("parent_id", null).maybeSingle(),
+    countQ,
+    opts.focusPost
+      ? admin.from("forum_posts").select("created_at, parent_id").eq("id", opts.focusPost).maybeSingle()
+      : Promise.resolve({ data: null })
+  ]);
+  if (!root) return null;
+  if (root.hidden && !isStaff) return null;
+
   const total = count ?? 0;
   const pages = Math.max(1, Math.ceil(total / pageSize));
   let page = Math.min(Math.max(1, opts.page ?? 1), pages);
 
   if (opts.focusPost) {
-    const { data: focus } = await admin.from("forum_posts").select("created_at, parent_id").eq("id", opts.focusPost).maybeSingle();
     if (focus && focus.parent_id === id) {
       let beforeQ = admin
         .from("forum_posts")

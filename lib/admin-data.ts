@@ -11,6 +11,13 @@ export async function getReviewQueueApps(): Promise<AppRow[]> {
   return (data as unknown as AppRow[]) ?? [];
 }
 
+// עמודות apps בלי description_html (פוסט הפרסום המלא) - הוא לא נחוץ ברשימות הניהול
+// (נטען בעריכה בלבד), אבל יכול להגיע למגה-בייטים לכל שורה; select("*") היה מעביר אותו
+// מה-DB לכל שורה בכל טעינת דשבורד ניהול, רק כדי למחוק אותו ב-JS אחרי. רשימה מפורשת =
+// אותם נתונים בפועל, בלי להוריד את העמודה הכבדה הזו מה-DB בכלל.
+const ADMIN_APP_COLUMNS =
+  "id, developer_id, name, short_description, version, category, icon_key, file_key, file_name, file_size_bytes, status, review_note, reviewed_by, reviewed_at, downloads_count, created_at, updated_at, download_paused, download_paused_until, admin_note, admin_note_at, min_android_version, source, developer_name, offline_support, pinned, pinned_at, was_published, description, file_path, file_size_mb, icon_path, rejection_reason, platform_override, published_at, published_version, last_updated_at, package_name, slug, screenshot_keys, video_key";
+
 // אותו טיפול בדיוק כמו ב-getAllProfiles (ראו ההסבר שם) - "כל האפליקציות" בניהול חייב
 // לדפדף בעצמו כדי לא להיחתך בתקרת השורות של PostgREST ברגע שיש מעל 1000 אפליקציות/תוכנות.
 export async function getAllAppsForAdmin(): Promise<AppRow[]> {
@@ -20,11 +27,10 @@ export async function getAllAppsForAdmin(): Promise<AppRow[]> {
   for (;;) {
     const { data } = await admin
       .from("apps")
-      .select("*, developer:profiles!apps_developer_id_fkey(username, email)")
+      .select(`${ADMIN_APP_COLUMNS}, developer:profiles!apps_developer_id_fkey(username, email)`)
       .order("created_at", { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
     if (!data || data.length === 0) break;
-    // פוסט הפרסום המלא לא נחוץ ברשימות הניהול (הוא נטען בעריכה) - לא שולחים אותו לדפדפן
     all.push(...(data as unknown as AppRow[]).map((row) => ({ ...row, description_html: "" })));
     if (data.length < PAGE_SIZE) break;
     from += PAGE_SIZE;

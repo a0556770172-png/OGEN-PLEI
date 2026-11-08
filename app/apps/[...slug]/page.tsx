@@ -89,17 +89,30 @@ export default async function AppDetailPage({ params }: { params: { slug: string
     );
   }
 
-  const iconUrl = await getIconUrl(app.icon_key);
-  const categories = await getCategoriesServer();
-  const { user, profile } = await getCurrentProfile();
+  // ארבע הקריאות הבאות לא תלויות זו בזו (approvedReports צריך רק את app.id, שכבר יש לנו) -
+  // מריצים במקביל במקום בזו אחר זו.
+  const admin = createAdminSupabase();
+  const [iconUrl, categories, { user, profile }, { data: approvedReports }] = await Promise.all([
+    getIconUrl(app.icon_key),
+    getCategoriesServer(),
+    getCurrentProfile(),
+    // דיווחים מאושרים בלבד - שקיפות למשתמשים על בעיות שצוות הפיקוח אישר שהן אמיתיות.
+    admin
+      .from("app_reports")
+      .select("id, reason, reviewed_at")
+      .eq("app_id", app.id)
+      .eq("status", "approved")
+      .order("reviewed_at", { ascending: false })
+  ]);
   // צוות (מנהל/פיקוח) - וגם הבעלים עצמו - יכולים לערוך את פוסט הפרסום ישירות מכאן.
   const canEditPost = !!profile && (isStaff(profile) || app.developer_id === user?.id);
 
-  // מנוי התראות לגרסה חדשה - רק לאפליקציה פרטית מאושרת, ורק אם המשתמש לא הבעלים.
+  // מנוי התראות לגרסה חדשה - רק לאפליקציה פרטית מאושרת, ורק אם המשתמש לא הבעלים. תלוי ב-user
+  // שרק עכשיו ידוע, אז לא יכול להיכנס לאצווה המקבילה למעלה.
   const canNotify = !!user && app.status === "approved" && app.source !== "public_suggestion" && app.developer_id !== user.id;
   let notifySubscribed = false;
   if (canNotify) {
-    const { count } = await createAdminSupabase()
+    const { count } = await admin
       .from("notification_subscriptions")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
@@ -109,15 +122,6 @@ export default async function AppDetailPage({ params }: { params: { slug: string
   }
   const category = categories.find((c) => c.value === app.category)?.label ?? app.category;
   const isPaused = app.download_paused || (app.download_paused_until ? new Date(app.download_paused_until).getTime() > Date.now() : false);
-
-  // דיווחים מאושרים בלבד - שקיפות למשתמשים על בעיות שצוות הפיקוח אישר שהן אמיתיות.
-  const admin = createAdminSupabase();
-  const { data: approvedReports } = await admin
-    .from("app_reports")
-    .select("id, reason, reviewed_at")
-    .eq("app_id", app.id)
-    .eq("status", "approved")
-    .order("reviewed_at", { ascending: false });
 
   return (
     <div className="mx-auto max-w-4xl">

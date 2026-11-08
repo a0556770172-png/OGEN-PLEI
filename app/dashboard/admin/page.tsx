@@ -27,7 +27,7 @@ export default async function AdminDashboard() {
   if (!user || !profile) redirect("/login");
   if (profile.role !== "admin") redirect("/");
 
-  const [apps, allApps, profiles, proRequests, suggestionsPendingCount, ticketsNeedingReplyCount, deletionRequests, councilAutoApprovedCount, siteSettings, banAppeals, referralEvents, versionProposalsCount, duplicatesCount, communityReviewCount] =
+  const [apps, allApps, profiles, proRequests, suggestionsPendingCount, ticketsNeedingReplyCount, deletionRequests, councilAutoApprovedCount, siteSettings, banAppeals, referralEvents, versionProposalsCount, duplicatesCount, communityReviewCount, siteReviewsData, forumPosts] =
     await Promise.all([
       getReviewQueueApps(),
       getAllAppsForAdmin(),
@@ -42,11 +42,11 @@ export default async function AdminDashboard() {
       getReferralEvents(),
       getPendingVersionProposalsCount(),
       getPendingDuplicateReportsCount(),
-      getPendingCommunityReviewCount()
+      getPendingCommunityReviewCount(),
+      // שתי אלה לא תלויות בשום דבר אחר כאן - נכנסות לאותה אצווה מקבילה (כמו שכבר נעשה בעמוד המנהל-קהילה)
+      getSiteReviews({ includeHidden: true }),
+      getForumModerationFeed()
     ]);
-
-  const siteReviewsData = await getSiteReviews({ includeHidden: true });
-  const forumPosts = await getForumModerationFeed();
 
   return (
     <div className="flex flex-col gap-8">

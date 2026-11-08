@@ -1,7 +1,7 @@
 "use client";
+import { memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
 import { Download, Package, User, Pin, ArrowUpCircle, Flame } from "lucide-react";
 import type { AppRow, Category } from "@/types/database";
 import { formatFileSize } from "@/lib/format";
@@ -13,7 +13,7 @@ import StaffSourceToggle from "./StaffSourceToggle";
 // הכרטיס נפתח בחלונית צפה (Modal) במקום ניווט לעמוד נפרד, כדי לשמור על מקום הגלילה
 // (פיצ'ר 2a). לחיצה על שם המעלה מובילה לעמוד המשתמש שלו (פיצ'ר 3b) - עם עצירת ההתפשטות
 // כדי שלא ייפתח גם המודל. hasUpdate מציג סימון "עדכון זמין" (פיצ'ר 5).
-export default function AppCard({
+function AppCard({
   app,
   iconUrl,
   categories,
@@ -30,31 +30,33 @@ export default function AppCard({
   heat?: number;
   // צוות פיקוח/מנהל - האות פ/צ היא כפתור להעברה בין פרטית לציבורית
   viewerIsStaff?: boolean;
-  onOpen?: () => void;
+  // מקבל את app.id (ולא נקרא בלי פרמטרים) כדי שהאב יוכל להעביר פונקציה אחת קבועה לכל
+  // הכרטיסים (ראו AppGrid openModal) - memo למטה היה חסר תועלת בלי זה.
+  onOpen?: (id: string) => void;
 }) {
   const category = categories?.find((c) => c.value === app.category)?.label ?? app.category;
   const recentlyUpdated = isRecentlyUpdated(app.last_updated_at);
 
   return (
-    <motion.div
-      whileHover={{ y: -6 }}
-      // מעבר חלק בלי קפיץ (spring עם overshoot "קפץ" כשהחלונית נפתחה/נסגרה מעל הכרטיס)
-      transition={{ duration: 0.2, ease: "easeOut" }}
+    <div
+      // הרחפה (translateY -6px) ב-CSS טהור במקום framer-motion - אותה תחושה חזותית, בלי
+      // JS שרץ בכל ריחוף/עיבוד מחדש של עשרות כרטיסים בעמוד הבית. ה-transition עצמו מגיע
+      // מ-.card ב-globals.css (שם גם נוסף transform לרשימה); כאן רק קובעים את ערך ה-hover.
+      className="card group relative cursor-pointer overflow-hidden p-5 outline-none hover:-translate-y-1.5 focus-visible:ring-2 focus-visible:ring-primary/50"
       // הלחיצה השנייה של לחיצה כפולה לא פותחת שוב (אחרת היא פתחה אפליקציה מתחת לחלונית שנסגרה)
       onClick={(e) => {
         if (e.detail > 1) return;
-        onOpen?.();
+        onOpen?.(app.id);
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onOpen?.();
+          onOpen?.(app.id);
         }
       }}
       role="button"
       tabIndex={0}
       aria-label={`פתיחת ${app.name}`}
-      className="card group relative cursor-pointer overflow-hidden p-5 outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
     >
       <div className="absolute inset-x-0 top-0 h-px shimmer-border opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
@@ -121,6 +123,8 @@ export default function AppCard({
           <span>{formatFileSize(app.file_size_bytes)}</span>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
+
+export default memo(AppCard);
