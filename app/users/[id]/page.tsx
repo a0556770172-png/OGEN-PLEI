@@ -42,26 +42,26 @@ export default async function PublicUserPage({ params }: { params: { id: string 
 
   const { user: viewer } = await getCurrentProfile();
   const isSelf = !!viewer && viewer.id === user.id;
-  const canOpenDm = viewer && !isSelf ? await isDmUnlocked(viewer.id) : false;
+  const viewerCanActOnOther = !!viewer && !isSelf;
 
-  const [followCounts, followers, following] = await Promise.all([
-    getFollowCounts(user.id),
-    getFollowers(user.id),
-    getFollowing(user.id)
+  // ברגע שידוע מי הצופה, חמש הקריאות הבאות לא תלויות זו בזו - כולן רק צריכות את
+  // viewer.id/user.id - אז מריצים את כולן במקביל במקום בזו אחר זו.
+  const [canOpenDm, [followCounts, followers, following], viewerFollows, followsDeveloperCount] = await Promise.all([
+    viewerCanActOnOther ? isDmUnlocked(viewer.id) : Promise.resolve(false),
+    Promise.all([getFollowCounts(user.id), getFollowers(user.id), getFollowing(user.id)]),
+    viewerCanActOnOther ? isFollowing(viewer.id, user.id) : Promise.resolve(false),
+    viewer && viewer.id !== user.id && isDeveloper
+      ? createAdminSupabase()
+          .from("notification_subscriptions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", viewer.id)
+          .eq("type", "developer")
+          .eq("target_id", user.id)
+          .then((r) => r.count ?? 0)
+      : Promise.resolve(0)
   ]);
-  const viewerFollows = viewer && !isSelf ? await isFollowing(viewer.id, user.id) : false;
-
   // האם הצופה כבר רשום להתראות מהמפתח הזה
-  let followsDeveloper = false;
-  if (viewer && viewer.id !== user.id && isDeveloper) {
-    const { count } = await createAdminSupabase()
-      .from("notification_subscriptions")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", viewer.id)
-      .eq("type", "developer")
-      .eq("target_id", user.id);
-    followsDeveloper = (count ?? 0) > 0;
-  }
+  const followsDeveloper = followsDeveloperCount > 0;
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">

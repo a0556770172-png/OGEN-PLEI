@@ -199,6 +199,10 @@ export default function AppGrid({
 
   const activeItem = activeId ? items.find(({ app }) => app.id === activeId) ?? null : null;
   const closeModal = useCallback(() => setActiveId(null), []);
+  // פונקציה אחת קבועה (לא נוצרת מחדש בכל רינדור) שמועברת זהה לכל כרטיס - בלי זה,
+  // עטיפת AppCard ב-memo לא הייתה עוזרת: כל כרטיס היה מקבל onOpen חדש (closure) בכל רינדור
+  // ונחשב "השתנה" מבחינת React, גם אם שום prop אחר שלו לא השתנה באמת.
+  const openModal = useCallback((id: string) => setActiveId(id), []);
 
   // טעינה הדרגתית: מתחילים תמיד מ-PAGE_SIZE הראשונים, ומתאפסים בכל שינוי חיפוש/סינון/מיון/טאב
   // כדי שלא "ייתקע" מספר גבוה מתוצאה קודמת כשעוברים לתוצאה חדשה וקצרה יותר.
@@ -386,7 +390,7 @@ export default function AppGrid({
                   hasUpdate={updates.has(app.id)}
                   heat={hotOrder ? hotWeek.get(app.id) ?? 0 : undefined}
                   viewerIsStaff={viewerIsStaff}
-                  onOpen={() => setActiveId(app.id)}
+                  onOpen={openModal}
                 />
               </motion.div>
             ))}

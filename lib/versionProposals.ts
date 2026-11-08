@@ -55,10 +55,13 @@ export async function createVersionProposal(row: Omit<VersionProposal, "id" | "s
     .eq("app_id", row.app_id)
     .eq("uploader_id", row.uploader_id)
     .eq("status", "pending");
-  for (const p of previous ?? []) {
-    await admin.from("app_version_proposals").delete().eq("id", p.id);
-    await removeFiles(p.file_key, p.icon_key);
-  }
+  // כמעט תמיד 0-1 הצעות קודמות, אבל אם יש כמה - מוחקים את כולן במקביל במקום בזו אחר זו.
+  await Promise.all(
+    (previous ?? []).map(async (p) => {
+      await admin.from("app_version_proposals").delete().eq("id", p.id);
+      await removeFiles(p.file_key, p.icon_key);
+    })
+  );
 
   const { data, error } = await admin.from("app_version_proposals").insert(row).select().single();
   if (error || !data) throw new Error(error?.message ?? "שגיאה בשמירת הגרסה החדשה");

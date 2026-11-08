@@ -145,17 +145,19 @@ export async function grantReferralIfPending(userId: string, signupIp: string | 
 export async function getReferralStats(userId: string): Promise<ReferralStats> {
   const admin = createAdminSupabase();
 
-  const { data: events } = await admin
-    .from("referral_events")
-    .select("status, referrer_points_awarded, created_at, referred:profiles!referral_events_referred_user_id_fkey(username)")
-    .eq("referrer_id", userId)
-    .order("created_at", { ascending: false });
-
-  const { data: me } = await admin
-    .from("profiles")
-    .select("referral_size_override_credits")
-    .eq("id", userId)
-    .single();
+  // שתי השאילתות לא תלויות זו בזו - מריצים במקביל במקום בזו אחר זו.
+  const [{ data: events }, { data: me }] = await Promise.all([
+    admin
+      .from("referral_events")
+      .select("status, referrer_points_awarded, created_at, referred:profiles!referral_events_referred_user_id_fkey(username)")
+      .eq("referrer_id", userId)
+      .order("created_at", { ascending: false }),
+    admin
+      .from("profiles")
+      .select("referral_size_override_credits")
+      .eq("id", userId)
+      .single()
+  ]);
 
   const list = (events ?? []) as any[];
   const rewarded = list.filter((e) => e.status === "rewarded");
