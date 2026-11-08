@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireProfile, isStaff } from "@/lib/auth-helpers";
+import { requireProfile, isStaff, isProtectedStaffTarget } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
 import { logAudit } from "@/lib/audit";
 
@@ -18,9 +18,11 @@ export async function POST(request: Request) {
   if (userId === user.id) return NextResponse.json({ error: "אי אפשר לחסום את עצמך" }, { status: 400 });
 
   const admin = createAdminSupabase();
-  const { data: target } = await admin.from("profiles").select("id, username, role").eq("id", userId).maybeSingle();
+  const { data: target } = await admin.from("profiles").select("id, username, role, is_moderator").eq("id", userId).maybeSingle();
   if (!target) return NextResponse.json({ error: "המשתמש לא נמצא" }, { status: 404 });
-  if (target.role === "admin") return NextResponse.json({ error: "אי אפשר לחסום מנהל" }, { status: 400 });
+  // תוקן: היה בודק רק role==="admin" - פיקוח אחד יכול היה לחסום פיקוח אחר מהבוט (אותה
+  // בעיה שתוקנה כבר ב-images-ban, שמגן גם על is_moderator).
+  if (isProtectedStaffTarget(target)) return NextResponse.json({ error: "אי אפשר לחסום חבר צוות" }, { status: 400 });
 
   const { error } = await admin
     .from("profiles")

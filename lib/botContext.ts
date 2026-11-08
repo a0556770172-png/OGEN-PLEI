@@ -1,7 +1,7 @@
 import { createAdminSupabase } from "./supabase/admin";
 import { LIMITS, REFERRAL } from "./constants";
-import { LIKE_UNLOCK_THRESHOLD, COMMENT_UNLOCK_THRESHOLD, COMMENT_UNLOCK_POINTS } from "./engagement-eligibility";
-import { DM_UNLOCK_THRESHOLD } from "./dm-eligibility";
+import { LIKE_UNLOCK_THRESHOLD, COMMENT_UNLOCK_THRESHOLD, COMMENT_UNLOCK_POINTS, getUploadedAppsCount } from "./engagement-eligibility";
+import { DM_UNLOCK_THRESHOLD, getDeveloperContributionCount } from "./dm-eligibility";
 import type { Profile } from "@/types/database";
 
 const PRO_THRESHOLD = 300;
@@ -19,21 +19,27 @@ export async function buildBotUserContext(profile: Profile): Promise<BotUserCont
   const isStaff = profile.role === "admin" || !!profile.is_moderator;
   const isDeveloper = profile.role === "developer" || profile.role === "admin";
 
-  const [{ count: activeApps }, { count: approvedApps }, { data: recentDownloads }, { count: referredCount }] =
-    await Promise.all([
-      admin.from("apps").select("id", { count: "exact", head: true }).eq("developer_id", profile.id).neq("status", "archived"),
-      admin.from("apps").select("id", { count: "exact", head: true }).eq("developer_id", profile.id).eq("status", "approved"),
-      admin
-        .from("download_events")
-        .select("app_id, apps(name, category)")
-        .eq("user_id", profile.id)
-        .order("created_at", { ascending: false })
-        .limit(6),
-      admin.from("referral_events").select("id", { count: "exact", head: true }).eq("referrer_id", profile.id).eq("status", "rewarded")
-    ]);
+  // תוקן: "uploaded" היה נספר כ-status==='approved' בלבד, בעוד שבדיקות הפתיחה האמיתיות
+  // (canLike/canComment, ולמייל ל-DM גם הצעות שאושרו) סופרות לפי קריטריונים אחרים - הבוט
+  // היה עלול לומר למשתמש שעדיין חסר לו, כשבפועל הוא כבר עבר את הסף האמיתי. עכשיו קוראים
+  // ישירות לאותן פונקציות שה-API עצמו משתמש בהן, כדי שהמסר תמיד יתאים למצב האמיתי.
+  // activeApps משמש גם כ"כמה העלה" לבדיקות לייק/תגובה - שתיהן בהגדרה אותו מספר (apps
+  // שאינם archived), בדיוק כמו ב-canLike/canComment עצמם. uploadedForDm שונה (סופר גם
+  // הצעות ציבוריות שאושרו), בדיוק כמו ב-getDeveloperContributionCount שה-API האמיתי קורא לו.
+  const [activeApps, uploadedForDm, { data: recentDownloads }, { count: referredCount }] = await Promise.all([
+    getUploadedAppsCount(profile.id),
+    getDeveloperContributionCount(profile.id),
+    admin
+      .from("download_events")
+      .select("app_id, apps(name, category)")
+      .eq("user_id", profile.id)
+      .order("created_at", { ascending: false })
+      .limit(6),
+    admin.from("referral_events").select("id", { count: "exact", head: true }).eq("referrer_id", profile.id).eq("status", "rewarded")
+  ]);
+  const uploadedForLikeComment = activeApps;
 
   const points = profile.points ?? 0;
-  const uploaded = approvedApps ?? 0;
   const plan = profile.is_pro ? LIMITS.pro : LIMITS.free;
 
   const lines: string[] = [
@@ -50,16 +56,16 @@ export async function buildBotUserContext(profile: Profile): Promise<BotUserCont
     if (gap > 0) missing.push(`חסרים ${gap} מוניטין לשדרוג אוטומטי ל-PRO (300). זה בערך ${Math.max(1, Math.ceil(gap / 5))} אפליקציות/הצעות שיאושרו, או ${Math.ceil(gap / REFERRAL.referrerPoints)} הפניות מוצלחות.`);
     else missing.push(`צבר ${points} מוניטין - כבר עבר את סף ה-PRO (300).`);
   }
-  if (!isStaff && !profile.is_pro && !profile.can_comment_override && uploaded < COMMENT_UNLOCK_THRESHOLD && points < COMMENT_UNLOCK_POINTS) {
+  if (!isStaff && !profile.is_pro && !profile.can_comment_override && uploadedForLikeComment < COMMENT_UNLOCK_THRESHOLD && points < COMMENT_UNLOCK_POINTS) {
     missing.push(
-      `עוד ${COMMENT_UNLOCK_THRESHOLD - uploaded} אפליקציות שיאושרו (או עוד ${COMMENT_UNLOCK_POINTS - points} מוניטין) לפתיחת כתיבת תגובות.`
+      `עוד ${COMMENT_UNLOCK_THRESHOLD - uploadedForLikeComment} אפליקציות שיאושרו (או עוד ${COMMENT_UNLOCK_POINTS - points} מוניטין) לפתיחת כתיבת תגובות.`
     );
   }
-  if (!isStaff && !profile.is_pro && !profile.can_like_override && uploaded < LIKE_UNLOCK_THRESHOLD) {
-    missing.push(`עוד ${LIKE_UNLOCK_THRESHOLD - uploaded} אפליקציות שיאושרו לפתיחת לייקים.`);
+  if (!isStaff && !profile.is_pro && !profile.can_like_override && uploadedForLikeComment < LIKE_UNLOCK_THRESHOLD) {
+    missing.push(`עוד ${LIKE_UNLOCK_THRESHOLD - uploadedForLikeComment} אפליקציות שיאושרו לפתיחת לייקים.`);
   }
-  if (!isStaff && !profile.is_pro && uploaded < DM_UNLOCK_THRESHOLD) {
-    missing.push(`עוד ${DM_UNLOCK_THRESHOLD - uploaded} אפליקציות/הצעות שיאושרו לפתיחת צ'אט בין משתמשים.`);
+  if (!isStaff && !profile.is_pro && uploadedForDm < DM_UNLOCK_THRESHOLD) {
+    missing.push(`עוד ${DM_UNLOCK_THRESHOLD - uploadedForDm} אפליקציות/הצעות שיאושרו לפתיחת צ'אט בין משתמשים.`);
   }
   if (!isDeveloper) {
     missing.push(`המשתמש עדיין לא מפתח - אם הוא רוצה להעלות תוכן משלו, כדאי שישדרג לחשבון מפתח (/profile/become-developer).`);

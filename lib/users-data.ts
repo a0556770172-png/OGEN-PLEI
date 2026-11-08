@@ -161,7 +161,9 @@ export async function getPublicUserDetail(id: string): Promise<PublicUserDetail 
     role: p.role,
     is_moderator: p.is_moderator,
     is_pro: p.is_pro,
-    avatarUrl: await getAvatarUrl(p.avatar_key),
+    // תוקן: היה חסר p.role - בלעדיו המנהל בפועל לא קיבל את לוגו האתר כתמונת פרופיל ברירת
+    // מחדל כאן (ראו lib/avatar.ts), בניגוד לשני הקריאות האחרות ב-lib/users-data.ts.
+    avatarUrl: await getAvatarUrl(p.avatar_key, p.role),
     appsCount: (appsData ?? []).length,
     createdAt: p.created_at,
     lastSeenAt: p.last_seen_at,

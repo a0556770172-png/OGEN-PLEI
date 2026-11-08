@@ -22,7 +22,9 @@ export async function addPoints(profileId: string, delta: number) {
   const { data: profile } = await admin.from("profiles").select("points, is_pro").eq("id", profileId).single();
   if (!profile) return;
 
-  const newPoints = (profile.points ?? 0) + delta;
+  // greatest(0, ...) - מוניטין לא אמור לרדת מתחת לאפס (ראו גם תיקון מקביל ב-add_points ב-DB,
+  // migration 0081; הנתיב הזה הוא רק גיבוי למקרה שה-RPC עצמו לא קיים).
+  const newPoints = Math.max(0, (profile.points ?? 0) + delta);
   const patch: Record<string, any> = { points: newPoints };
   if (!profile.is_pro && newPoints >= PRO_POINTS_THRESHOLD) {
     patch.is_pro = true;
@@ -40,13 +42,17 @@ export const UPLOAD_POINTS = 10;
 
 export async function awardUploadPointsOnce(appId: string, developerId: string): Promise<boolean> {
   const admin = createAdminSupabase();
-  const { count } = await admin
+  // תוקן: בדיקת COUNT לפני ה-INSERT היתה check-then-act לא אטומי - שני אישורים כמעט-בו-זמניים
+  // (לחיצה כפולה בטעות) יכלו שניהם לראות count=0 ושניהם להכניס שורה, כלומר 20 נקודות
+  // במקום 10 להעלאה אחת. עכשיו ההגנה האמיתית היא אינדקס ייחודי חלקי ב-DB
+  // (points_log_upload_once_idx, migration 0081) - ה-INSERT השני מתנגש ונכשל, לא רק נבדק.
+  const { error } = await admin
     .from("points_log")
-    .select("id", { count: "exact", head: true })
-    .eq("app_id", appId)
-    .eq("reason", "upload");
-  if ((count ?? 0) > 0) return false;
-  await admin.from("points_log").insert({ profile_id: developerId, delta: UPLOAD_POINTS, reason: "upload", app_id: appId });
+    .insert({ profile_id: developerId, delta: UPLOAD_POINTS, reason: "upload", app_id: appId });
+  if (error) {
+    if (error.code === "23505") return false; // כבר ניתן - "הפסדנו" במירוץ, לא שגיאה אמיתית
+    throw new Error(`שגיאה ברישום מוניטין העלאה: ${error.message}`);
+  }
   await addPoints(developerId, UPLOAD_POINTS);
   return true;
 }

@@ -32,3 +32,12 @@ export async function requireProfile(): Promise<{ user: any; profile: Profile } 
 export function isStaff(profile: { role: string; is_moderator?: boolean }) {
   return profile.role === "admin" || !!profile.is_moderator;
 }
+
+// חבר צוות (מנהל או פיקוח) מוגן מפעולות חסימה/מחיקה של חבר צוות אחר - בדיוק מה ש-isStaff
+// בודק, רק על ה"מטרה" של הפעולה ולא על מי שמבצע אותה. נוסף אחרי שנמצא שכמה endpoints
+// (forum/ban, bot/ban) העתיקו רק את חצי הבדיקה (role==="admin" בלבד, בלי is_moderator) -
+// פיקוח אחד יכול היה לחסום פיקוח אחר. endpoints חדשים שחוסמים/מוחקים משתמש - ישתמשו בזה
+// במקום לכתוב את הבדיקה מההתחלה.
+export function isProtectedStaffTarget(target: { role: string; is_moderator?: boolean }) {
+  return isStaff(target);
+}

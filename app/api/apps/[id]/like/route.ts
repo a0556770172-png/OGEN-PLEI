@@ -47,8 +47,14 @@ export async function POST(_request: Request, { params }: { params: { id: string
     .maybeSingle();
 
   if (existing) {
-    await admin.from("app_likes").delete().eq("id", existing.id);
-    await addPoints(app.developer_id, -1);
+    // תוקן: delete-by-id מצליח "בשקט" גם אם השורה כבר נמחקה - לחיצה כפולה/כפל-שליחה היתה
+    // גורמת לשתי בקשות לקרוא את אותה שורה, שתיהן למחוק (השנייה no-op) ושתיהן להוריד נקודה,
+    // מוריד למפתח 2 נקודות על לייק אחד שהוסר. בודקים כמה שורות ה-delete באמת החזיר (.select) -
+    // רק מי ש"ניצח" ומחק בפועל מוריד נקודה.
+    const { data: deleted } = await admin.from("app_likes").delete().eq("id", existing.id).select("id");
+    if (deleted && deleted.length > 0) {
+      await addPoints(app.developer_id, -1);
+    }
     revalidatePath(`/apps/${params.id}`);
     return NextResponse.json({ ok: true, liked: false });
   }
