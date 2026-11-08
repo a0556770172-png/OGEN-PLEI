@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { Heebo } from "next/font/google";
 import "./globals.css";
@@ -15,6 +16,7 @@ import VideoAnnounce from "@/components/VideoAnnounce";
 import NewNotificationsPeek from "@/components/NewNotificationsPeek";
 import SiteTranslator from "@/components/SiteTranslator";
 import StaffRecruitBadge from "@/components/StaffRecruitBadge";
+import NavigationProgress from "@/components/NavigationProgress";
 
 const heebo = Heebo({ subsets: ["hebrew", "latin"], weight: ["300","400","500","700","900"], variable: "--font-heebo" });
 
@@ -118,6 +120,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className={`${heebo.variable} font-sans bg-bg text-gray-100 min-h-screen antialiased relative`}>
+        {/* useSearchParams בתוך הרכיב דורש גבול Suspense (אחרת עמודים סטטיים נכשלים בבנייה) */}
+        <Suspense fallback={null}>
+          <NavigationProgress />
+        </Suspense>
         <SiteTranslator />
         <AnimatedBackground />
         <SiteVisitTracker />
