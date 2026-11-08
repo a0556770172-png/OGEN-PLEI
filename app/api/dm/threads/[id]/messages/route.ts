@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireProfile } from "@/lib/auth-helpers";
 import { createAdminSupabase } from "@/lib/supabase/admin";
+import { getAvatarUrl } from "@/lib/avatar";
 
 async function assertParticipant(admin: ReturnType<typeof createAdminSupabase>, threadId: string, userId: string) {
   const { data: thread } = await admin.from("dm_threads").select("id, user_a, user_b").eq("id", threadId).single();
@@ -19,14 +20,24 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   if (!thread) return NextResponse.json({ error: "שיחה לא נמצאה" }, { status: 404 });
 
   const otherId = thread.user_a === user.id ? thread.user_b : thread.user_a;
-  const { data: other } = await admin.from("profiles").select("id, username").eq("id", otherId).single();
-  const { data: messages } = await admin
-    .from("dm_messages")
-    .select("id, sender_id, body, created_at")
-    .eq("thread_id", params.id)
-    .order("created_at", { ascending: true });
+  const [{ data: other }, { data: messages }] = await Promise.all([
+    admin.from("profiles").select("id, username, role, avatar_key").eq("id", otherId).single(),
+    admin
+      .from("dm_messages")
+      .select("id, sender_id, body, created_at, edited_at, deleted_at")
+      .eq("thread_id", params.id)
+      .order("created_at", { ascending: true })
+  ]);
 
-  return NextResponse.json({ messages: messages ?? [], otherUsername: other?.username ?? "משתמש" });
+  // הודעה שנמחקה: הטקסט לא נשלח בכלל לדפדפן של אף אחד מהצדדים (הוא נשמר ב-DB רק לצפיית הפיקוח)
+  const safe = (messages ?? []).map((m) => (m.deleted_at ? { ...m, body: "" } : m));
+  return NextResponse.json({
+    meId: user.id,
+    messages: safe,
+    otherUsername: other?.username ?? "משתמש",
+    otherUserId: otherId,
+    otherAvatarUrl: other ? await getAvatarUrl(other.avatar_key, other.role) : null
+  });
 }
 
 // מענה על שיחה קיימת פתוח לשני הצדדים ללא בדיקת סף מחדש - הסף (10 אפליקציות/הצעות)
@@ -45,7 +56,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (!trimmed) return NextResponse.json({ error: "חובה להקליד הודעה" }, { status: 400 });
   if (trimmed.length > 2000) return NextResponse.json({ error: "ההודעה ארוכה מדי" }, { status: 400 });
 
-  const { error } = await admin.from("dm_messages").insert({ thread_id: params.id, sender_id: user.id, body: trimmed });
+  const { data: inserted, error } = await admin
+    .from("dm_messages")
+    .insert({ thread_id: params.id, sender_id: user.id, body: trimmed })
+    .select("id, sender_id, body, created_at, edited_at, deleted_at")
+    .single();
   if (error) return NextResponse.json({ error: "שגיאה בשליחת ההודעה" }, { status: 500 });
 
   // מי שהגיב קרא את השיחה - מעדכנים "נקרא עד" כדי שלא תופיע לו כלא-נקראה אחרי שכבר ענה.
@@ -53,5 +68,5 @@ export async function POST(request: Request, { params }: { params: { id: string 
     .from("dm_thread_reads")
     .upsert({ user_id: user.id, thread_id: params.id, last_read_at: new Date().toISOString() }, { onConflict: "user_id,thread_id" });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, message: inserted });
 }
