@@ -84,7 +84,7 @@ export async function middleware(request: NextRequest) {
           response.cookies.set({ name, value: "", ...options });
         }
       },
-      cookieOptions: { name: AUTH_COOKIE }
+      cookieOptions: { name: AUTH_COOKIE, sameSite: "lax", secure: process.env.NODE_ENV === "production" }
     }
   );
 

@@ -17,6 +17,7 @@ export type ExtractIconResult =
 // (ראו הסבר מפורט למטה על מגבלת ה-10 שניות של Vercel Hobby), אז עדיף לוותר מיד ובבירור
 // במקום לנסות ולתקוע את כל הבקשה עד שהיא נהרגת בכוח בלי שום תוצאה מועילה בכלל.
 const MAX_AUTO_EXTRACT_BYTES = 35 * 1024 * 1024; // 35MB
+const MAX_EXTRACTED_ENTRY_BYTES = 400 * 1024 * 1024; // תקרת גודל לקובץ אחרי פירוק מתוך .apks
 
 async function downloadToTempFile(url: string, destPath: string, signal: AbortSignal) {
   const res = await fetch(url, { signal });
@@ -95,6 +96,13 @@ async function extractApkIconInner(fileKey: string, ownerId: string, signal: Abo
       const baseEntry = findBaseApkEntry(zip);
       if (!baseEntry) {
         return { iconKey: null, reason: "no-apk-in-bundle" };
+      }
+      // הגנה מפני "פצצת zip": ארכיון קטן שמתפרק לגודל עצום ומקפיא/ממלא את השרת. APK בתוך ארכיון הוא כבר דחוס,
+      // ולכן יחס דחיסה חריג או גודל מפורק עצום = חשוד.
+      const declared = baseEntry.header.size;
+      const packed = baseEntry.header.compressedSize || 1;
+      if (declared > MAX_EXTRACTED_ENTRY_BYTES || declared / packed > 150) {
+        return { iconKey: null, reason: "file-too-large", detail: "הארכיון חשוד או גדול מדי לחילוץ אוטומטי - יש להעלות אייקון ידנית" };
       }
       apkPath = path.join(tempDir, "base-extracted.apk");
       zip.extractEntryTo(baseEntry, tempDir, false, true, false, "base-extracted.apk");

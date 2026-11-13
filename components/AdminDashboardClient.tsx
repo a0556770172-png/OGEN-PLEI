@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2, Archive, Bot, Star, Lightbulb, KeyRound, BarChart3, Megaphone, Copy, HandHelping, Images, MessagesSquare, UserPlus } from "lucide-react";
+import { ArrowLeftRight, ClipboardList, Users, Crown, MessageCircle, Gift, Tag, LayoutGrid, BellRing, Settings, ShieldAlert, ShieldCheck, Siren, History, Flag, HardDrive, MessageSquareWarning, ScrollText, Share2, Archive, Bot, Star, Lightbulb, KeyRound, BarChart3, Megaphone, Copy, HandHelping, Images, MessagesSquare, UserPlus } from "lucide-react";
+import SecurityCenterPanel from "./SecurityCenterPanel";
 import ReviewQueue from "./ReviewQueue";
 import VersionProposalsQueue from "./VersionProposalsQueue";
 import DuplicatesQueue from "./DuplicatesQueue";
@@ -37,7 +38,7 @@ import type { ForumPost } from "@/lib/forum";
 import type { AppRow, Profile, ProRequest, UserDeletionRequest, BanAppeal, ReferralEvent } from "@/types/database";
 import type { SiteReviewRow } from "@/lib/siteReviews";
 
-type TabKey = "notifications" | "review" | "duplicates" | "community" | "allApps" | "ownership" | "archive" | "users" | "pro" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteReviews" | "forum" | "passwordResets" | "bot" | "siteRules" | "settings" | "stats" | "ads" | "images" | "chatMonitor" | "teamApps";
+type TabKey = "notifications" | "review" | "duplicates" | "community" | "allApps" | "ownership" | "archive" | "users" | "pro" | "tickets" | "ticketsArchive" | "suggestions" | "categories" | "deletionRequests" | "council" | "auditLog" | "reports" | "sizeOverrides" | "banAppeals" | "referrals" | "siteReviews" | "forum" | "passwordResets" | "bot" | "siteRules" | "settings" | "stats" | "ads" | "images" | "chatMonitor" | "teamApps" | "security";
 
 export default function AdminDashboardClient({
   apps,
@@ -100,6 +101,7 @@ export default function AdminDashboardClient({
   const tabs = [
     { key: "notifications", label: `התראות${notificationCount ? ` (${notificationCount})` : ""}`, icon: BellRing },
     { key: "stats", label: "סטטיסטיקה", icon: BarChart3 },
+    { key: "security", label: "מרכז אבטחה", icon: ShieldCheck },
     { key: "ads", label: "פרסומות", icon: Megaphone },
     { key: "review", label: `בדיקת פרסום (${apps.length + versionProposalsCount})`, icon: ClipboardList },
     { key: "allApps", label: `כל האפליקציות (${activeApps.length})`, icon: LayoutGrid },
@@ -161,6 +163,7 @@ export default function AdminDashboardClient({
 
       {tab === "notifications" && <NotificationsPanel items={notificationItems} onNavigate={(key) => setTab(key as TabKey)} />}
       {tab === "stats" && <StatsPanel />}
+      {tab === "security" && <SecurityCenterPanel />}
       {tab === "ads" && <AdManagementPanel />}
       {tab === "review" && (
         <div className="flex flex-col gap-6">

@@ -64,10 +64,10 @@ ln -sf "$APP_DIR/.env.local" "$BUILD_DIR/.env.local"
 
 LOCK_HASH=$(sha1sum package-lock.json | cut -d' ' -f1)
 if [ ! -d node_modules ] || [ "$(cat .deps-hash 2>/dev/null)" != "$LOCK_HASH" ]; then
-  npm ci --no-audit --no-fund && echo "$LOCK_HASH" > .deps-hash || fail "!! npm ci failed on ${NEW:0:7} - live site untouched"
+  nice -n 19 ionice -c 3 npm ci --no-audit --no-fund && echo "$LOCK_HASH" > .deps-hash || fail "!! npm ci failed on ${NEW:0:7} - live site untouched"
 fi
 rm -rf .next
-if ! npm run build; then
+if ! NODE_OPTIONS="--max-old-space-size=3072" nice -n 19 ionice -c 3 npm run build; then
   fail "!! build failed on ${NEW:0:7} - live site untouched (still ${OLD:0:7})"
 fi
 
@@ -96,7 +96,7 @@ fi
 git reset -q --hard "$NEW" || fail "!! git reset failed in $APP_DIR (permissions?) - live site untouched"
 # תלויות: רק אם השתנו (נדיר). קורה ממש לפני ההפעלה מחדש.
 if [ ! -d node_modules ] || ! git diff --quiet "$OLD" "$NEW" -- package-lock.json package.json; then
-  npm ci --no-audit --no-fund || echo "!! npm ci in live dir failed"
+  nice -n 19 ionice -c 3 npm ci --no-audit --no-fund || echo "!! npm ci in live dir failed"
 fi
 rm -rf "$APP_DIR/.next.prev" "$APP_DIR/.next.new"
 mv "$BUILD_DIR/.next" "$APP_DIR/.next.new"

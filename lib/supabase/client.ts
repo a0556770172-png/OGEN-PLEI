@@ -20,6 +20,7 @@ export function createClient() {
   return createBrowserClient(
     `${origin}/api/sb`,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    { cookieOptions: { name: "sb-ogenplay-auth-token" } }
+    // secure: עוגיית ההתחברות לעולם לא נשלחת בחיבור לא מוצפן (הגנה מפני חטיפת סשן ברשת); sameSite=lax נגד CSRF.
+    { cookieOptions: { name: "sb-ogenplay-auth-token", sameSite: "lax", secure: typeof window !== "undefined" ? window.location.protocol === "https:" : undefined } }
   );
 }

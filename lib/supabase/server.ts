@@ -28,7 +28,7 @@ export function createServerSupabase() {
         }
       },
       // חייב להיות זהה לשם הקבוע ב-lib/supabase/client.ts - ראו ההסבר שם.
-      cookieOptions: { name: "sb-ogenplay-auth-token" },
+      cookieOptions: { name: "sb-ogenplay-auth-token", sameSite: "lax", secure: process.env.NODE_ENV === "production" },
       global: { fetch: noStoreFetch }
     }
   );

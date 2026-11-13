@@ -11,7 +11,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.10",
-    "adm-zip": "^0.5.16",
+    "adm-zip": "^0.6.1",
     "app-info-parser": "^1.1.6",
     "framer-motion": "^11.15.0",
     "lucide-react": "^0.468.0",

@@ -1,0 +1,32 @@
+[Unit]
+Description=Ogen Sentinel - real-time attack detection (reads nginx JSON log, off the request path)
+After=network.target nginx.service docker.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/ogen-sentinel/sentinel.py
+Restart=always
+RestartSec=5
+# לא פוגע במהירות האתר: עדיפות נמוכה, תקרות CPU וזיכרון, I/O בסרק
+Nice=10
+CPUQuota=30%
+MemoryMax=300M
+IOSchedulingClass=idle
+# root נדרש ל-nftables (חסימה בקרנל). מצמצמים הרשאות לכל השאר:
+User=root
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_DAC_READ_SEARCH
+AmbientCapabilities=CAP_NET_ADMIN CAP_DAC_READ_SEARCH
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/etc/ogen-sentinel
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+RestrictNamespaces=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

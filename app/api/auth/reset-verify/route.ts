@@ -7,6 +7,7 @@ import { logAudit } from "@/lib/audit";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_FAILS_PER_HOUR = 5;
+const MAX_FAILS_PER_IP_PER_HOUR = 20;
 
 // שלב 2: המשתמש עונה על שאלת האבטחה + סיסמה חדשה. תשובה נכונה => הסיסמה מוחלפת.
 export async function POST(request: Request) {
@@ -37,7 +38,22 @@ export async function POST(request: Request) {
   } catch {
     // ignore
   }
-  if (fails >= MAX_FAILS_PER_HOUR) {
+  // הגבלה נוספת לפי כתובת IP (על פני כל המיילים) - בלי זה תוקף יכול לנסות 5 ניחושים בשעה על כל חשבון בנפרד, בלי סוף.
+  let ipFails = 0;
+  if (ip) {
+    try {
+      const { count } = await admin
+        .from("password_reset_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("kind", "question_attempt")
+        .eq("ip", ip)
+        .gte("created_at", hourAgo);
+      ipFails = count ?? 0;
+    } catch {
+      // ignore
+    }
+  }
+  if (fails >= MAX_FAILS_PER_HOUR || ipFails >= MAX_FAILS_PER_IP_PER_HOUR) {
     return NextResponse.json(
       { error: "יותר מדי ניסיונות שגויים. נסה שוב בעוד שעה, או פנה לצוות.", locked: true },
       { status: 429 }
